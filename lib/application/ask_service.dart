@@ -77,7 +77,10 @@ class AskService {
     if (!outcome.ok) return AskOutcome(error: outcome.errors.firstOrNull ?? 'AI error');
     final out = outcome.value!;
     if (out.status == 'not_a_recipe' || validation == null) {
-      return AskOutcome(notARecipe: true, summary: out.summary.isEmpty ? "That doesn't sound like a dish." : out.summary);
+      return AskOutcome(
+        notARecipe: true,
+        summary: out.summary.isEmpty ? "That doesn't sound like a dish." : out.summary,
+      );
     }
 
     final recipe = validation!.recipe!;
@@ -97,11 +100,13 @@ class AskService {
     for (final s in f.shortfalls) {
       final name = s.ingredient?.name ?? s.item.name;
       if (shopping.any((x) => x.name.toLowerCase().contains(name.toLowerCase()))) continue;
-      shopping.add(ShoppingItem()
-        ..name = name
-        ..packageDesc = 'short by ${UnitConverter.format(s.missing, s.unit)}'
-        ..estCostMinor = ((s.ingredient?.avgCostPerUnitMinor ?? 0) * s.missing).round()
-        ..reason = 'short');
+      shopping.add(
+        ShoppingItem()
+          ..name = name
+          ..packageDesc = 'short by ${UnitConverter.format(s.missing, s.unit)}'
+          ..estCostMinor = ((s.ingredient?.avgCostPerUnitMinor ?? 0) * s.missing).round()
+          ..reason = 'short',
+      );
     }
 
     recipe

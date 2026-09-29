@@ -98,9 +98,11 @@ class QuickTextParser {
     final k = keyword.toLowerCase().trim();
     if (k.isEmpty) return learned;
     final out = learned.where((e) => e.keyword != k).toList()
-      ..add(KeywordCategory()
-        ..keyword = k
-        ..category = category);
+      ..add(
+        KeywordCategory()
+          ..keyword = k
+          ..category = category,
+      );
     return out.length > 200 ? out.sublist(out.length - 200) : out;
   }
 }

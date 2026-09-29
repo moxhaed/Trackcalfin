@@ -80,14 +80,18 @@ class ScanService {
     if (job == null) return null;
     final runner = await ai.runner();
     if (runner == null) {
-      await _save(job
-        ..status = ScanStatus.queued
-        ..lastError = 'Add a Gemini API key in Settings to process scans.');
+      await _save(
+        job
+          ..status = ScanStatus.queued
+          ..lastError = 'Add a Gemini API key in Settings to process scans.',
+      );
       return null;
     }
-    await _save(job
-      ..status = ScanStatus.processing
-      ..attempts += 1);
+    await _save(
+      job
+        ..status = ScanStatus.processing
+        ..attempts += 1,
+    );
 
     final profile = (await isar.userProfiles.get(1))!;
     final ingredients = await isar.ingredients.where().findAll();
@@ -112,18 +116,22 @@ class ScanService {
 
     if (!outcome.ok) {
       final retry = outcome.transient && job.attempts < maxAttempts;
-      await _save(job
-        ..status = retry ? ScanStatus.queued : ScanStatus.failed
-        ..lastError = outcome.errors.isEmpty ? 'Unknown error' : outcome.errors.first);
+      await _save(
+        job
+          ..status = retry ? ScanStatus.queued : ScanStatus.failed
+          ..lastError = outcome.errors.isEmpty ? 'Unknown error' : outcome.errors.first,
+      );
       return retry ? null : ScanResult(job);
     }
 
     final x = outcome.value!;
     if (x.imageType == ScanKind.unreadable) {
-      await _save(job
-        ..kind = ScanKind.unreadable
-        ..status = ScanStatus.failed
-        ..lastError = x.warnings.isEmpty ? 'The photo was unreadable.' : 'Unreadable: ${x.warnings.join(', ')}');
+      await _save(
+        job
+          ..kind = ScanKind.unreadable
+          ..status = ScanStatus.failed
+          ..lastError = x.warnings.isEmpty ? 'The photo was unreadable.' : 'Unreadable: ${x.warnings.join(', ')}',
+      );
       return ScanResult(job);
     }
 
@@ -160,10 +168,12 @@ class ScanService {
   Future<void> retry(int jobId) async {
     final job = await isar.scanJobs.get(jobId);
     if (job == null) return;
-    await _save(job
-      ..status = ScanStatus.queued
-      ..attempts = 0
-      ..lastError = null);
+    await _save(
+      job
+        ..status = ScanStatus.queued
+        ..attempts = 0
+        ..lastError = null,
+    );
   }
 
   Future<void> discard(int jobId) async {
@@ -238,7 +248,8 @@ class ScanService {
         ..lines = txLines
         ..totalMinor = txLines.fold(0, (a, l) => a + l.totalMinor)
         ..primaryCategory = ReceiptMath.primaryCategory(
-            txLines.map((l) => (category: l.category, totalMinor: l.totalMinor)))
+          txLines.map((l) => (category: l.category, totalMinor: l.totalMinor)),
+        )
         ..scanJobId = job.id
         ..createdAt = t;
       final txId = await isar.transactions.put(tx);
@@ -257,7 +268,11 @@ class ScanService {
     }
     final byKey = await isar.ingredients.getByKey(l.ingredientKey!);
     if (byKey != null) return byKey;
-    final p = l.profile ?? (NewIngredientProfile()..name = l.name..unit = l.unit);
+    final p =
+        l.profile ??
+        (NewIngredientProfile()
+          ..name = l.name
+          ..unit = l.unit);
     return Ingredient()
       ..key = l.ingredientKey!
       ..name = p.name.isEmpty ? l.name : p.name

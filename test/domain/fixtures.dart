@@ -17,20 +17,19 @@ Ingredient ingredient(
   bool staple = false,
   DateTime? expiresAt,
   DateTime? verified,
-}) =>
-    Ingredient()
-      ..id = _id++
-      ..key = key
-      ..name = key.replaceAll('_', ' ')
-      ..qtyOnHand = qty
-      ..baseUnit = unit
-      ..avgCostPerUnitMinor = cost
-      ..per100 = Nutrition(kcal: kcal, proteinG: protein, carbsG: carbs, fatG: fat)
-      ..gramsPerPiece = gpp
-      ..shelfLifeDays = shelf
-      ..trackingMode = staple ? TrackingMode.staple : TrackingMode.exact
-      ..expiresAt = expiresAt
-      ..lastVerifiedAt = verified;
+}) => Ingredient()
+  ..id = _id++
+  ..key = key
+  ..name = key.replaceAll('_', ' ')
+  ..qtyOnHand = qty
+  ..baseUnit = unit
+  ..avgCostPerUnitMinor = cost
+  ..per100 = Nutrition(kcal: kcal, proteinG: protein, carbsG: carbs, fatG: fat)
+  ..gramsPerPiece = gpp
+  ..shelfLifeDays = shelf
+  ..trackingMode = staple ? TrackingMode.staple : TrackingMode.exact
+  ..expiresAt = expiresAt
+  ..lastVerifiedAt = verified;
 
 RecipeIngredient ri(String key, double qty, {BaseUnit unit = BaseUnit.g, IngredientRole role = IngredientRole.stock}) =>
     RecipeIngredient()
@@ -54,10 +53,12 @@ Transaction tx(DateTime at, int minor, {SpendCategory category = SpendCategory.g
 DailyLog dayLog(int key, double kcal, double protein, {int costMinor = 200, int meals = 1}) {
   final log = DailyLog()..dateKey = key;
   for (var i = 0; i < meals; i++) {
-    log.meals.add(MealEntry()
-      ..title = 'meal'
-      ..nutrition = Nutrition(kcal: kcal / meals, proteinG: protein / meals)
-      ..costMinor = costMinor ~/ meals);
+    log.meals.add(
+      MealEntry()
+        ..title = 'meal'
+        ..nutrition = Nutrition(kcal: kcal / meals, proteinG: protein / meals)
+        ..costMinor = costMinor ~/ meals,
+    );
   }
   log.recomputeTotals();
   return log;

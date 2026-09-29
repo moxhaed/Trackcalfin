@@ -15,12 +15,11 @@ class UnitConverter {
   const UnitConverter._();
 
   /// Grams for [qty] in [unit]; null when a piece weight is needed but unknown.
-  static double? toGrams(double qty, BaseUnit unit, {double? gramsPerPiece, double? density}) =>
-      switch (unit) {
-        BaseUnit.g => qty,
-        BaseUnit.ml => qty * (density ?? 1.0),
-        BaseUnit.pc => gramsPerPiece == null ? null : qty * gramsPerPiece,
-      };
+  static double? toGrams(double qty, BaseUnit unit, {double? gramsPerPiece, double? density}) => switch (unit) {
+    BaseUnit.g => qty,
+    BaseUnit.ml => qty * (density ?? 1.0),
+    BaseUnit.pc => gramsPerPiece == null ? null : qty * gramsPerPiece,
+  };
 
   static double? ingredientGrams(double qty, BaseUnit unit, Ingredient i) =>
       toGrams(qty, unit, gramsPerPiece: i.gramsPerPiece, density: i.densityGPerMl);
@@ -57,18 +56,18 @@ class UnitConverter {
   }
 
   static ParsedQty? _unitAmount(double v, String unit) => switch (unit) {
-        'g' || 'gr' || 'gram' || 'grams' => ParsedQty(v, BaseUnit.g),
-        'kg' || 'kilo' || 'kilos' => ParsedQty(v * 1000, BaseUnit.g),
-        'mg' => ParsedQty(v / 1000, BaseUnit.g),
-        'oz' => ParsedQty(v * 28.3495, BaseUnit.g),
-        'lb' || 'lbs' => ParsedQty(v * 453.592, BaseUnit.g),
-        'ml' => ParsedQty(v, BaseUnit.ml),
-        'cl' => ParsedQty(v * 10, BaseUnit.ml),
-        'dl' => ParsedQty(v * 100, BaseUnit.ml),
-        'l' || 'lt' || 'liter' || 'litre' || 'liters' || 'litres' => ParsedQty(v * 1000, BaseUnit.ml),
-        'pc' || 'pcs' || 'stk' || 'st' || 'x' || 'piece' || 'pieces' || 'ea' => ParsedQty(v, BaseUnit.pc),
-        _ => null,
-      };
+    'g' || 'gr' || 'gram' || 'grams' => ParsedQty(v, BaseUnit.g),
+    'kg' || 'kilo' || 'kilos' => ParsedQty(v * 1000, BaseUnit.g),
+    'mg' => ParsedQty(v / 1000, BaseUnit.g),
+    'oz' => ParsedQty(v * 28.3495, BaseUnit.g),
+    'lb' || 'lbs' => ParsedQty(v * 453.592, BaseUnit.g),
+    'ml' => ParsedQty(v, BaseUnit.ml),
+    'cl' => ParsedQty(v * 10, BaseUnit.ml),
+    'dl' => ParsedQty(v * 100, BaseUnit.ml),
+    'l' || 'lt' || 'liter' || 'litre' || 'liters' || 'litres' => ParsedQty(v * 1000, BaseUnit.ml),
+    'pc' || 'pcs' || 'stk' || 'st' || 'x' || 'piece' || 'pieces' || 'ea' => ParsedQty(v, BaseUnit.pc),
+    _ => null,
+  };
 
   /// 1500 g -> "1.5 kg", 250 g -> "250 g", 1.5 pc -> "1.5 pc".
   static String format(double qty, BaseUnit unit) {

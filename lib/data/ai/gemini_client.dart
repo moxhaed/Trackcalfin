@@ -16,9 +16,7 @@ class GeminiException implements Exception {
 
 class Turn {
   const Turn.user(this.text, [this.images = const []]) : role = 'user';
-  const Turn.model(this.text)
-      : role = 'model',
-        images = const [];
+  const Turn.model(this.text) : role = 'model', images = const [];
   final String role;
   final String text;
   final List<Uint8List> images;
@@ -44,14 +42,14 @@ class GeminiRequest {
   final Duration timeout;
 
   GeminiRequest copyWith({List<Turn>? turns, int? maxOutputTokens}) => GeminiRequest(
-        systemPrompt: systemPrompt,
-        turns: turns ?? this.turns,
-        thinkingLevel: thinkingLevel,
-        highMediaResolution: highMediaResolution,
-        responseSchema: responseSchema,
-        maxOutputTokens: maxOutputTokens ?? this.maxOutputTokens,
-        timeout: timeout,
-      );
+    systemPrompt: systemPrompt,
+    turns: turns ?? this.turns,
+    thinkingLevel: thinkingLevel,
+    highMediaResolution: highMediaResolution,
+    responseSchema: responseSchema,
+    maxOutputTokens: maxOutputTokens ?? this.maxOutputTokens,
+    timeout: timeout,
+  );
 }
 
 class GeminiResponse {
@@ -96,10 +94,7 @@ class GeminiClient {
   static const _backoff = [Duration(seconds: 2), Duration(seconds: 8)];
 
   Map<String, dynamic> buildBody(GeminiRequest r, {int level = 0}) {
-    final config = <String, dynamic>{
-      'responseMimeType': 'application/json',
-      'maxOutputTokens': r.maxOutputTokens,
-    };
+    final config = <String, dynamic>{'responseMimeType': 'application/json', 'maxOutputTokens': r.maxOutputTokens};
     if (level < 2) config['thinkingConfig'] = {'thinkingLevel': r.thinkingLevel};
     if (level < 1) {
       if (r.responseSchema != null) config['responseJsonSchema'] = r.responseSchema;
@@ -183,8 +178,7 @@ class GeminiClient {
       try {
         msg = (jsonDecode(res.body) as Map)['error']?['message']?.toString() ?? res.body;
       } catch (_) {}
-      throw GeminiException(msg,
-          status: res.statusCode, retryable: res.statusCode == 429 || res.statusCode >= 500);
+      throw GeminiException(msg, status: res.statusCode, retryable: res.statusCode == 429 || res.statusCode >= 500);
     }
     final json = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
     final candidates = (json['candidates'] as List?) ?? const [];

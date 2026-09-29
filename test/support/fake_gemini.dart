@@ -6,24 +6,24 @@ import 'package:http/testing.dart';
 
 /// Wraps model text in a generateContent response body.
 http.Response geminiOk(String text, {String finish = 'STOP'}) => http.Response(
-      jsonEncode({
-        'candidates': [
-          {
-            'content': {
-              'role': 'model',
-              'parts': [
-                {'text': 'thinking...', 'thought': true},
-                {'text': text},
-              ],
-            },
-            'finishReason': finish,
-          },
-        ],
-        'usageMetadata': {'promptTokenCount': 1200, 'candidatesTokenCount': 300},
-      }),
-      200,
-      headers: {'content-type': 'application/json; charset=utf-8'},
-    );
+  jsonEncode({
+    'candidates': [
+      {
+        'content': {
+          'role': 'model',
+          'parts': [
+            {'text': 'thinking...', 'thought': true},
+            {'text': text},
+          ],
+        },
+        'finishReason': finish,
+      },
+    ],
+    'usageMetadata': {'promptTokenCount': 1200, 'candidatesTokenCount': 300},
+  }),
+  200,
+  headers: {'content-type': 'application/json; charset=utf-8'},
+);
 
 /// A scripted fake: returns queued responses in order and records requests.
 class FakeGemini {
@@ -33,7 +33,13 @@ class FakeGemini {
   void reply(String text) => responses.add((_) => geminiOk(text));
   void replyJson(Object json) => reply(jsonEncode(json));
   void status(int code, String message) => responses.add(
-      (_) => http.Response(jsonEncode({'error': {'code': code, 'message': message}}), code));
+    (_) => http.Response(
+      jsonEncode({
+        'error': {'code': code, 'message': message},
+      }),
+      code,
+    ),
+  );
 
   late final client = MockClient((req) async {
     final body = jsonDecode(req.body) as Map<String, dynamic>;

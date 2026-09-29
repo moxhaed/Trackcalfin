@@ -10,7 +10,7 @@ import '../platform/secret_store.dart';
 /// Builds an [AiRunner] when an API key is available.
 class AiGateway {
   AiGateway({required this.isar, required this.secrets, required this.prompts, http.Client? httpClient})
-      : httpClient = httpClient ?? http.Client();
+    : httpClient = httpClient ?? http.Client();
 
   final Isar isar;
   final SecretStore secrets;
@@ -35,13 +35,15 @@ class AiGateway {
     final r = await runner();
     if (r == null) return 'No API key set.';
     try {
-      final res = await r.client.generate(GeminiRequest(
-        systemPrompt: 'Reply with the JSON object {"ok": true} and nothing else.',
-        turns: const [Turn.user('ping')],
-        thinkingLevel: 'low',
-        maxOutputTokens: 256,
-        timeout: const Duration(seconds: 30),
-      ));
+      final res = await r.client.generate(
+        GeminiRequest(
+          systemPrompt: 'Reply with the JSON object {"ok": true} and nothing else.',
+          turns: const [Turn.user('ping')],
+          thinkingLevel: 'low',
+          maxOutputTokens: 256,
+          timeout: const Duration(seconds: 30),
+        ),
+      );
       return res.text.contains('ok') ? null : 'Unexpected reply: ${res.text}';
     } on GeminiException catch (e) {
       return e.message;

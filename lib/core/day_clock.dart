@@ -46,8 +46,7 @@ class DayClock {
   }
 
   /// Adds whole calendar days, keeping the wall-clock time (DST-safe).
-  static DateTime addDays(DateTime t, int days) =>
-      DateTime(t.year, t.month, t.day + days, t.hour, t.minute, t.second);
+  static DateTime addDays(DateTime t, int days) => DateTime(t.year, t.month, t.day + days, t.hour, t.minute, t.second);
 
   /// Whole calendar days from [a] to [b] (DST-safe).
   static int daysBetween(DateTime a, DateTime b) {

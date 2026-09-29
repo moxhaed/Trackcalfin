@@ -32,14 +32,16 @@ void main() {
       tx(DateTime(2026, 10, 1, 9), 4000),
       tx(DateTime(2026, 10, 1, 13), 1500, category: SpendCategory.eatingOut),
     ];
-    final s = DashboardAggregator.compute(DashboardInput(
-      now: now,
-      clock: clock,
-      profile: profile(),
-      transactions: txs,
-      logs: const [],
-      firstTransactionAt: DateTime(2026, 8, 20, 12),
-    ));
+    final s = DashboardAggregator.compute(
+      DashboardInput(
+        now: now,
+        clock: clock,
+        profile: profile(),
+        transactions: txs,
+        logs: const [],
+        firstTransactionAt: DateTime(2026, 8, 20, 12),
+      ),
+    );
     expect(s.weekFood, 4000);
     expect(s.monthFood, 4000);
     expect(s.weeklyBudget, (30000 / 4.33).round());
@@ -55,14 +57,16 @@ void main() {
   });
 
   test('cold start: fewer than 7 days of data', () {
-    final s = DashboardAggregator.compute(DashboardInput(
-      now: now,
-      clock: clock,
-      profile: profile(),
-      transactions: [tx(DateTime(2026, 9, 30, 10), 3000)],
-      logs: const [],
-      firstTransactionAt: DateTime(2026, 9, 30, 10),
-    ));
+    final s = DashboardAggregator.compute(
+      DashboardInput(
+        now: now,
+        clock: clock,
+        profile: profile(),
+        transactions: [tx(DateTime(2026, 9, 30, 10), 3000)],
+        logs: const [],
+        firstTransactionAt: DateTime(2026, 9, 30, 10),
+      ),
+    );
     expect(s.collectingData, isTrue);
     expect(s.projectedMonth, isNull);
   });
@@ -73,9 +77,9 @@ void main() {
       dayLog(20260930, 2400, 150, costMinor: 600, meals: 3),
       dayLog(20261001, 900, 60, costMinor: 200), // today
     ];
-    final s = DashboardAggregator.compute(DashboardInput(
-      now: now, clock: clock, profile: profile(), transactions: const [], logs: logs,
-    ));
+    final s = DashboardAggregator.compute(
+      DashboardInput(now: now, clock: clock, profile: profile(), transactions: const [], logs: logs),
+    );
     expect(s.avgKcal, 2200);
     expect(s.avgProtein, 135);
     expect(s.completedDays, 2);
@@ -92,10 +96,15 @@ void main() {
 
   test('macros fall back to last week on Monday', () {
     final monday = DateTime(2026, 9, 28, 10);
-    final s = DashboardAggregator.compute(DashboardInput(
-      now: monday, clock: clock, profile: profile(), transactions: const [],
-      logs: [dayLog(20260925, 1800, 100), dayLog(20260926, 2200, 140)],
-    ));
+    final s = DashboardAggregator.compute(
+      DashboardInput(
+        now: monday,
+        clock: clock,
+        profile: profile(),
+        transactions: const [],
+        logs: [dayLog(20260925, 1800, 100), dayLog(20260926, 2200, 140)],
+      ),
+    );
     expect(s.avgIsLastWeek, isTrue);
     expect(s.avgKcal, 2000);
     expect(s.coverage, isNull);
@@ -121,9 +130,9 @@ void main() {
       final p = profile()
         ..monthlyFoodBudgetMinor = 0
         ..monthlyCategoryLimits = [];
-      final s = DashboardAggregator.compute(DashboardInput(
-        now: now, clock: clock, profile: p, transactions: const [], logs: logs,
-      ));
+      final s = DashboardAggregator.compute(
+        DashboardInput(now: now, clock: clock, profile: p, transactions: const [], logs: logs),
+      );
       final v = VibeScorer.score(s, p, money, pickTitle: 'Chili', pickProtein: 46);
       expect(v.components.keys.toSet(), {'protein', 'kcal', 'logging'});
       // protein 50, kcal 100, logging 100 -> (0.2*50 + 0.15*100 + 0.2*100) / 0.55
@@ -136,9 +145,9 @@ void main() {
         ..monthlyFoodBudgetMinor = 0
         ..monthlyCategoryLimits = [];
       final monday = DateTime(2026, 9, 28, 10);
-      final s = DashboardAggregator.compute(DashboardInput(
-        now: monday, clock: clock, profile: p, transactions: const [], logs: const [],
-      ));
+      final s = DashboardAggregator.compute(
+        DashboardInput(now: monday, clock: clock, profile: p, transactions: const [], logs: const []),
+      );
       final v = VibeScorer.score(s, p, money);
       expect(v.score, isNull);
       expect(v.label, 'Getting started');

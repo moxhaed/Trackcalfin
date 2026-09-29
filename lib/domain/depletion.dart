@@ -53,12 +53,14 @@ class DepletionEngine {
         existing.shortfall = existing.requested - total;
         continue;
       }
-      deltas.add(StockDelta()
-        ..ingredientId = ing.id
-        ..key = ing.key
-        ..requested = requested
-        ..deducted = deducted
-        ..shortfall = requested - deducted);
+      deltas.add(
+        StockDelta()
+          ..ingredientId = ing.id
+          ..key = ing.key
+          ..requested = requested
+          ..deducted = deducted
+          ..shortfall = requested - deducted,
+      );
     }
     return CookPlan(
       portions: portions,

@@ -58,8 +58,7 @@ class UserProfile {
   /// For data migrations.
   int schemaVersion = 1;
 
-  int limitFor(SpendCategory c) =>
-      monthlyCategoryLimits.where((l) => l.category == c).firstOrNull?.limitMinor ?? 0;
+  int limitFor(SpendCategory c) => monthlyCategoryLimits.where((l) => l.category == c).firstOrNull?.limitMinor ?? 0;
 }
 
 @embedded

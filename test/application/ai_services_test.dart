@@ -52,13 +52,14 @@ void main() {
   }
 
   group('ScanService', () {
-    ScanService service() =>
-        ScanService(isar: isar, images: ImageStore('${tmp.path}/store'), ai: ai, now: () => now);
+    ScanService service() => ScanService(isar: isar, images: ImageStore('${tmp.path}/store'), ai: ai, now: () => now);
 
     test('clean receipt auto-commits: ledger, stock, WAC, new ingredient, aliases', () async {
-      await PantryService(isar).upsert(Ingredient()
-        ..name = 'Chicken breast'
-        ..key = 'chicken_breast');
+      await PantryService(isar).upsert(
+        Ingredient()
+          ..name = 'Chicken breast'
+          ..key = 'chicken_breast',
+      );
       fake.reply(promptExample('receipt_extraction.v1.md'));
       final s = service();
       final id = await s.enqueue([await photo()], hint: 'receipt');
@@ -115,9 +116,16 @@ void main() {
       expect((await isar.scanJobs.get(id))!.status, ScanStatus.queued);
 
       fake.replyJson({
-        'schema_version': 1, 'image_type': 'unreadable', 'stock_mode': 'none', 'merchant': null,
-        'purchased_at': null, 'purchased_time': null, 'currency': 'EUR', 'receipt_total_minor': null,
-        'items': [], 'warnings': ['too_blurry'],
+        'schema_version': 1,
+        'image_type': 'unreadable',
+        'stock_mode': 'none',
+        'merchant': null,
+        'purchased_at': null,
+        'purchased_time': null,
+        'currency': 'EUR',
+        'receipt_total_minor': null,
+        'items': [],
+        'warnings': ['too_blurry'],
       });
       await service().processQueue();
       final job = (await isar.scanJobs.get(id))!;
@@ -127,20 +135,37 @@ void main() {
 
     test('pantry photo sets quantities and verifies', () async {
       final pantry = PantryService(isar);
-      await pantry.upsert(Ingredient()
-        ..name = 'Egg'
-        ..key = 'egg'
-        ..baseUnit = BaseUnit.pc
-        ..gramsPerPiece = 55
-        ..qtyOnHand = 2);
+      await pantry.upsert(
+        Ingredient()
+          ..name = 'Egg'
+          ..key = 'egg'
+          ..baseUnit = BaseUnit.pc
+          ..gramsPerPiece = 55
+          ..qtyOnHand = 2,
+      );
       fake.replyJson({
-        'schema_version': 1, 'image_type': 'pantry', 'stock_mode': 'set', 'merchant': null,
-        'purchased_at': null, 'purchased_time': null, 'currency': 'EUR', 'receipt_total_minor': null,
+        'schema_version': 1,
+        'image_type': 'pantry',
+        'stock_mode': 'set',
+        'merchant': null,
+        'purchased_at': null,
+        'purchased_time': null,
+        'currency': 'EUR',
+        'receipt_total_minor': null,
         'items': [
           {
-            'raw_text': '', 'name': 'Eggs', 'line_type': 'product', 'spend_category': 'groceries',
-            'total_minor': 0, 'ingredient_key': 'egg', 'is_new_ingredient': false, 'qty': 10, 'unit': 'pc',
-            'qty_source': 'estimated', 'confidence': 'high', 'new_ingredient': null,
+            'raw_text': '',
+            'name': 'Eggs',
+            'line_type': 'product',
+            'spend_category': 'groceries',
+            'total_minor': 0,
+            'ingredient_key': 'egg',
+            'is_new_ingredient': false,
+            'qty': 10,
+            'unit': 'pc',
+            'qty_source': 'estimated',
+            'confidence': 'high',
+            'new_ingredient': null,
           },
         ],
         'warnings': [],
@@ -160,17 +185,29 @@ void main() {
   group('DailyPickService + AskService', () {
     Future<void> seedPantry() async {
       final p = PantryService(isar, now: () => now);
-      Future<void> add(String key, double qty, double cost, double kcal, double protein, double carbs, double fat,
-          {BaseUnit unit = BaseUnit.g, bool staple = false, int shelf = 7}) async {
-        await p.upsert(Ingredient()
-          ..key = key
-          ..name = key.replaceAll('_', ' ')
-          ..qtyOnHand = qty
-          ..avgCostPerUnitMinor = cost
-          ..baseUnit = unit
-          ..shelfLifeDays = shelf
-          ..trackingMode = staple ? TrackingMode.staple : TrackingMode.exact
-          ..per100 = Nutrition(kcal: kcal, proteinG: protein, carbsG: carbs, fatG: fat));
+      Future<void> add(
+        String key,
+        double qty,
+        double cost,
+        double kcal,
+        double protein,
+        double carbs,
+        double fat, {
+        BaseUnit unit = BaseUnit.g,
+        bool staple = false,
+        int shelf = 7,
+      }) async {
+        await p.upsert(
+          Ingredient()
+            ..key = key
+            ..name = key.replaceAll('_', ' ')
+            ..qtyOnHand = qty
+            ..avgCostPerUnitMinor = cost
+            ..baseUnit = unit
+            ..shelfLifeDays = shelf
+            ..trackingMode = staple ? TrackingMode.staple : TrackingMode.exact
+            ..per100 = Nutrition(kcal: kcal, proteinG: protein, carbsG: carbs, fatG: fat),
+        );
       }
 
       await add('chicken_breast', 650, 0.998, 110, 23.1, 0, 1.9, shelf: 2);
@@ -199,14 +236,16 @@ void main() {
 
     test('no key falls back to the best ready saved recipe', () async {
       await seedPantry();
-      await RecipeService(isar).save(Recipe()
-        ..title = 'Plain rice'
-        ..status = RecipeStatus.saved
-        ..ingredients = [
-          RecipeIngredient()
-            ..key = 'white_rice'
-            ..qtyPerPortion = 100,
-        ]);
+      await RecipeService(isar).save(
+        Recipe()
+          ..title = 'Plain rice'
+          ..status = RecipeStatus.saved
+          ..ingredients = [
+            RecipeIngredient()
+              ..key = 'white_rice'
+              ..qtyPerPortion = 100,
+          ],
+      );
       final svc = DailyPickService(
         isar: isar,
         ai: AiGateway(isar: isar, secrets: MemorySecretStore(), prompts: PromptRepository(loadPromptAsset)),
@@ -261,9 +300,15 @@ void main() {
 
     test('ask: not a recipe', () async {
       fake.replyJson({
-        'schema_version': 1, 'status': 'not_a_recipe', 'request_type': 'not_a_recipe',
-        'interpreted_request': 'weather', 'summary': 'I can only help with cooking.', 'max_portions_now': 0,
-        'recipe': null, 'omitted': [], 'shopping_list': [],
+        'schema_version': 1,
+        'status': 'not_a_recipe',
+        'request_type': 'not_a_recipe',
+        'interpreted_request': 'weather',
+        'summary': 'I can only help with cooking.',
+        'max_portions_now': 0,
+        'recipe': null,
+        'omitted': [],
+        'shopping_list': [],
       });
       final out = await AskService(isar: isar, ai: ai, now: () => now).ask("what's the weather");
       expect(out.notARecipe, isTrue);

@@ -123,14 +123,16 @@ class PantryService {
           await isar.ingredients.put(existing);
           continue;
         }
-        await isar.ingredients.put(Ingredient()
-          ..key = key
-          ..name = name
-          ..trackingMode = TrackingMode.staple
-          ..category = _stapleCategory(key)
-          ..baseUnit = _stapleUnit(key)
-          ..shelfLifeDays = 365
-          ..lastVerifiedAt = now());
+        await isar.ingredients.put(
+          Ingredient()
+            ..key = key
+            ..name = name
+            ..trackingMode = TrackingMode.staple
+            ..category = _stapleCategory(key)
+            ..baseUnit = _stapleUnit(key)
+            ..shelfLifeDays = 365
+            ..lastVerifiedAt = now(),
+        );
       }
     });
   }

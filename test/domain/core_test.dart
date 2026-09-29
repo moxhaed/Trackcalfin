@@ -47,6 +47,8 @@ void main() {
       expect(m.format(16400, whole: true), '€164');
       expect(m.compact(255), '€2.55');
       expect(m.compact(16400), '€164');
+      expect(m.compact(6928), '€69');
+      expect(m.compact(0), '€0');
     });
     test('parses comma and dot decimals', () {
       expect(m.parse('12,5'), 1250);

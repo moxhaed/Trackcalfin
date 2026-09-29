@@ -80,12 +80,10 @@ class DailyPickService {
 
   Future<PickOutcome> _fallback(StockIndex stock, {String? error}) async {
     final profile = (await isar.userProfiles.get(1))!;
-    final saved = await isar.recipes.filter().group((q) => q
-        .statusEqualTo(RecipeStatus.saved)
-        .or()
-        .favoriteEqualTo(true)
-        .or()
-        .timesCookedGreaterThan(0)).findAll();
+    final saved = await isar.recipes
+        .filter()
+        .group((q) => q.statusEqualTo(RecipeStatus.saved).or().favoriteEqualTo(true).or().timesCookedGreaterThan(0))
+        .findAll();
     final ranked = DailyFallback.rank(
       saved.where((r) => r.status != RecipeStatus.archived),
       stock,

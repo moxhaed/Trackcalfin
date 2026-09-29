@@ -110,7 +110,9 @@ class ReceiptExtraction {
       }
       final isNew = j.boolean(it, 'is_new_ingredient', path);
       final key = j.str(it, 'ingredient_key', path, nullable: true);
-      if (key != null && !_key.hasMatch(key)) j.error('$path.ingredient_key', "'$key' must match ^[a-z][a-z0-9_]{1,40}\$");
+      if (key != null && !_key.hasMatch(key)) {
+        j.error('$path.ingredient_key', "'$key' must match ^[a-z][a-z0-9_]{1,40}\$");
+      }
       NewIngredientDto? profile;
       final rawProfile = it['new_ingredient'];
       if (isNew && key != null) {
@@ -120,20 +122,22 @@ class ReceiptExtraction {
           profile = _profile(j, rawProfile.cast<String, dynamic>(), '$path.new_ingredient');
         }
       }
-      items.add(ReceiptItemDto(
-        rawText: j.str(it, 'raw_text', path, nullable: true) ?? '',
-        name: j.str(it, 'name', path) ?? '',
-        lineType: j.enumOf(it, 'line_type', path, EnumCodec.lineType) ?? LineType.product,
-        category: j.enumOf(it, 'spend_category', path, EnumCodec.spendCategory) ?? SpendCategory.other,
-        totalMinor: j.integer(it, 'total_minor', path) ?? 0,
-        ingredientKey: key,
-        isNewIngredient: isNew,
-        qty: j.number(it, 'qty', path, nullable: true),
-        unit: j.enumOf(it, 'unit', path, EnumCodec.unit, nullable: true),
-        qtySource: j.enumOf(it, 'qty_source', path, EnumCodec.qtySource, nullable: true) ?? QtySource.unknown,
-        confidence: j.enumOf(it, 'confidence', path, EnumCodec.confidence, nullable: true) ?? Confidence.medium,
-        newIngredient: profile,
-      ));
+      items.add(
+        ReceiptItemDto(
+          rawText: j.str(it, 'raw_text', path, nullable: true) ?? '',
+          name: j.str(it, 'name', path) ?? '',
+          lineType: j.enumOf(it, 'line_type', path, EnumCodec.lineType) ?? LineType.product,
+          category: j.enumOf(it, 'spend_category', path, EnumCodec.spendCategory) ?? SpendCategory.other,
+          totalMinor: j.integer(it, 'total_minor', path) ?? 0,
+          ingredientKey: key,
+          isNewIngredient: isNew,
+          qty: j.number(it, 'qty', path, nullable: true),
+          unit: j.enumOf(it, 'unit', path, EnumCodec.unit, nullable: true),
+          qtySource: j.enumOf(it, 'qty_source', path, EnumCodec.qtySource, nullable: true) ?? QtySource.unknown,
+          confidence: j.enumOf(it, 'confidence', path, EnumCodec.confidence, nullable: true) ?? Confidence.medium,
+          newIngredient: profile,
+        ),
+      );
     }
     final warnings = j.strings(m, 'warnings', r'$');
     if (j.errors.isNotEmpty) return ParseResult(null, j.errors);

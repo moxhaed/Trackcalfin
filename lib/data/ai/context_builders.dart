@@ -45,18 +45,18 @@ class ContextBuilders {
       i.trackingMode == TrackingMode.exact && i.qtyOnHand >= (i.baseUnit == BaseUnit.pc ? 1 : 5);
 
   static Map<String, dynamic> inventoryItem(Ingredient i, DateTime now) => {
-        'key': i.key,
-        'name': i.name,
-        'qty': i.baseUnit == BaseUnit.pc ? _round(i.qtyOnHand, 1) : i.qtyOnHand.roundToDouble(),
-        'unit': i.baseUnit.label,
-        'g_per_pc': i.baseUnit == BaseUnit.pc ? i.gramsPerPiece : null,
-        'cost_per_unit_minor': _round(i.avgCostPerUnitMinor, 3),
-        'kcal_100': _round(i.per100.kcal, 1),
-        'protein_100': _round(i.per100.proteinG, 1),
-        'carbs_100': _round(i.per100.carbsG, 1),
-        'fat_100': _round(i.per100.fatG, 1),
-        'days_left': ExpiryEstimator.daysLeft(i, now),
-      };
+    'key': i.key,
+    'name': i.name,
+    'qty': i.baseUnit == BaseUnit.pc ? _round(i.qtyOnHand, 1) : i.qtyOnHand.roundToDouble(),
+    'unit': i.baseUnit.label,
+    'g_per_pc': i.baseUnit == BaseUnit.pc ? i.gramsPerPiece : null,
+    'cost_per_unit_minor': _round(i.avgCostPerUnitMinor, 3),
+    'kcal_100': _round(i.per100.kcal, 1),
+    'protein_100': _round(i.per100.proteinG, 1),
+    'carbs_100': _round(i.per100.carbsG, 1),
+    'fat_100': _round(i.per100.fatG, 1),
+    'days_left': ExpiryEstimator.daysLeft(i, now),
+  };
 
   static List<Map<String, dynamic>> inventory(List<Ingredient> all, DateTime now) {
     final items = all.where(_inInventory).toList()
@@ -84,13 +84,13 @@ class ContextBuilders {
   }
 
   static Map<String, dynamic> profileBlock(UserProfile p) => {
-        'diet': p.diet,
-        'allergies': p.allergies,
-        'dislikes': p.dislikes,
-        'cuisines_liked': p.cuisinesLiked,
-        'equipment': p.equipment,
-        'max_active_minutes': p.maxActiveMinutes,
-      };
+    'diet': p.diet,
+    'allergies': p.allergies,
+    'dislikes': p.dislikes,
+    'cuisines_liked': p.cuisinesLiked,
+    'equipment': p.equipment,
+    'max_active_minutes': p.maxActiveMinutes,
+  };
 
   static Map<String, dynamic> daily({
     required UserProfile profile,
@@ -100,48 +100,48 @@ class ContextBuilders {
     required List<String> recentTitles,
     List<String> rejectedToday = const [],
     int? portions,
-  }) =>
-      {
-        'today': _date(forDate),
-        'weekday': _weekdays[forDate.weekday - 1],
-        'output_language': profile.outputLanguage,
-        'currency': profile.currency,
-        'minor_unit_digits': profile.currencyMinorDigits,
-        'portions': portions ?? profile.defaultPortions,
-        'targets_per_portion': targets(profile),
-        'profile': profileBlock(profile),
-        'inventory': inventory(ingredients, now),
-        'staples': staples(ingredients),
-        'recent_recipes': recentTitles.take(20).toList(),
-        'rejected_today': rejectedToday,
-      };
+  }) => {
+    'today': _date(forDate),
+    'weekday': _weekdays[forDate.weekday - 1],
+    'output_language': profile.outputLanguage,
+    'currency': profile.currency,
+    'minor_unit_digits': profile.currencyMinorDigits,
+    'portions': portions ?? profile.defaultPortions,
+    'targets_per_portion': targets(profile),
+    'profile': profileBlock(profile),
+    'inventory': inventory(ingredients, now),
+    'staples': staples(ingredients),
+    'recent_recipes': recentTitles.take(20).toList(),
+    'rejected_today': rejectedToday,
+  };
 
   static Map<String, dynamic> spontaneous({
     required UserProfile profile,
     required List<Ingredient> ingredients,
     required DateTime now,
     required String request,
-  }) =>
-      {
-        'user_request': request,
-        'requested_portions': parsePortions(request),
-        'default_portions': profile.defaultPortions,
-        'today': _date(now),
-        'output_language': profile.outputLanguage,
-        'currency': profile.currency,
-        'minor_unit_digits': profile.currencyMinorDigits,
-        'targets_per_portion': targets(profile),
-        'profile': profileBlock(profile),
-        'inventory': inventory(ingredients, now),
-        'staples': staples(ingredients),
-      };
+  }) => {
+    'user_request': request,
+    'requested_portions': parsePortions(request),
+    'default_portions': profile.defaultPortions,
+    'today': _date(now),
+    'output_language': profile.outputLanguage,
+    'currency': profile.currency,
+    'minor_unit_digits': profile.currencyMinorDigits,
+    'targets_per_portion': targets(profile),
+    'profile': profileBlock(profile),
+    'inventory': inventory(ingredients, now),
+    'staples': staples(ingredients),
+  };
 
   static const _words = {'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5, 'six': 6, 'seven': 7, 'eight': 8};
 
   /// "for 4", "3 portions", "for two" -> portions; null when not stated.
   static int? parsePortions(String text) {
     final t = text.toLowerCase();
-    final m = RegExp(r'for\s+(\d+)\b').firstMatch(t) ?? RegExp(r'(\d+)\s*(?:portions?|servings?|people|persons?)').firstMatch(t);
+    final m =
+        RegExp(r'for\s+(\d+)\b').firstMatch(t) ??
+        RegExp(r'(\d+)\s*(?:portions?|servings?|people|persons?)').firstMatch(t);
     if (m != null) return int.tryParse(m.group(1)!);
     final w = RegExp(r'for\s+(one|two|three|four|five|six|seven|eight)\b').firstMatch(t);
     if (w != null) return _words[w.group(1)!];

@@ -25,7 +25,15 @@ class RecipeValidator {
   const RecipeValidator._();
 
   static const allowedTags = {
-    'high_protein', 'meal_prep', 'one_pot', 'quick', 'vegetarian', 'vegan', 'low_carb', 'budget', 'freezer_friendly',
+    'high_protein',
+    'meal_prep',
+    'one_pot',
+    'quick',
+    'vegetarian',
+    'vegan',
+    'low_carb',
+    'budget',
+    'freezer_friendly',
   };
 
   static String _truncate(String s, int max) => s.length <= max ? s : '${s.substring(0, max - 1).trimRight()}…';
@@ -49,7 +57,9 @@ class RecipeValidator {
       final allergen =
           AllergenScreen.hit(d.key ?? '', profile.allergies) ?? AllergenScreen.hit(d.name, profile.allergies);
       if (allergen != null) {
-        hard.add("$path '${d.name}' conflicts with the user's allergy '$allergen'. Remove it or use a safe substitute.");
+        hard.add(
+          "$path '${d.name}' conflicts with the user's allergy '$allergen'. Remove it or use a safe substitute.",
+        );
         continue;
       }
       if (profile.dislikes.any((x) => x.isNotEmpty && d.name.toLowerCase().contains(x.toLowerCase()))) {
@@ -161,8 +171,10 @@ class RecipeValidator {
           feas = FeasibilityChecker.check(items, portions, stock);
         } else {
           for (final s in feas.shortfalls) {
-            hard.add("'${s.item.name}' needs ${s.need.toStringAsFixed(0)} ${s.unit.label} for $portions portions "
-                'but only ${s.have.toStringAsFixed(0)} is available');
+            hard.add(
+              "'${s.item.name}' needs ${s.need.toStringAsFixed(0)} ${s.unit.label} for $portions portions "
+              'but only ${s.have.toStringAsFixed(0)} is available',
+            );
           }
           for (final m in feas.missing) {
             hard.add("'$m' is not available");
@@ -214,7 +226,8 @@ class RecipeValidator {
   /// Dart verdict for Prompt C (overrides the model's status).
   static String verdict(Recipe r, FeasibilityResult f, List<String> omitted) {
     if (!f.ready || f.maxPortionsNow < r.defaultPortions) return 'missing_items';
-    final swaps = r.ingredients.any((i) => i.substitutesFor != null && i.substitutesFor!.isNotEmpty) || omitted.isNotEmpty;
+    final swaps =
+        r.ingredients.any((i) => i.substitutesFor != null && i.substitutesFor!.isNotEmpty) || omitted.isNotEmpty;
     return swaps ? 'ready_with_swaps' : 'ready';
   }
 }

@@ -54,39 +54,39 @@ enum AiTask { receipt, dailyRecipe, spontaneousRecipe }
 
 extension BaseUnitLabel on BaseUnit {
   String get label => switch (this) {
-        BaseUnit.g => 'g',
-        BaseUnit.ml => 'ml',
-        BaseUnit.pc => 'pc',
-      };
+    BaseUnit.g => 'g',
+    BaseUnit.ml => 'ml',
+    BaseUnit.pc => 'pc',
+  };
 }
 
 extension SpendCategoryLabel on SpendCategory {
   String get label => switch (this) {
-        SpendCategory.groceries => 'Groceries',
-        SpendCategory.household => 'Household',
-        SpendCategory.clothes => 'Clothes',
-        SpendCategory.eatingOut => 'Eating out',
-        SpendCategory.entertainment => 'Entertainment',
-        SpendCategory.other => 'Other',
-      };
+    SpendCategory.groceries => 'Groceries',
+    SpendCategory.household => 'Household',
+    SpendCategory.clothes => 'Clothes',
+    SpendCategory.eatingOut => 'Eating out',
+    SpendCategory.entertainment => 'Entertainment',
+    SpendCategory.other => 'Other',
+  };
 
   bool get isFood => this == SpendCategory.groceries;
 }
 
 extension IngredientCategoryLabel on IngredientCategory {
   String get label => switch (this) {
-        IngredientCategory.produce => 'Produce',
-        IngredientCategory.meatFish => 'Meat & fish',
-        IngredientCategory.dairyEggs => 'Dairy & eggs',
-        IngredientCategory.grainsPasta => 'Grains & pasta',
-        IngredientCategory.legumesNuts => 'Legumes & nuts',
-        IngredientCategory.cannedJarred => 'Canned & jarred',
-        IngredientCategory.bakery => 'Bakery',
-        IngredientCategory.frozen => 'Frozen',
-        IngredientCategory.spicesCondiments => 'Spices & condiments',
-        IngredientCategory.oilsFats => 'Oils & fats',
-        IngredientCategory.beverages => 'Beverages',
-        IngredientCategory.snacksSweets => 'Snacks & sweets',
-        IngredientCategory.other => 'Other',
-      };
+    IngredientCategory.produce => 'Produce',
+    IngredientCategory.meatFish => 'Meat & fish',
+    IngredientCategory.dairyEggs => 'Dairy & eggs',
+    IngredientCategory.grainsPasta => 'Grains & pasta',
+    IngredientCategory.legumesNuts => 'Legumes & nuts',
+    IngredientCategory.cannedJarred => 'Canned & jarred',
+    IngredientCategory.bakery => 'Bakery',
+    IngredientCategory.frozen => 'Frozen',
+    IngredientCategory.spicesCondiments => 'Spices & condiments',
+    IngredientCategory.oilsFats => 'Oils & fats',
+    IngredientCategory.beverages => 'Beverages',
+    IngredientCategory.snacksSweets => 'Snacks & sweets',
+    IngredientCategory.other => 'Other',
+  };
 }

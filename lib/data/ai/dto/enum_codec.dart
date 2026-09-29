@@ -43,11 +43,7 @@ class EnumCodec {
     'unknown': QtySource.unknown,
   };
 
-  static const confidence = {
-    'high': Confidence.high,
-    'medium': Confidence.medium,
-    'low': Confidence.low,
-  };
+  static const confidence = {'high': Confidence.high, 'medium': Confidence.medium, 'low': Confidence.low};
 
   static const unit = {'g': BaseUnit.g, 'ml': BaseUnit.ml, 'pc': BaseUnit.pc};
 
@@ -57,14 +53,9 @@ class EnumCodec {
     'missing': IngredientRole.missing,
   };
 
-  static const imageType = {
-    'receipt': ScanKind.receipt,
-    'pantry': ScanKind.pantry,
-    'unreadable': ScanKind.unreadable,
-  };
+  static const imageType = {'receipt': ScanKind.receipt, 'pantry': ScanKind.pantry, 'unreadable': ScanKind.unreadable};
 
-  static String categoryKey(IngredientCategory c) =>
-      ingredientCategory.entries.firstWhere((e) => e.value == c).key;
+  static String categoryKey(IngredientCategory c) => ingredientCategory.entries.firstWhere((e) => e.value == c).key;
 
   static String unitKey(BaseUnit u) => u.label;
 }

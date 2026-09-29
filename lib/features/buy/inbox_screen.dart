@@ -1,0 +1,129 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../app/providers.dart';
+import '../../app/theme.dart';
+import '../../core/enums.dart';
+import '../../data/isar/collections/schemas.dart';
+import '../capture/scan_flow.dart';
+import '../common/format.dart';
+import '../common/widgets.dart';
+
+/// Scans that need attention: review by exception (rule R5).
+class InboxScreen extends ConsumerWidget {
+  const InboxScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final jobs = ref.watch(scanJobsProvider).value ?? const [];
+    final hasKey = ref.watch(hasApiKeyProvider).value ?? false;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Inbox')),
+      body: jobs.isEmpty
+          ? const EmptyState(
+              icon: Icons.inbox_outlined,
+              title: 'All clear',
+              message: 'Scans that need a look land here. Clean receipts are filed automatically.',
+            )
+          : ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                if (!hasKey)
+                  Card(
+                    color: context.scheme.tertiaryContainer,
+                    child: ListTile(
+                      leading: const Icon(Icons.key_outlined),
+                      title: const Text('Add a Gemini API key'),
+                      subtitle: const Text('Scans wait here until the AI can read them.'),
+                      onTap: () => context.go('/settings'),
+                    ),
+                  ),
+                for (final j in jobs) ...[_JobCard(job: j), const SizedBox(height: 10)],
+              ],
+            ),
+    );
+  }
+}
+
+class _JobCard extends ConsumerWidget {
+  const _JobCard({required this.job});
+  final ScanJob job;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final money = ref.watch(moneyProvider);
+    final scans = ref.read(scanServiceProvider);
+    final pantry = job.kind == ScanKind.pantry || job.userHint == 'pantry';
+    final title = switch (job.status) {
+      ScanStatus.queued => pantry ? 'Pantry photo waiting' : 'Receipt waiting',
+      ScanStatus.processing => 'Reading…',
+      ScanStatus.needsReview =>
+        pantry
+            ? 'Pantry photo · ${job.lines.length} items'
+            : '${job.merchant ?? 'Receipt'} · ${money.format(job.lines.where((l) => l.include).fold(0, (a, l) => a + l.totalMinor))}',
+      ScanStatus.failed => 'Could not read this scan',
+      _ => 'Scan',
+    };
+    final attention = job.lines.where((l) => l.needsAttention).length;
+    final subtitle = switch (job.status) {
+      ScanStatus.queued => job.lastError ?? 'Will process when online',
+      ScanStatus.processing => 'The AI is extracting items',
+      ScanStatus.needsReview => [
+        if (attention > 0) '$attention to check',
+        if (job.flags.contains('total_mismatch')) 'totals differ',
+        if (job.flags.contains('foreign_currency')) 'foreign currency',
+        if (job.flags.contains('merge_proposed')) 'possible duplicates',
+        if (attention == 0 && job.flags.isEmpty) 'ready to file',
+      ].join(' · '),
+      ScanStatus.failed => job.lastError ?? '',
+      _ => '',
+    };
+    return Card(
+      child: Column(
+        children: [
+          ListTile(
+            leading: switch (job.status) {
+              ScanStatus.processing => const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2.5),
+              ),
+              ScanStatus.failed => Icon(Icons.error_outline, color: context.colors.critical),
+              ScanStatus.needsReview => Icon(Icons.rate_review_outlined, color: context.scheme.primary),
+              _ => const Icon(Icons.schedule),
+            },
+            title: Text(title),
+            subtitle: Text('${dayLabel(job.capturedAt, DateTime.now())} ${timeOf(job.capturedAt)} · $subtitle'),
+            onTap: job.status == ScanStatus.needsReview ? () => context.push('/inbox/${job.id}') : null,
+          ),
+          if (job.status == ScanStatus.failed || job.status == ScanStatus.queued)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(onPressed: () => scans.discard(job.id), child: const Text('Discard')),
+                  if (job.status == ScanStatus.failed)
+                    TextButton(
+                      onPressed: () {
+                        scans.discard(job.id);
+                        startScan(context, ref, hint: pantry ? 'pantry' : 'receipt');
+                      },
+                      child: const Text('Retake'),
+                    ),
+                  FilledButton.tonal(
+                    onPressed: () async {
+                      await scans.retry(job.id);
+                      await processScansInBackground(ref);
+                    },
+                    child: const Text('Try again'),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}

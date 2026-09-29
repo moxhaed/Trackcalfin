@@ -202,8 +202,7 @@ class DashboardAggregator {
     var avgIsLastWeek = false;
     if (completed.isNotEmpty) {
       avgKcal = completed.map((k) => logsByKey[k]!.totals.kcal).reduce((a, b) => a + b) / completed.length;
-      avgProtein =
-          completed.map((k) => logsByKey[k]!.totals.proteinG).reduce((a, b) => a + b) / completed.length;
+      avgProtein = completed.map((k) => logsByKey[k]!.totals.proteinG).reduce((a, b) => a + b) / completed.length;
     } else {
       final lastWeekKeys = DayClock.keysBetween(
         DayClock.addDaysToKey(weekStartKey, -7),

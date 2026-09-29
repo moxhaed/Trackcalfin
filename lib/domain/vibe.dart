@@ -17,13 +17,7 @@ class VibeResult {
 class VibeScorer {
   const VibeScorer._();
 
-  static const weights = {
-    'food': 0.30,
-    'nonfood': 0.15,
-    'protein': 0.20,
-    'kcal': 0.15,
-    'logging': 0.20,
-  };
+  static const weights = {'food': 0.30, 'nonfood': 0.15, 'protein': 0.20, 'kcal': 0.15, 'logging': 0.20};
 
   static double paceScore(double pace) => 100 - ((pace - 1) * 200).clamp(0, 100);
 
@@ -35,10 +29,10 @@ class VibeScorer {
   static String labelFor(int score) => score >= 85
       ? 'Locked in'
       : score >= 70
-          ? 'On track'
-          : score >= 50
-              ? 'Drifting'
-              : 'Reset mode';
+      ? 'On track'
+      : score >= 50
+      ? 'Drifting'
+      : 'Reset mode';
 
   static VibeResult score(
     DashboardState s,
@@ -52,7 +46,8 @@ class VibeScorer {
       c['food'] = paceScore(s.monthPace!);
     }
     if (s.nonFoodLimit > 0) {
-      final pace = s.nonFoodSpent / (s.nonFoodLimit * (s.monthElapsedFraction < paceFloor ? paceFloor : s.monthElapsedFraction));
+      final pace =
+          s.nonFoodSpent / (s.nonFoodLimit * (s.monthElapsedFraction < paceFloor ? paceFloor : s.monthElapsedFraction));
       c['nonfood'] = paceScore(pace);
     }
     if (p.dailyProteinTargetG > 0 && s.avgProtein != null) {
@@ -64,8 +59,7 @@ class VibeScorer {
     if (s.coverage != null) c['logging'] = s.coverage! * 100;
 
     if (c.isEmpty) {
-      return VibeResult(null, 'Getting started',
-          'Log a few meals and purchases and your vibe check appears here.', c);
+      return VibeResult(null, 'Getting started', 'Log a few meals and purchases and your vibe check appears here.', c);
     }
 
     final wSum = c.keys.fold<double>(0, (a, k) => a + weights[k]!);
@@ -103,8 +97,12 @@ class VibeScorer {
             ? 'Food spend is $pct% ahead of pace. A pantry-only day saves ~$meal.'
             : 'Food spend is right on pace.';
       case 'nonfood':
-        final worst = s.nonFood.where((x) => x.limitMinor > 0).fold<CategorySpend?>(
-            null, (a, b) => a == null || (b.spentMinor / b.limitMinor) > (a.spentMinor / a.limitMinor) ? b : a);
+        final worst = s.nonFood
+            .where((x) => x.limitMinor > 0)
+            .fold<CategorySpend?>(
+              null,
+              (a, b) => a == null || (b.spentMinor / b.limitMinor) > (a.spentMinor / a.limitMinor) ? b : a,
+            );
         if (worst == null) return 'Other spending is running hot this month.';
         final pct = (worst.spentMinor / worst.limitMinor * 100).round();
         return '${worst.category.label} is at $pct% of its limit with ${s.daysLeftInMonth} days to go.';

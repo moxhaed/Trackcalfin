@@ -24,17 +24,21 @@ void main() {
 
   Future<int> seedRecipe() async {
     final pantry = PantryService(isar, now: now);
-    await pantry.upsert(Ingredient()
-      ..name = 'Chicken breast'
-      ..qtyOnHand = 650
-      ..avgCostPerUnitMinor = 1.0
-      ..per100 = Nutrition(kcal: 110, proteinG: 23));
-    await pantry.upsert(Ingredient()
-      ..name = 'White rice'
-      ..qtyOnHand = 1000
-      ..avgCostPerUnitMinor = 0.2
-      ..shelfLifeDays = 365
-      ..per100 = Nutrition(kcal: 360, proteinG: 7));
+    await pantry.upsert(
+      Ingredient()
+        ..name = 'Chicken breast'
+        ..qtyOnHand = 650
+        ..avgCostPerUnitMinor = 1.0
+        ..per100 = Nutrition(kcal: 110, proteinG: 23),
+    );
+    await pantry.upsert(
+      Ingredient()
+        ..name = 'White rice'
+        ..qtyOnHand = 1000
+        ..avgCostPerUnitMinor = 0.2
+        ..shelfLifeDays = 365
+        ..per100 = Nutrition(kcal: 360, proteinG: 7),
+    );
     final r = Recipe()
       ..title = 'Chicken rice'
       ..defaultPortions = 3
@@ -123,10 +127,12 @@ void main() {
 
   test('manual purchase updates WAC and writes the ledger in one go; delete takes stock back', () async {
     final pantry = PantryService(isar, now: now);
-    final id = await pantry.upsert(Ingredient()
-      ..name = 'Milk'
-      ..baseUnit = BaseUnit.ml
-      ..qtyOnHand = 0);
+    final id = await pantry.upsert(
+      Ingredient()
+        ..name = 'Milk'
+        ..baseUnit = BaseUnit.ml
+        ..qtyOnHand = 0,
+    );
     final ledger = LedgerService(isar, now: now);
     final txId = await ledger.applyManualPurchase(ingredientId: id, qty: 1000, totalMinor: 109);
     final milk = (await isar.ingredients.get(id))!;

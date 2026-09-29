@@ -86,8 +86,7 @@ class JsonReader {
     return v.cast<String, dynamic>();
   }
 
-  List<String> strings(Map m, String k, String path) =>
-      list(m, k, path, required: false).whereType<String>().toList();
+  List<String> strings(Map m, String k, String path) => list(m, k, path, required: false).whereType<String>().toList();
 }
 
 class ParseResult<T> {

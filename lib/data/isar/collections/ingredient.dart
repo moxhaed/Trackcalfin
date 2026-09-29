@@ -67,6 +67,5 @@ class Ingredient {
   bool get isStaple => trackingMode == TrackingMode.staple;
 
   @ignore
-  bool get isLow =>
-      !isStaple && qtyOnHand > 0 && lowStockThreshold > 0 && qtyOnHand <= lowStockThreshold;
+  bool get isLow => !isStaple && qtyOnHand > 0 && lowStockThreshold > 0 && qtyOnHand <= lowStockThreshold;
 }

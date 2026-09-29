@@ -48,9 +48,7 @@ class ProfileService {
     });
   }
 
-  static DayClock clockFor(UserProfile p) =>
-      DayClock(rolloverHour: p.dayRolloverHour, weekStartsOn: p.weekStartsOn);
+  static DayClock clockFor(UserProfile p) => DayClock(rolloverHour: p.dayRolloverHour, weekStartsOn: p.weekStartsOn);
 
-  static MoneyFormat moneyFor(UserProfile p) =>
-      MoneyFormat(currency: p.currency, digits: p.currencyMinorDigits);
+  static MoneyFormat moneyFor(UserProfile p) => MoneyFormat(currency: p.currency, digits: p.currencyMinorDigits);
 }

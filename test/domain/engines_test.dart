@@ -78,7 +78,11 @@ void main() {
       final missing = ri('pecorino', 15, role: IngredientRole.missing)
         ..estCostMinor = 40
         ..estNutritionPerPortion = Nutrition(kcal: 58, proteinG: 4);
-      final r = NutritionEngine.compute([ri('milk', 200, unit: BaseUnit.ml), ri('egg', 2, unit: BaseUnit.pc), missing], stock);
+      final r = NutritionEngine.compute([
+        ri('milk', 200, unit: BaseUnit.ml),
+        ri('egg', 2, unit: BaseUnit.pc),
+        missing,
+      ], stock);
       expect(r.perPortion.kcal, closeTo(128 + 157.3 + 58, 0.01));
       expect(r.perPortion.proteinG, closeTo(6.8 + 13.86 + 4, 0.01));
       expect(r.costPerPortionMinor, 20 + 60 + 40);
@@ -99,7 +103,11 @@ void main() {
     final stock = StockIndex([chicken, rice, egg, oil]);
 
     test('exact fit and max portions', () {
-      final f = FeasibilityChecker.check([ri('chicken', 180), ri('rice', 100), ri('oil', 7, role: IngredientRole.staple)], 3, stock);
+      final f = FeasibilityChecker.check(
+        [ri('chicken', 180), ri('rice', 100), ri('oil', 7, role: IngredientRole.staple)],
+        3,
+        stock,
+      );
       expect(f.ready, isTrue);
       expect(f.maxPortionsNow, 3);
     });
@@ -113,7 +121,11 @@ void main() {
       final f = FeasibilityChecker.check([ri('egg', 1.5, unit: BaseUnit.pc)], 2, stock);
       expect(f.ready, isTrue);
       expect(f.maxPortionsNow, 2);
-      final g = FeasibilityChecker.check([ri('egg', 1, unit: BaseUnit.pc), ri('salmon', 150, role: IngredientRole.missing)], 1, stock);
+      final g = FeasibilityChecker.check(
+        [ri('egg', 1, unit: BaseUnit.pc), ri('salmon', 150, role: IngredientRole.missing)],
+        1,
+        stock,
+      );
       expect(g.maxPortionsNow, 0);
       expect(g.missing, ['salmon']);
     });
@@ -144,7 +156,11 @@ void main() {
       final oil = ingredient('oil', qty: 500, unit: BaseUnit.ml, staple: true);
       final onion = ingredient('onion', qty: 400);
       final stock = StockIndex([oil, onion]);
-      final plan = DepletionEngine.plan([ri('oil', 10, unit: BaseUnit.ml, role: IngredientRole.staple), ri('onion', 50), ri('onion', 30)], 2, stock);
+      final plan = DepletionEngine.plan(
+        [ri('oil', 10, unit: BaseUnit.ml, role: IngredientRole.staple), ri('onion', 50), ri('onion', 30)],
+        2,
+        stock,
+      );
       expect(plan.deltas.length, 1);
       expect(plan.deltas.single.requested, 160);
       DepletionEngine.apply(plan, stock, t0);

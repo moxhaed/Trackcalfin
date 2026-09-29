@@ -41,8 +41,12 @@ void main() {
 
     test('clean receipt with known chicken is auto-commit eligible', () {
       final chicken = ingredient('chicken_breast');
-      final d = ReceiptValidator.validate(example(),
-          matcher: IngredientMatcher([chicken]), homeCurrency: 'EUR', capturedAt: capturedAt);
+      final d = ReceiptValidator.validate(
+        example(),
+        matcher: IngredientMatcher([chicken]),
+        homeCurrency: 'EUR',
+        capturedAt: capturedAt,
+      );
       expect(d.flags, isEmpty);
       expect(d.lines[0].matchedIngredientId, chicken.id);
       expect(d.lines[1].isNewIngredient, isTrue);
@@ -73,8 +77,12 @@ void main() {
 
     test('alias learned from an earlier receipt beats the AI key', () {
       final thigh = ingredient('chicken_thigh')..aliases = ['HOCHL BRUSTFILET'];
-      final d = ReceiptValidator.validate(example(),
-          matcher: IngredientMatcher([thigh]), homeCurrency: 'EUR', capturedAt: capturedAt);
+      final d = ReceiptValidator.validate(
+        example(),
+        matcher: IngredientMatcher([thigh]),
+        homeCurrency: 'EUR',
+        capturedAt: capturedAt,
+      );
       expect(d.lines[0].ingredientKey, 'chicken_thigh');
     });
 
@@ -117,8 +125,15 @@ void main() {
     }
 
     test('prompt B example validates; Dart numbers match the estimate', () {
-      final v = RecipeValidator.validate(daily(),
-          stock: idx, matcher: matcher, stapleKeys: staples, profile: profile, allowMissing: false, origin: RecipeOrigin.dailyAuto);
+      final v = RecipeValidator.validate(
+        daily(),
+        stock: idx,
+        matcher: matcher,
+        stapleKeys: staples,
+        profile: profile,
+        allowMissing: false,
+        origin: RecipeOrigin.dailyAuto,
+      );
       expect(v.ok, isTrue, reason: v.hardErrors.join('\n'));
       expect(v.recipe!.perPortion.kcal, closeTo(633, 25));
       expect(v.recipe!.costPerPortionMinor, closeTo(255, 2));
@@ -127,8 +142,15 @@ void main() {
 
     test('allergen is a hard error for the repair loop', () {
       final allergic = UserProfile()..allergies = ['garlic'];
-      final v = RecipeValidator.validate(daily(),
-          stock: idx, matcher: matcher, stapleKeys: staples, profile: allergic, allowMissing: false, origin: RecipeOrigin.dailyAuto);
+      final v = RecipeValidator.validate(
+        daily(),
+        stock: idx,
+        matcher: matcher,
+        stapleKeys: staples,
+        profile: allergic,
+        allowMissing: false,
+        origin: RecipeOrigin.dailyAuto,
+      );
       expect(v.ok, isFalse);
       expect(v.hardErrors.single, contains("allergy 'garlic'"));
     });
@@ -158,12 +180,26 @@ void main() {
         (r['ingredients'] as List)[2]['name'] = 'Kale';
       }
 
-      final b = RecipeValidator.validate(daily(edit),
-          stock: idx, matcher: matcher, stapleKeys: staples, profile: profile, allowMissing: false, origin: RecipeOrigin.dailyAuto);
+      final b = RecipeValidator.validate(
+        daily(edit),
+        stock: idx,
+        matcher: matcher,
+        stapleKeys: staples,
+        profile: profile,
+        allowMissing: false,
+        origin: RecipeOrigin.dailyAuto,
+      );
       expect(b.ok, isFalse);
       final kale = daily(edit);
-      final c = RecipeValidator.validate(kale,
-          stock: idx, matcher: matcher, stapleKeys: staples, profile: profile, allowMissing: true, origin: RecipeOrigin.spontaneous);
+      final c = RecipeValidator.validate(
+        kale,
+        stock: idx,
+        matcher: matcher,
+        stapleKeys: staples,
+        profile: profile,
+        allowMissing: true,
+        origin: RecipeOrigin.spontaneous,
+      );
       expect(c.ok, isTrue);
       expect(c.recipe!.ingredients[2].role, IngredientRole.missing);
       expect(RecipeValidator.verdict(c.recipe!, c.feasibility!, const []), 'missing_items');

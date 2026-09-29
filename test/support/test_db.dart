@@ -9,8 +9,7 @@ bool _coreReady = false;
 /// Finds the libisar binary that isar_community_flutter_libs ships for this host,
 /// so tests don't depend on downloading it.
 String? _bundledCore() {
-  final pubCache = Platform.environment['PUB_CACHE'] ??
-      '${Platform.environment['HOME']}/.pub-cache';
+  final pubCache = Platform.environment['PUB_CACHE'] ?? '${Platform.environment['HOME']}/.pub-cache';
   final lib = Platform.isMacOS ? 'macos/libisar.dylib' : 'linux/libisar.so';
   final dir = Directory('$pubCache/hosted/pub.dev');
   if (!dir.existsSync()) return null;
@@ -27,18 +26,11 @@ String? _bundledCore() {
 Future<Isar> openTestDb() async {
   if (!_coreReady) {
     final path = _bundledCore();
-    await Isar.initializeIsarCore(
-      libraries: path == null ? const {} : {Abi.current(): path},
-      download: path == null,
-    );
+    await Isar.initializeIsarCore(libraries: path == null ? const {} : {Abi.current(): path}, download: path == null);
     _coreReady = true;
   }
   final dir = await Directory.systemTemp.createTemp('trackcalfin_test_');
-  return Isar.open(
-    allSchemas,
-    directory: dir.path,
-    name: 'test_${DateTime.now().microsecondsSinceEpoch}',
-  );
+  return Isar.open(allSchemas, directory: dir.path, name: 'test_${DateTime.now().microsecondsSinceEpoch}');
 }
 
 Future<void> closeTestDb(Isar isar) => isar.close(deleteFromDisk: true);

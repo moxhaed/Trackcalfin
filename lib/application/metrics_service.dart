@@ -9,10 +9,14 @@ class MetricsService {
 
   Future<void> record(String action, Duration took) async {
     if (took.isNegative || took > const Duration(minutes: 10)) return;
-    await isar.writeTxn(() => isar.metricEvents.put(MetricEvent()
-      ..action = action
-      ..millis = took.inMilliseconds
-      ..at = DateTime.now()));
+    await isar.writeTxn(
+      () => isar.metricEvents.put(
+        MetricEvent()
+          ..action = action
+          ..millis = took.inMilliseconds
+          ..at = DateTime.now(),
+      ),
+    );
   }
 
   /// Median milliseconds per action over the last 30 days.
@@ -23,9 +27,6 @@ class MetricsService {
     for (final e in all) {
       by.putIfAbsent(e.action, () => []).add(e.millis);
     }
-    return {
-      for (final e in by.entries)
-        e.key: (median: (e.value..sort())[e.value.length ~/ 2], count: e.value.length),
-    };
+    return {for (final e in by.entries) e.key: (median: (e.value..sort())[e.value.length ~/ 2], count: e.value.length)};
   }
 }

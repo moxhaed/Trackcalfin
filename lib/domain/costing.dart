@@ -20,8 +20,7 @@ class CostingEngine {
       if (qtyBefore <= 0 || ing.avgCostPerUnitMinor <= 0) {
         ing.avgCostPerUnitMinor = unitCost;
       } else {
-        ing.avgCostPerUnitMinor =
-            (qtyBefore * ing.avgCostPerUnitMinor + qtyAdded * unitCost) / (qtyBefore + qtyAdded);
+        ing.avgCostPerUnitMinor = (qtyBefore * ing.avgCostPerUnitMinor + qtyAdded * unitCost) / (qtyBefore + qtyAdded);
       }
     }
     ing.qtyOnHand = qtyBefore + qtyAdded;

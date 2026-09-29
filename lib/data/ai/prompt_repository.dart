@@ -9,6 +9,5 @@ class PromptRepository {
   static const daily = 'daily_recipe.v1';
   static const spontaneous = 'spontaneous_recipe.v1';
 
-  Future<String> load(String version) async =>
-      _cache[version] ??= await _loader('assets/prompts/$version.md');
+  Future<String> load(String version) async => _cache[version] ??= await _loader('assets/prompts/$version.md');
 }

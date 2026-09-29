@@ -69,10 +69,9 @@ class RecipeService {
   /// Saved recipes for "Cook again": favorites or cooked before, not archived.
   Future<List<Recipe>> cookAgain() async {
     final all = await isar.recipes.filter().not().statusEqualTo(RecipeStatus.archived).findAll();
-    return all.where((r) => r.favorite || r.timesCooked > 0 || r.status == RecipeStatus.saved).toList()
-      ..sort((a, b) {
-        if (a.favorite != b.favorite) return a.favorite ? -1 : 1;
-        return (b.lastCookedAt ?? b.createdAt).compareTo(a.lastCookedAt ?? a.createdAt);
-      });
+    return all.where((r) => r.favorite || r.timesCooked > 0 || r.status == RecipeStatus.saved).toList()..sort((a, b) {
+      if (a.favorite != b.favorite) return a.favorite ? -1 : 1;
+      return (b.lastCookedAt ?? b.createdAt).compareTo(a.lastCookedAt ?? a.createdAt);
+    });
   }
 }

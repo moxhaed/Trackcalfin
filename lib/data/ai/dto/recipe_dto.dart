@@ -103,26 +103,30 @@ class RecipeDto {
       }
       final qty = j.number(it, 'qty_per_portion', p) ?? 0;
       if (qty < 0) j.error('$p.qty_per_portion', 'must be >= 0');
-      ingredients.add(RecipeIngredientDto(
-        key: key,
-        name: j.str(it, 'name', p) ?? key ?? '',
-        qtyPerPortion: qty,
-        unit: j.enumOf(it, 'unit', p, EnumCodec.unit) ?? BaseUnit.g,
-        role: role,
-        prepNote: j.str(it, 'prep_note', p, nullable: true),
-        substitutesFor: j.str(it, 'substitutes_for', p, nullable: true),
-        missingCostMinor: mCost,
-        missingNutrition: mNut,
-      ));
+      ingredients.add(
+        RecipeIngredientDto(
+          key: key,
+          name: j.str(it, 'name', p) ?? key ?? '',
+          qtyPerPortion: qty,
+          unit: j.enumOf(it, 'unit', p, EnumCodec.unit) ?? BaseUnit.g,
+          role: role,
+          prepNote: j.str(it, 'prep_note', p, nullable: true),
+          substitutesFor: j.str(it, 'substitutes_for', p, nullable: true),
+          missingCostMinor: mCost,
+          missingNutrition: mNut,
+        ),
+      );
     }
     final extras = <ExtraItemDto>[];
     for (final e in j.list(m, 'optional_additions', path, required: false)) {
       if (e is Map) {
-        extras.add(ExtraItemDto(
-          e['name']?.toString() ?? '',
-          e['why']?.toString() ?? '',
-          (e['est_cost_minor'] as num?)?.round() ?? 0,
-        ));
+        extras.add(
+          ExtraItemDto(
+            e['name']?.toString() ?? '',
+            e['why']?.toString() ?? '',
+            (e['est_cost_minor'] as num?)?.round() ?? 0,
+          ),
+        );
       }
     }
     final est = j.object(m, 'estimate_per_portion', path);
@@ -193,8 +197,12 @@ class DailyRecipeOutput {
     final shopping = [
       for (final s in j.list(m, 'shopping_suggestions', r'$', required: false))
         if (s is Map)
-          ShoppingDto(s['name']?.toString() ?? '', s['why']?.toString() ?? '',
-              (s['est_cost_minor'] as num?)?.round() ?? 0, 'suggestion'),
+          ShoppingDto(
+            s['name']?.toString() ?? '',
+            s['why']?.toString() ?? '',
+            (s['est_cost_minor'] as num?)?.round() ?? 0,
+            'suggestion',
+          ),
     ];
     if (j.errors.isNotEmpty) return ParseResult(null, j.errors);
     return ParseResult(DailyRecipeOutput(status!, recipe, shopping), const []);
@@ -231,8 +239,11 @@ class SpontaneousOutput {
   static ParseResult<SpontaneousOutput> parse(Map<String, dynamic> m) {
     final j = JsonReader();
     final status = j.enumOf(m, 'status', r'$', statuses);
-    final type = j.enumOf(m, 'request_type', r'$',
-        const {'dish': 'dish', 'ingredient_led': 'ingredient_led', 'not_a_recipe': 'not_a_recipe'});
+    final type = j.enumOf(m, 'request_type', r'$', const {
+      'dish': 'dish',
+      'ingredient_led': 'ingredient_led',
+      'not_a_recipe': 'not_a_recipe',
+    });
     RecipeDto? recipe;
     final r = j.object(m, 'recipe', r'$', nullable: true);
     if (status != null && status != 'not_a_recipe') {
@@ -245,8 +256,12 @@ class SpontaneousOutput {
     final shopping = [
       for (final s in j.list(m, 'shopping_list', r'$', required: false))
         if (s is Map)
-          ShoppingDto(s['name']?.toString() ?? '', s['package_desc']?.toString() ?? '',
-              (s['est_package_cost_minor'] as num?)?.round() ?? 0, s['reason']?.toString() ?? 'missing'),
+          ShoppingDto(
+            s['name']?.toString() ?? '',
+            s['package_desc']?.toString() ?? '',
+            (s['est_package_cost_minor'] as num?)?.round() ?? 0,
+            s['reason']?.toString() ?? 'missing',
+          ),
     ];
     final out = SpontaneousOutput(
       status: status ?? 'not_a_recipe',

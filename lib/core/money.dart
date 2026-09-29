@@ -20,18 +20,14 @@ class MoneyFormat {
 
   /// 1250 -> "€12.50". [whole] drops the minor digits: "€13".
   String format(int minor, {bool whole = false, bool signed = false}) {
-    final f = NumberFormat.simpleCurrency(
-      locale: locale,
-      name: currency,
-      decimalDigits: whole ? 0 : digits,
-    );
+    final f = NumberFormat.simpleCurrency(locale: locale, name: currency, decimalDigits: whole ? 0 : digits);
     final text = f.format(minor / _factor);
     if (signed && minor > 0) return '+$text';
     return text;
   }
 
-  /// Uses whole units once the amount is 100 or more ("€164", "€2.55").
-  String compact(int minor) => format(minor, whole: minor.abs() >= 100 * _factor);
+  /// Whole units from 20 up or when there are no cents ("€164", "€0", "€2.55").
+  String compact(int minor) => format(minor, whole: minor.abs() >= 20 * _factor || minor % _factor == 0);
 
   /// "12,50" / "12.5" / "€ 12" -> minor units. Returns null when no number is found.
   int? parse(String input) {

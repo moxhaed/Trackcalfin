@@ -60,13 +60,15 @@ void main() {
     test('builds the documented body and skips thought parts', () async {
       final fake = FakeGemini()..reply('{"ok":true}');
       final c = GeminiClient(httpClient: fake.client, apiKey: () async => 'k', model: 'gemini-3.8-flash');
-      final res = await c.generate(GeminiRequest(
-        systemPrompt: 'sys',
-        turns: const [Turn.user('hi')],
-        thinkingLevel: 'low',
-        highMediaResolution: true,
-        responseSchema: {'type': 'object'},
-      ));
+      final res = await c.generate(
+        GeminiRequest(
+          systemPrompt: 'sys',
+          turns: const [Turn.user('hi')],
+          thinkingLevel: 'low',
+          highMediaResolution: true,
+          responseSchema: {'type': 'object'},
+        ),
+      );
       expect(res.text, '{"ok":true}');
       expect(res.inputTokens, 1200);
       final body = fake.requests.single;
@@ -83,7 +85,11 @@ void main() {
         ..reply('{}');
       final waits = <Duration>[];
       final c = GeminiClient(
-          httpClient: fake.client, apiKey: () async => 'k', model: 'm', delay: (d) async => waits.add(d));
+        httpClient: fake.client,
+        apiKey: () async => 'k',
+        model: 'm',
+        delay: (d) async => waits.add(d),
+      );
       await c.generate(GeminiRequest(systemPrompt: 's', turns: const [Turn.user('x')]));
       expect(waits, [const Duration(seconds: 2)]);
     });
@@ -93,15 +99,19 @@ void main() {
         ..status(400, 'Invalid JSON payload received. Unknown name "responseJsonSchema"')
         ..reply('{}');
       final c = GeminiClient(httpClient: fake.client, apiKey: () async => 'k', model: 'm');
-      await c.generate(GeminiRequest(systemPrompt: 's', turns: const [Turn.user('x')], responseSchema: {'type': 'object'}));
+      await c.generate(
+        GeminiRequest(systemPrompt: 's', turns: const [Turn.user('x')], responseSchema: {'type': 'object'}),
+      );
       expect(fake.requests[1]['generationConfig'].containsKey('responseJsonSchema'), isFalse);
       expect(GeminiClient.compatLevel, 1);
     });
 
     test('missing key is a clear error', () async {
       final c = GeminiClient(httpClient: FakeGemini().client, apiKey: () async => null, model: 'm');
-      expect(() => c.generate(GeminiRequest(systemPrompt: 's', turns: const [Turn.user('x')])),
-          throwsA(isA<GeminiException>()));
+      expect(
+        () => c.generate(GeminiRequest(systemPrompt: 's', turns: const [Turn.user('x')])),
+        throwsA(isA<GeminiException>()),
+      );
     });
 
     test('stripFences', () {
@@ -172,7 +182,12 @@ void main() {
 
     test('daily envelope has targets per portion and staples', () {
       final ctx = ContextBuilders.daily(
-          profile: p, ingredients: items, now: now, forDate: DateTime(2026, 9, 29), recentTitles: const ['Chili']);
+        profile: p,
+        ingredients: items,
+        now: now,
+        forDate: DateTime(2026, 9, 29),
+        recentTitles: const ['Chili'],
+      );
       expect(ctx['today'], '2026-09-29');
       expect(ctx['weekday'], 'Tuesday');
       expect(ctx['targets_per_portion'], {'kcal': 700, 'protein_g': 45, 'max_cost_minor': 300});

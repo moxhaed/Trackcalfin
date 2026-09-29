@@ -51,5 +51,4 @@ class DailyFallback {
     out.sort((a, b) => b.score.compareTo(a.score));
     return out;
   }
-
 }

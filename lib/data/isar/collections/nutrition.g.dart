@@ -17,11 +17,7 @@ const NutritionSchema = Schema(
     r'fatG': PropertySchema(id: 1, name: r'fatG', type: IsarType.double),
     r'fiberG': PropertySchema(id: 2, name: r'fiberG', type: IsarType.double),
     r'kcal': PropertySchema(id: 3, name: r'kcal', type: IsarType.double),
-    r'proteinG': PropertySchema(
-      id: 4,
-      name: r'proteinG',
-      type: IsarType.double,
-    ),
+    r'proteinG': PropertySchema(id: 4, name: r'proteinG', type: IsarType.double),
   },
 
   estimateSize: _nutritionEstimateSize,
@@ -30,21 +26,12 @@ const NutritionSchema = Schema(
   deserializeProp: _nutritionDeserializeProp,
 );
 
-int _nutritionEstimateSize(
-  Nutrition object,
-  List<int> offsets,
-  Map<Type, List<int>> allOffsets,
-) {
+int _nutritionEstimateSize(Nutrition object, List<int> offsets, Map<Type, List<int>> allOffsets) {
   var bytesCount = offsets.last;
   return bytesCount;
 }
 
-void _nutritionSerialize(
-  Nutrition object,
-  IsarWriter writer,
-  List<int> offsets,
-  Map<Type, List<int>> allOffsets,
-) {
+void _nutritionSerialize(Nutrition object, IsarWriter writer, List<int> offsets, Map<Type, List<int>> allOffsets) {
   writer.writeDouble(offsets[0], object.carbsG);
   writer.writeDouble(offsets[1], object.fatG);
   writer.writeDouble(offsets[2], object.fiberG);
@@ -52,12 +39,7 @@ void _nutritionSerialize(
   writer.writeDouble(offsets[4], object.proteinG);
 }
 
-Nutrition _nutritionDeserialize(
-  Id id,
-  IsarReader reader,
-  List<int> offsets,
-  Map<Type, List<int>> allOffsets,
-) {
+Nutrition _nutritionDeserialize(Id id, IsarReader reader, List<int> offsets, Map<Type, List<int>> allOffsets) {
   final object = Nutrition(
     carbsG: reader.readDoubleOrNull(offsets[0]) ?? 0,
     fatG: reader.readDoubleOrNull(offsets[1]) ?? 0,
@@ -68,12 +50,7 @@ Nutrition _nutritionDeserialize(
   return object;
 }
 
-P _nutritionDeserializeProp<P>(
-  IsarReader reader,
-  int propertyId,
-  int offset,
-  Map<Type, List<int>> allOffsets,
-) {
+P _nutritionDeserializeProp<P>(IsarReader reader, int propertyId, int offset, Map<Type, List<int>> allOffsets) {
   switch (propertyId) {
     case 0:
       return (reader.readDoubleOrNull(offset) ?? 0) as P;
@@ -90,21 +67,13 @@ P _nutritionDeserializeProp<P>(
   }
 }
 
-extension NutritionQueryFilter
-    on QueryBuilder<Nutrition, Nutrition, QFilterCondition> {
+extension NutritionQueryFilter on QueryBuilder<Nutrition, Nutrition, QFilterCondition> {
   QueryBuilder<Nutrition, Nutrition, QAfterFilterCondition> carbsGEqualTo(
     double value, {
     double epsilon = Query.epsilon,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(
-          property: r'carbsG',
-          value: value,
-
-          epsilon: epsilon,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.equalTo(property: r'carbsG', value: value, epsilon: epsilon));
     });
   }
 
@@ -115,13 +84,7 @@ extension NutritionQueryFilter
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.greaterThan(
-          include: include,
-          property: r'carbsG',
-          value: value,
-
-          epsilon: epsilon,
-        ),
+        FilterCondition.greaterThan(include: include, property: r'carbsG', value: value, epsilon: epsilon),
       );
     });
   }
@@ -133,13 +96,7 @@ extension NutritionQueryFilter
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.lessThan(
-          include: include,
-          property: r'carbsG',
-          value: value,
-
-          epsilon: epsilon,
-        ),
+        FilterCondition.lessThan(include: include, property: r'carbsG', value: value, epsilon: epsilon),
       );
     });
   }
@@ -171,14 +128,7 @@ extension NutritionQueryFilter
     double epsilon = Query.epsilon,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(
-          property: r'fatG',
-          value: value,
-
-          epsilon: epsilon,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.equalTo(property: r'fatG', value: value, epsilon: epsilon));
     });
   }
 
@@ -189,13 +139,7 @@ extension NutritionQueryFilter
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.greaterThan(
-          include: include,
-          property: r'fatG',
-          value: value,
-
-          epsilon: epsilon,
-        ),
+        FilterCondition.greaterThan(include: include, property: r'fatG', value: value, epsilon: epsilon),
       );
     });
   }
@@ -207,13 +151,7 @@ extension NutritionQueryFilter
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.lessThan(
-          include: include,
-          property: r'fatG',
-          value: value,
-
-          epsilon: epsilon,
-        ),
+        FilterCondition.lessThan(include: include, property: r'fatG', value: value, epsilon: epsilon),
       );
     });
   }
@@ -245,14 +183,7 @@ extension NutritionQueryFilter
     double epsilon = Query.epsilon,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(
-          property: r'fiberG',
-          value: value,
-
-          epsilon: epsilon,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.equalTo(property: r'fiberG', value: value, epsilon: epsilon));
     });
   }
 
@@ -263,13 +194,7 @@ extension NutritionQueryFilter
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.greaterThan(
-          include: include,
-          property: r'fiberG',
-          value: value,
-
-          epsilon: epsilon,
-        ),
+        FilterCondition.greaterThan(include: include, property: r'fiberG', value: value, epsilon: epsilon),
       );
     });
   }
@@ -281,13 +206,7 @@ extension NutritionQueryFilter
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.lessThan(
-          include: include,
-          property: r'fiberG',
-          value: value,
-
-          epsilon: epsilon,
-        ),
+        FilterCondition.lessThan(include: include, property: r'fiberG', value: value, epsilon: epsilon),
       );
     });
   }
@@ -319,14 +238,7 @@ extension NutritionQueryFilter
     double epsilon = Query.epsilon,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(
-          property: r'kcal',
-          value: value,
-
-          epsilon: epsilon,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.equalTo(property: r'kcal', value: value, epsilon: epsilon));
     });
   }
 
@@ -337,13 +249,7 @@ extension NutritionQueryFilter
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.greaterThan(
-          include: include,
-          property: r'kcal',
-          value: value,
-
-          epsilon: epsilon,
-        ),
+        FilterCondition.greaterThan(include: include, property: r'kcal', value: value, epsilon: epsilon),
       );
     });
   }
@@ -355,13 +261,7 @@ extension NutritionQueryFilter
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.lessThan(
-          include: include,
-          property: r'kcal',
-          value: value,
-
-          epsilon: epsilon,
-        ),
+        FilterCondition.lessThan(include: include, property: r'kcal', value: value, epsilon: epsilon),
       );
     });
   }
@@ -393,14 +293,7 @@ extension NutritionQueryFilter
     double epsilon = Query.epsilon,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(
-          property: r'proteinG',
-          value: value,
-
-          epsilon: epsilon,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.equalTo(property: r'proteinG', value: value, epsilon: epsilon));
     });
   }
 
@@ -411,13 +304,7 @@ extension NutritionQueryFilter
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.greaterThan(
-          include: include,
-          property: r'proteinG',
-          value: value,
-
-          epsilon: epsilon,
-        ),
+        FilterCondition.greaterThan(include: include, property: r'proteinG', value: value, epsilon: epsilon),
       );
     });
   }
@@ -429,13 +316,7 @@ extension NutritionQueryFilter
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.lessThan(
-          include: include,
-          property: r'proteinG',
-          value: value,
-
-          epsilon: epsilon,
-        ),
+        FilterCondition.lessThan(include: include, property: r'proteinG', value: value, epsilon: epsilon),
       );
     });
   }
@@ -463,5 +344,4 @@ extension NutritionQueryFilter
   }
 }
 
-extension NutritionQueryObject
-    on QueryBuilder<Nutrition, Nutrition, QFilterCondition> {}
+extension NutritionQueryObject on QueryBuilder<Nutrition, Nutrition, QFilterCondition> {}

@@ -74,7 +74,13 @@ void main() {
           ..category = cat;
 
     test('basket adjustment is spread proportionally with no rounding drift', () {
-      final lines = [line(333), line(333), line(334), line(-100, type: LineType.adjustment), line(25, type: LineType.deposit)];
+      final lines = [
+        line(333),
+        line(333),
+        line(334),
+        line(-100, type: LineType.adjustment),
+        line(25, type: LineType.deposit),
+      ];
       final out = ReceiptMath.allocateAdjustments(lines);
       expect(out.length, 4);
       expect(out.fold(0, (a, l) => a + l.totalMinor), 925);
@@ -95,9 +101,21 @@ void main() {
     final now = DateTime(2026, 10, 1);
     test('selects unverified, stale and expired items; shortfall first', () {
       final unverified = ingredient('rice', qty: 800, shelf: 365, cost: 0.2);
-      final stalePerishable = ingredient('milk', qty: 500, shelf: 7, verified: now.subtract(const Duration(days: 8)), cost: 0.1);
+      final stalePerishable = ingredient(
+        'milk',
+        qty: 500,
+        shelf: 7,
+        verified: now.subtract(const Duration(days: 8)),
+        cost: 0.1,
+      );
       final fresh = ingredient('pasta', qty: 500, shelf: 365, verified: now.subtract(const Duration(days: 3)));
-      final expired = ingredient('yogurt', qty: 200, shelf: 14, verified: now.subtract(const Duration(days: 2)), expiresAt: now.subtract(const Duration(days: 1)));
+      final expired = ingredient(
+        'yogurt',
+        qty: 200,
+        shelf: 14,
+        verified: now.subtract(const Duration(days: 2)),
+        expiresAt: now.subtract(const Duration(days: 1)),
+      );
       final empty = ingredient('salt', qty: 0);
       final c = QuickCheck.candidates([fresh, stalePerishable, unverified, expired, empty], now);
       expect(c.first, unverified);

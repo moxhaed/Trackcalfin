@@ -15,6 +15,7 @@ dependencies:
   go_router: ^18.0.2
   intl: ^0.20.2
   collection: ^1.19.1
+  async: ^2.13.0
 
   # Database
   isar_community: 3.3.2

@@ -19,45 +19,16 @@ const AiCallLogSchema = CollectionSchema(
   properties: {
     r'at': PropertySchema(id: 0, name: r'at', type: IsarType.dateTime),
     r'error': PropertySchema(id: 1, name: r'error', type: IsarType.string),
-    r'inputTokens': PropertySchema(
-      id: 2,
-      name: r'inputTokens',
-      type: IsarType.long,
-    ),
-    r'latencyMs': PropertySchema(
-      id: 3,
-      name: r'latencyMs',
-      type: IsarType.long,
-    ),
+    r'inputTokens': PropertySchema(id: 2, name: r'inputTokens', type: IsarType.long),
+    r'latencyMs': PropertySchema(id: 3, name: r'latencyMs', type: IsarType.long),
     r'model': PropertySchema(id: 4, name: r'model', type: IsarType.string),
-    r'outputTokens': PropertySchema(
-      id: 5,
-      name: r'outputTokens',
-      type: IsarType.long,
-    ),
+    r'outputTokens': PropertySchema(id: 5, name: r'outputTokens', type: IsarType.long),
     r'parsedOk': PropertySchema(id: 6, name: r'parsedOk', type: IsarType.bool),
-    r'promptVersion': PropertySchema(
-      id: 7,
-      name: r'promptVersion',
-      type: IsarType.string,
-    ),
-    r'rawResponse': PropertySchema(
-      id: 8,
-      name: r'rawResponse',
-      type: IsarType.string,
-    ),
+    r'promptVersion': PropertySchema(id: 7, name: r'promptVersion', type: IsarType.string),
+    r'rawResponse': PropertySchema(id: 8, name: r'rawResponse', type: IsarType.string),
     r'repaired': PropertySchema(id: 9, name: r'repaired', type: IsarType.bool),
-    r'task': PropertySchema(
-      id: 10,
-      name: r'task',
-      type: IsarType.string,
-      enumMap: _AiCallLogtaskEnumValueMap,
-    ),
-    r'validationFlags': PropertySchema(
-      id: 11,
-      name: r'validationFlags',
-      type: IsarType.stringList,
-    ),
+    r'task': PropertySchema(id: 10, name: r'task', type: IsarType.string, enumMap: _AiCallLogtaskEnumValueMap),
+    r'validationFlags': PropertySchema(id: 11, name: r'validationFlags', type: IsarType.stringList),
   },
 
   estimateSize: _aiCallLogEstimateSize,
@@ -71,13 +42,7 @@ const AiCallLogSchema = CollectionSchema(
       name: r'at',
       unique: false,
       replace: false,
-      properties: [
-        IndexPropertySchema(
-          name: r'at',
-          type: IndexType.value,
-          caseSensitive: false,
-        ),
-      ],
+      properties: [IndexPropertySchema(name: r'at', type: IndexType.value, caseSensitive: false)],
     ),
   },
   links: {},
@@ -89,11 +54,7 @@ const AiCallLogSchema = CollectionSchema(
   version: '3.3.2',
 );
 
-int _aiCallLogEstimateSize(
-  AiCallLog object,
-  List<int> offsets,
-  Map<Type, List<int>> allOffsets,
-) {
+int _aiCallLogEstimateSize(AiCallLog object, List<int> offsets, Map<Type, List<int>> allOffsets) {
   var bytesCount = offsets.last;
   {
     final value = object.error;
@@ -115,12 +76,7 @@ int _aiCallLogEstimateSize(
   return bytesCount;
 }
 
-void _aiCallLogSerialize(
-  AiCallLog object,
-  IsarWriter writer,
-  List<int> offsets,
-  Map<Type, List<int>> allOffsets,
-) {
+void _aiCallLogSerialize(AiCallLog object, IsarWriter writer, List<int> offsets, Map<Type, List<int>> allOffsets) {
   writer.writeDateTime(offsets[0], object.at);
   writer.writeString(offsets[1], object.error);
   writer.writeLong(offsets[2], object.inputTokens);
@@ -135,12 +91,7 @@ void _aiCallLogSerialize(
   writer.writeStringList(offsets[11], object.validationFlags);
 }
 
-AiCallLog _aiCallLogDeserialize(
-  Id id,
-  IsarReader reader,
-  List<int> offsets,
-  Map<Type, List<int>> allOffsets,
-) {
+AiCallLog _aiCallLogDeserialize(Id id, IsarReader reader, List<int> offsets, Map<Type, List<int>> allOffsets) {
   final object = AiCallLog();
   object.at = reader.readDateTime(offsets[0]);
   object.error = reader.readStringOrNull(offsets[1]);
@@ -153,19 +104,12 @@ AiCallLog _aiCallLogDeserialize(
   object.promptVersion = reader.readString(offsets[7]);
   object.rawResponse = reader.readString(offsets[8]);
   object.repaired = reader.readBool(offsets[9]);
-  object.task =
-      _AiCallLogtaskValueEnumMap[reader.readStringOrNull(offsets[10])] ??
-      AiTask.receipt;
+  object.task = _AiCallLogtaskValueEnumMap[reader.readStringOrNull(offsets[10])] ?? AiTask.receipt;
   object.validationFlags = reader.readStringList(offsets[11]) ?? [];
   return object;
 }
 
-P _aiCallLogDeserializeProp<P>(
-  IsarReader reader,
-  int propertyId,
-  int offset,
-  Map<Type, List<int>> allOffsets,
-) {
+P _aiCallLogDeserializeProp<P>(IsarReader reader, int propertyId, int offset, Map<Type, List<int>> allOffsets) {
   switch (propertyId) {
     case 0:
       return (reader.readDateTime(offset)) as P;
@@ -188,9 +132,7 @@ P _aiCallLogDeserializeProp<P>(
     case 9:
       return (reader.readBool(offset)) as P;
     case 10:
-      return (_AiCallLogtaskValueEnumMap[reader.readStringOrNull(offset)] ??
-              AiTask.receipt)
-          as P;
+      return (_AiCallLogtaskValueEnumMap[reader.readStringOrNull(offset)] ?? AiTask.receipt) as P;
     case 11:
       return (reader.readStringList(offset) ?? []) as P;
     default:
@@ -221,8 +163,7 @@ void _aiCallLogAttach(IsarCollection<dynamic> col, Id id, AiCallLog object) {
   object.id = id;
 }
 
-extension AiCallLogQueryWhereSort
-    on QueryBuilder<AiCallLog, AiCallLog, QWhere> {
+extension AiCallLogQueryWhereSort on QueryBuilder<AiCallLog, AiCallLog, QWhere> {
   QueryBuilder<AiCallLog, AiCallLog, QAfterWhere> anyId() {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(const IdWhereClause.any());
@@ -236,8 +177,7 @@ extension AiCallLogQueryWhereSort
   }
 }
 
-extension AiCallLogQueryWhere
-    on QueryBuilder<AiCallLog, AiCallLog, QWhereClause> {
+extension AiCallLogQueryWhere on QueryBuilder<AiCallLog, AiCallLog, QWhereClause> {
   QueryBuilder<AiCallLog, AiCallLog, QAfterWhereClause> idEqualTo(Id id) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(IdWhereClause.between(lower: id, upper: id));
@@ -248,43 +188,25 @@ extension AiCallLogQueryWhere
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
         return query
-            .addWhereClause(
-              IdWhereClause.lessThan(upper: id, includeUpper: false),
-            )
-            .addWhereClause(
-              IdWhereClause.greaterThan(lower: id, includeLower: false),
-            );
+            .addWhereClause(IdWhereClause.lessThan(upper: id, includeUpper: false))
+            .addWhereClause(IdWhereClause.greaterThan(lower: id, includeLower: false));
       } else {
         return query
-            .addWhereClause(
-              IdWhereClause.greaterThan(lower: id, includeLower: false),
-            )
-            .addWhereClause(
-              IdWhereClause.lessThan(upper: id, includeUpper: false),
-            );
+            .addWhereClause(IdWhereClause.greaterThan(lower: id, includeLower: false))
+            .addWhereClause(IdWhereClause.lessThan(upper: id, includeUpper: false));
       }
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterWhereClause> idGreaterThan(
-    Id id, {
-    bool include = false,
-  }) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterWhereClause> idGreaterThan(Id id, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(
-        IdWhereClause.greaterThan(lower: id, includeLower: include),
-      );
+      return query.addWhereClause(IdWhereClause.greaterThan(lower: id, includeLower: include));
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterWhereClause> idLessThan(
-    Id id, {
-    bool include = false,
-  }) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterWhereClause> idLessThan(Id id, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(
-        IdWhereClause.lessThan(upper: id, includeUpper: include),
-      );
+      return query.addWhereClause(IdWhereClause.lessThan(upper: id, includeUpper: include));
     });
   }
 
@@ -296,96 +218,43 @@ extension AiCallLogQueryWhere
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
-        IdWhereClause.between(
-          lower: lowerId,
-          includeLower: includeLower,
-          upper: upperId,
-          includeUpper: includeUpper,
-        ),
+        IdWhereClause.between(lower: lowerId, includeLower: includeLower, upper: upperId, includeUpper: includeUpper),
       );
     });
   }
 
   QueryBuilder<AiCallLog, AiCallLog, QAfterWhereClause> atEqualTo(DateTime at) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(
-        IndexWhereClause.equalTo(indexName: r'at', value: [at]),
-      );
+      return query.addWhereClause(IndexWhereClause.equalTo(indexName: r'at', value: [at]));
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterWhereClause> atNotEqualTo(
-    DateTime at,
-  ) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterWhereClause> atNotEqualTo(DateTime at) {
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
         return query
-            .addWhereClause(
-              IndexWhereClause.between(
-                indexName: r'at',
-                lower: [],
-                upper: [at],
-                includeUpper: false,
-              ),
-            )
-            .addWhereClause(
-              IndexWhereClause.between(
-                indexName: r'at',
-                lower: [at],
-                includeLower: false,
-                upper: [],
-              ),
-            );
+            .addWhereClause(IndexWhereClause.between(indexName: r'at', lower: [], upper: [at], includeUpper: false))
+            .addWhereClause(IndexWhereClause.between(indexName: r'at', lower: [at], includeLower: false, upper: []));
       } else {
         return query
-            .addWhereClause(
-              IndexWhereClause.between(
-                indexName: r'at',
-                lower: [at],
-                includeLower: false,
-                upper: [],
-              ),
-            )
-            .addWhereClause(
-              IndexWhereClause.between(
-                indexName: r'at',
-                lower: [],
-                upper: [at],
-                includeUpper: false,
-              ),
-            );
+            .addWhereClause(IndexWhereClause.between(indexName: r'at', lower: [at], includeLower: false, upper: []))
+            .addWhereClause(IndexWhereClause.between(indexName: r'at', lower: [], upper: [at], includeUpper: false));
       }
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterWhereClause> atGreaterThan(
-    DateTime at, {
-    bool include = false,
-  }) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterWhereClause> atGreaterThan(DateTime at, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
-        IndexWhereClause.between(
-          indexName: r'at',
-          lower: [at],
-          includeLower: include,
-          upper: [],
-        ),
+        IndexWhereClause.between(indexName: r'at', lower: [at], includeLower: include, upper: []),
       );
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterWhereClause> atLessThan(
-    DateTime at, {
-    bool include = false,
-  }) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterWhereClause> atLessThan(DateTime at, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
-        IndexWhereClause.between(
-          indexName: r'at',
-          lower: [],
-          upper: [at],
-          includeUpper: include,
-        ),
+        IndexWhereClause.between(indexName: r'at', lower: [], upper: [at], includeUpper: include),
       );
     });
   }
@@ -410,45 +279,22 @@ extension AiCallLogQueryWhere
   }
 }
 
-extension AiCallLogQueryFilter
-    on QueryBuilder<AiCallLog, AiCallLog, QFilterCondition> {
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> atEqualTo(
-    DateTime value,
-  ) {
+extension AiCallLogQueryFilter on QueryBuilder<AiCallLog, AiCallLog, QFilterCondition> {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> atEqualTo(DateTime value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(property: r'at', value: value),
-      );
+      return query.addFilterCondition(FilterCondition.equalTo(property: r'at', value: value));
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> atGreaterThan(
-    DateTime value, {
-    bool include = false,
-  }) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> atGreaterThan(DateTime value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.greaterThan(
-          include: include,
-          property: r'at',
-          value: value,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.greaterThan(include: include, property: r'at', value: value));
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> atLessThan(
-    DateTime value, {
-    bool include = false,
-  }) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> atLessThan(DateTime value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.lessThan(
-          include: include,
-          property: r'at',
-          value: value,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.lessThan(include: include, property: r'at', value: value));
     });
   }
 
@@ -473,31 +319,20 @@ extension AiCallLogQueryFilter
 
   QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> errorIsNull() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        const FilterCondition.isNull(property: r'error'),
-      );
+      return query.addFilterCondition(const FilterCondition.isNull(property: r'error'));
     });
   }
 
   QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> errorIsNotNull() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        const FilterCondition.isNotNull(property: r'error'),
-      );
+      return query.addFilterCondition(const FilterCondition.isNotNull(property: r'error'));
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> errorEqualTo(
-    String? value, {
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> errorEqualTo(String? value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.equalTo(
-          property: r'error',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
+        FilterCondition.equalTo(property: r'error', value: value, caseSensitive: caseSensitive),
       );
     });
   }
@@ -509,12 +344,7 @@ extension AiCallLogQueryFilter
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.greaterThan(
-          include: include,
-          property: r'error',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
+        FilterCondition.greaterThan(include: include, property: r'error', value: value, caseSensitive: caseSensitive),
       );
     });
   }
@@ -526,12 +356,7 @@ extension AiCallLogQueryFilter
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.lessThan(
-          include: include,
-          property: r'error',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
+        FilterCondition.lessThan(include: include, property: r'error', value: value, caseSensitive: caseSensitive),
       );
     });
   }
@@ -557,119 +382,65 @@ extension AiCallLogQueryFilter
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> errorStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> errorStartsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.startsWith(
-          property: r'error',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
+        FilterCondition.startsWith(property: r'error', value: value, caseSensitive: caseSensitive),
       );
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> errorEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> errorEndsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.endsWith(
-          property: r'error',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
+        FilterCondition.endsWith(property: r'error', value: value, caseSensitive: caseSensitive),
       );
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> errorContains(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> errorContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.contains(
-          property: r'error',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
+        FilterCondition.contains(property: r'error', value: value, caseSensitive: caseSensitive),
       );
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> errorMatches(
-    String pattern, {
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> errorMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.matches(
-          property: r'error',
-          wildcard: pattern,
-          caseSensitive: caseSensitive,
-        ),
+        FilterCondition.matches(property: r'error', wildcard: pattern, caseSensitive: caseSensitive),
       );
     });
   }
 
   QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> errorIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(property: r'error', value: ''),
-      );
+      return query.addFilterCondition(FilterCondition.equalTo(property: r'error', value: ''));
     });
   }
 
   QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> errorIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.greaterThan(property: r'error', value: ''),
-      );
+      return query.addFilterCondition(FilterCondition.greaterThan(property: r'error', value: ''));
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> idEqualTo(
-    Id value,
-  ) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> idEqualTo(Id value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(property: r'id', value: value),
-      );
+      return query.addFilterCondition(FilterCondition.equalTo(property: r'id', value: value));
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> idGreaterThan(
-    Id value, {
-    bool include = false,
-  }) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> idGreaterThan(Id value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.greaterThan(
-          include: include,
-          property: r'id',
-          value: value,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.greaterThan(include: include, property: r'id', value: value));
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> idLessThan(
-    Id value, {
-    bool include = false,
-  }) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> idLessThan(Id value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.lessThan(
-          include: include,
-          property: r'id',
-          value: value,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.lessThan(include: include, property: r'id', value: value));
     });
   }
 
@@ -692,58 +463,36 @@ extension AiCallLogQueryFilter
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition>
-  inputTokensIsNull() {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> inputTokensIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(property: r'inputTokens'));
+    });
+  }
+
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> inputTokensIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(property: r'inputTokens'));
+    });
+  }
+
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> inputTokensEqualTo(int? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(property: r'inputTokens', value: value));
+    });
+  }
+
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> inputTokensGreaterThan(int? value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        const FilterCondition.isNull(property: r'inputTokens'),
+        FilterCondition.greaterThan(include: include, property: r'inputTokens', value: value),
       );
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition>
-  inputTokensIsNotNull() {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> inputTokensLessThan(int? value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        const FilterCondition.isNotNull(property: r'inputTokens'),
-      );
-    });
-  }
-
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> inputTokensEqualTo(
-    int? value,
-  ) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(property: r'inputTokens', value: value),
-      );
-    });
-  }
-
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition>
-  inputTokensGreaterThan(int? value, {bool include = false}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.greaterThan(
-          include: include,
-          property: r'inputTokens',
-          value: value,
-        ),
-      );
-    });
-  }
-
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> inputTokensLessThan(
-    int? value, {
-    bool include = false,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.lessThan(
-          include: include,
-          property: r'inputTokens',
-          value: value,
-        ),
+        FilterCondition.lessThan(include: include, property: r'inputTokens', value: value),
       );
     });
   }
@@ -767,41 +516,23 @@ extension AiCallLogQueryFilter
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> latencyMsEqualTo(
-    int value,
-  ) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> latencyMsEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(property: r'latencyMs', value: value));
+    });
+  }
+
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> latencyMsGreaterThan(int value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.equalTo(property: r'latencyMs', value: value),
+        FilterCondition.greaterThan(include: include, property: r'latencyMs', value: value),
       );
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition>
-  latencyMsGreaterThan(int value, {bool include = false}) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> latencyMsLessThan(int value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.greaterThan(
-          include: include,
-          property: r'latencyMs',
-          value: value,
-        ),
-      );
-    });
-  }
-
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> latencyMsLessThan(
-    int value, {
-    bool include = false,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.lessThan(
-          include: include,
-          property: r'latencyMs',
-          value: value,
-        ),
-      );
+      return query.addFilterCondition(FilterCondition.lessThan(include: include, property: r'latencyMs', value: value));
     });
   }
 
@@ -824,17 +555,10 @@ extension AiCallLogQueryFilter
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> modelEqualTo(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> modelEqualTo(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.equalTo(
-          property: r'model',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
+        FilterCondition.equalTo(property: r'model', value: value, caseSensitive: caseSensitive),
       );
     });
   }
@@ -846,12 +570,7 @@ extension AiCallLogQueryFilter
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.greaterThan(
-          include: include,
-          property: r'model',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
+        FilterCondition.greaterThan(include: include, property: r'model', value: value, caseSensitive: caseSensitive),
       );
     });
   }
@@ -863,12 +582,7 @@ extension AiCallLogQueryFilter
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.lessThan(
-          include: include,
-          property: r'model',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
+        FilterCondition.lessThan(include: include, property: r'model', value: value, caseSensitive: caseSensitive),
       );
     });
   }
@@ -894,132 +608,83 @@ extension AiCallLogQueryFilter
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> modelStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> modelStartsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.startsWith(
-          property: r'model',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
+        FilterCondition.startsWith(property: r'model', value: value, caseSensitive: caseSensitive),
       );
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> modelEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> modelEndsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.endsWith(
-          property: r'model',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
+        FilterCondition.endsWith(property: r'model', value: value, caseSensitive: caseSensitive),
       );
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> modelContains(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> modelContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.contains(
-          property: r'model',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
+        FilterCondition.contains(property: r'model', value: value, caseSensitive: caseSensitive),
       );
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> modelMatches(
-    String pattern, {
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> modelMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.matches(
-          property: r'model',
-          wildcard: pattern,
-          caseSensitive: caseSensitive,
-        ),
+        FilterCondition.matches(property: r'model', wildcard: pattern, caseSensitive: caseSensitive),
       );
     });
   }
 
   QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> modelIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(property: r'model', value: ''),
-      );
+      return query.addFilterCondition(FilterCondition.equalTo(property: r'model', value: ''));
     });
   }
 
   QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> modelIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(property: r'model', value: ''));
+    });
+  }
+
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> outputTokensIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(property: r'outputTokens'));
+    });
+  }
+
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> outputTokensIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(property: r'outputTokens'));
+    });
+  }
+
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> outputTokensEqualTo(int? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(property: r'outputTokens', value: value));
+    });
+  }
+
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> outputTokensGreaterThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.greaterThan(property: r'model', value: ''),
+        FilterCondition.greaterThan(include: include, property: r'outputTokens', value: value),
       );
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition>
-  outputTokensIsNull() {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> outputTokensLessThan(int? value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        const FilterCondition.isNull(property: r'outputTokens'),
-      );
-    });
-  }
-
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition>
-  outputTokensIsNotNull() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        const FilterCondition.isNotNull(property: r'outputTokens'),
-      );
-    });
-  }
-
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> outputTokensEqualTo(
-    int? value,
-  ) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(property: r'outputTokens', value: value),
-      );
-    });
-  }
-
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition>
-  outputTokensGreaterThan(int? value, {bool include = false}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.greaterThan(
-          include: include,
-          property: r'outputTokens',
-          value: value,
-        ),
-      );
-    });
-  }
-
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition>
-  outputTokensLessThan(int? value, {bool include = false}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.lessThan(
-          include: include,
-          property: r'outputTokens',
-          value: value,
-        ),
+        FilterCondition.lessThan(include: include, property: r'outputTokens', value: value),
       );
     });
   }
@@ -1043,31 +708,24 @@ extension AiCallLogQueryFilter
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> parsedOkEqualTo(
-    bool value,
-  ) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> parsedOkEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(property: r'parsedOk', value: value));
+    });
+  }
+
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> promptVersionEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.equalTo(property: r'parsedOk', value: value),
+        FilterCondition.equalTo(property: r'promptVersion', value: value, caseSensitive: caseSensitive),
       );
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition>
-  promptVersionEqualTo(String value, {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(
-          property: r'promptVersion',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
-      );
-    });
-  }
-
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition>
-  promptVersionGreaterThan(
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> promptVersionGreaterThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
@@ -1084,8 +742,7 @@ extension AiCallLogQueryFilter
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition>
-  promptVersionLessThan(
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> promptVersionLessThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
@@ -1102,8 +759,7 @@ extension AiCallLogQueryFilter
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition>
-  promptVersionBetween(
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> promptVersionBetween(
     String lower,
     String upper, {
     bool includeLower = true,
@@ -1124,73 +780,59 @@ extension AiCallLogQueryFilter
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition>
-  promptVersionStartsWith(String value, {bool caseSensitive = true}) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> promptVersionStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.startsWith(
-          property: r'promptVersion',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
+        FilterCondition.startsWith(property: r'promptVersion', value: value, caseSensitive: caseSensitive),
       );
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition>
-  promptVersionEndsWith(String value, {bool caseSensitive = true}) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> promptVersionEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.endsWith(
-          property: r'promptVersion',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
+        FilterCondition.endsWith(property: r'promptVersion', value: value, caseSensitive: caseSensitive),
       );
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition>
-  promptVersionContains(String value, {bool caseSensitive = true}) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> promptVersionContains(
+    String value, {
+    bool caseSensitive = true,
+  }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.contains(
-          property: r'promptVersion',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
+        FilterCondition.contains(property: r'promptVersion', value: value, caseSensitive: caseSensitive),
       );
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition>
-  promptVersionMatches(String pattern, {bool caseSensitive = true}) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> promptVersionMatches(
+    String pattern, {
+    bool caseSensitive = true,
+  }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.matches(
-          property: r'promptVersion',
-          wildcard: pattern,
-          caseSensitive: caseSensitive,
-        ),
+        FilterCondition.matches(property: r'promptVersion', wildcard: pattern, caseSensitive: caseSensitive),
       );
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition>
-  promptVersionIsEmpty() {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> promptVersionIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(property: r'promptVersion', value: ''),
-      );
+      return query.addFilterCondition(FilterCondition.equalTo(property: r'promptVersion', value: ''));
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition>
-  promptVersionIsNotEmpty() {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> promptVersionIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.greaterThan(property: r'promptVersion', value: ''),
-      );
+      return query.addFilterCondition(FilterCondition.greaterThan(property: r'promptVersion', value: ''));
     });
   }
 
@@ -1200,17 +842,12 @@ extension AiCallLogQueryFilter
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.equalTo(
-          property: r'rawResponse',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
+        FilterCondition.equalTo(property: r'rawResponse', value: value, caseSensitive: caseSensitive),
       );
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition>
-  rawResponseGreaterThan(
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> rawResponseGreaterThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
@@ -1265,15 +902,13 @@ extension AiCallLogQueryFilter
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition>
-  rawResponseStartsWith(String value, {bool caseSensitive = true}) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> rawResponseStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.startsWith(
-          property: r'rawResponse',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
+        FilterCondition.startsWith(property: r'rawResponse', value: value, caseSensitive: caseSensitive),
       );
     });
   }
@@ -1284,11 +919,7 @@ extension AiCallLogQueryFilter
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.endsWith(
-          property: r'rawResponse',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
+        FilterCondition.endsWith(property: r'rawResponse', value: value, caseSensitive: caseSensitive),
       );
     });
   }
@@ -1299,11 +930,7 @@ extension AiCallLogQueryFilter
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.contains(
-          property: r'rawResponse',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
+        FilterCondition.contains(property: r'rawResponse', value: value, caseSensitive: caseSensitive),
       );
     });
   }
@@ -1314,54 +941,33 @@ extension AiCallLogQueryFilter
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.matches(
-          property: r'rawResponse',
-          wildcard: pattern,
-          caseSensitive: caseSensitive,
-        ),
+        FilterCondition.matches(property: r'rawResponse', wildcard: pattern, caseSensitive: caseSensitive),
       );
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition>
-  rawResponseIsEmpty() {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> rawResponseIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(property: r'rawResponse', value: ''),
-      );
+      return query.addFilterCondition(FilterCondition.equalTo(property: r'rawResponse', value: ''));
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition>
-  rawResponseIsNotEmpty() {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> rawResponseIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.greaterThan(property: r'rawResponse', value: ''),
-      );
+      return query.addFilterCondition(FilterCondition.greaterThan(property: r'rawResponse', value: ''));
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> repairedEqualTo(
-    bool value,
-  ) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> repairedEqualTo(bool value) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(property: r'repaired', value: value),
-      );
+      return query.addFilterCondition(FilterCondition.equalTo(property: r'repaired', value: value));
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> taskEqualTo(
-    AiTask value, {
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> taskEqualTo(AiTask value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.equalTo(
-          property: r'task',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
+        FilterCondition.equalTo(property: r'task', value: value, caseSensitive: caseSensitive),
       );
     });
   }
@@ -1373,12 +979,7 @@ extension AiCallLogQueryFilter
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.greaterThan(
-          include: include,
-          property: r'task',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
+        FilterCondition.greaterThan(include: include, property: r'task', value: value, caseSensitive: caseSensitive),
       );
     });
   }
@@ -1390,12 +991,7 @@ extension AiCallLogQueryFilter
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.lessThan(
-          include: include,
-          property: r'task',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
+        FilterCondition.lessThan(include: include, property: r'task', value: value, caseSensitive: caseSensitive),
       );
     });
   }
@@ -1421,97 +1017,62 @@ extension AiCallLogQueryFilter
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> taskStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> taskStartsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.startsWith(
-          property: r'task',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
+        FilterCondition.startsWith(property: r'task', value: value, caseSensitive: caseSensitive),
       );
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> taskEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> taskEndsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.endsWith(
-          property: r'task',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
+        FilterCondition.endsWith(property: r'task', value: value, caseSensitive: caseSensitive),
       );
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> taskContains(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> taskContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.contains(
-          property: r'task',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
+        FilterCondition.contains(property: r'task', value: value, caseSensitive: caseSensitive),
       );
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> taskMatches(
-    String pattern, {
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> taskMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.matches(
-          property: r'task',
-          wildcard: pattern,
-          caseSensitive: caseSensitive,
-        ),
+        FilterCondition.matches(property: r'task', wildcard: pattern, caseSensitive: caseSensitive),
       );
     });
   }
 
   QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> taskIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(property: r'task', value: ''),
-      );
+      return query.addFilterCondition(FilterCondition.equalTo(property: r'task', value: ''));
     });
   }
 
   QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> taskIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.greaterThan(property: r'task', value: ''),
-      );
+      return query.addFilterCondition(FilterCondition.greaterThan(property: r'task', value: ''));
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition>
-  validationFlagsElementEqualTo(String value, {bool caseSensitive = true}) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> validationFlagsElementEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.equalTo(
-          property: r'validationFlags',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
+        FilterCondition.equalTo(property: r'validationFlags', value: value, caseSensitive: caseSensitive),
       );
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition>
-  validationFlagsElementGreaterThan(
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> validationFlagsElementGreaterThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
@@ -1528,8 +1089,7 @@ extension AiCallLogQueryFilter
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition>
-  validationFlagsElementLessThan(
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> validationFlagsElementLessThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
@@ -1546,8 +1106,7 @@ extension AiCallLogQueryFilter
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition>
-  validationFlagsElementBetween(
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> validationFlagsElementBetween(
     String lower,
     String upper, {
     bool includeLower = true,
@@ -1568,141 +1127,113 @@ extension AiCallLogQueryFilter
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition>
-  validationFlagsElementStartsWith(String value, {bool caseSensitive = true}) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> validationFlagsElementStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.startsWith(
-          property: r'validationFlags',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
+        FilterCondition.startsWith(property: r'validationFlags', value: value, caseSensitive: caseSensitive),
       );
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition>
-  validationFlagsElementEndsWith(String value, {bool caseSensitive = true}) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> validationFlagsElementEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.endsWith(
-          property: r'validationFlags',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
+        FilterCondition.endsWith(property: r'validationFlags', value: value, caseSensitive: caseSensitive),
       );
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition>
-  validationFlagsElementContains(String value, {bool caseSensitive = true}) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> validationFlagsElementContains(
+    String value, {
+    bool caseSensitive = true,
+  }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.contains(
-          property: r'validationFlags',
-          value: value,
-          caseSensitive: caseSensitive,
-        ),
+        FilterCondition.contains(property: r'validationFlags', value: value, caseSensitive: caseSensitive),
       );
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition>
-  validationFlagsElementMatches(String pattern, {bool caseSensitive = true}) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> validationFlagsElementMatches(
+    String pattern, {
+    bool caseSensitive = true,
+  }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.matches(
-          property: r'validationFlags',
-          wildcard: pattern,
-          caseSensitive: caseSensitive,
-        ),
+        FilterCondition.matches(property: r'validationFlags', wildcard: pattern, caseSensitive: caseSensitive),
       );
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition>
-  validationFlagsElementIsEmpty() {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> validationFlagsElementIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(property: r'validationFlags', value: ''),
-      );
+      return query.addFilterCondition(FilterCondition.equalTo(property: r'validationFlags', value: ''));
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition>
-  validationFlagsElementIsNotEmpty() {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> validationFlagsElementIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.greaterThan(property: r'validationFlags', value: ''),
-      );
+      return query.addFilterCondition(FilterCondition.greaterThan(property: r'validationFlags', value: ''));
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition>
-  validationFlagsLengthEqualTo(int length) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> validationFlagsLengthEqualTo(int length) {
     return QueryBuilder.apply(this, (query) {
       return query.listLength(r'validationFlags', length, true, length, true);
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition>
-  validationFlagsIsEmpty() {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> validationFlagsIsEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.listLength(r'validationFlags', 0, true, 0, true);
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition>
-  validationFlagsIsNotEmpty() {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> validationFlagsIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.listLength(r'validationFlags', 0, false, 999999, true);
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition>
-  validationFlagsLengthLessThan(int length, {bool include = false}) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> validationFlagsLengthLessThan(
+    int length, {
+    bool include = false,
+  }) {
     return QueryBuilder.apply(this, (query) {
       return query.listLength(r'validationFlags', 0, true, length, include);
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition>
-  validationFlagsLengthGreaterThan(int length, {bool include = false}) {
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> validationFlagsLengthGreaterThan(
+    int length, {
+    bool include = false,
+  }) {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'validationFlags',
-        length,
-        include,
-        999999,
-        true,
-      );
+      return query.listLength(r'validationFlags', length, include, 999999, true);
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition>
-  validationFlagsLengthBetween(
+  QueryBuilder<AiCallLog, AiCallLog, QAfterFilterCondition> validationFlagsLengthBetween(
     int lower,
     int upper, {
     bool includeLower = true,
     bool includeUpper = true,
   }) {
     return QueryBuilder.apply(this, (query) {
-      return query.listLength(
-        r'validationFlags',
-        lower,
-        includeLower,
-        upper,
-        includeUpper,
-      );
+      return query.listLength(r'validationFlags', lower, includeLower, upper, includeUpper);
     });
   }
 }
 
-extension AiCallLogQueryObject
-    on QueryBuilder<AiCallLog, AiCallLog, QFilterCondition> {}
+extension AiCallLogQueryObject on QueryBuilder<AiCallLog, AiCallLog, QFilterCondition> {}
 
-extension AiCallLogQueryLinks
-    on QueryBuilder<AiCallLog, AiCallLog, QFilterCondition> {}
+extension AiCallLogQueryLinks on QueryBuilder<AiCallLog, AiCallLog, QFilterCondition> {}
 
 extension AiCallLogQuerySortBy on QueryBuilder<AiCallLog, AiCallLog, QSortBy> {
   QueryBuilder<AiCallLog, AiCallLog, QAfterSortBy> sortByAt() {
@@ -1838,8 +1369,7 @@ extension AiCallLogQuerySortBy on QueryBuilder<AiCallLog, AiCallLog, QSortBy> {
   }
 }
 
-extension AiCallLogQuerySortThenBy
-    on QueryBuilder<AiCallLog, AiCallLog, QSortThenBy> {
+extension AiCallLogQuerySortThenBy on QueryBuilder<AiCallLog, AiCallLog, QSortThenBy> {
   QueryBuilder<AiCallLog, AiCallLog, QAfterSortBy> thenByAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'at', Sort.asc);
@@ -1985,17 +1515,14 @@ extension AiCallLogQuerySortThenBy
   }
 }
 
-extension AiCallLogQueryWhereDistinct
-    on QueryBuilder<AiCallLog, AiCallLog, QDistinct> {
+extension AiCallLogQueryWhereDistinct on QueryBuilder<AiCallLog, AiCallLog, QDistinct> {
   QueryBuilder<AiCallLog, AiCallLog, QDistinct> distinctByAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'at');
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QDistinct> distinctByError({
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<AiCallLog, AiCallLog, QDistinct> distinctByError({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'error', caseSensitive: caseSensitive);
     });
@@ -2013,9 +1540,7 @@ extension AiCallLogQueryWhereDistinct
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QDistinct> distinctByModel({
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<AiCallLog, AiCallLog, QDistinct> distinctByModel({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'model', caseSensitive: caseSensitive);
     });
@@ -2033,20 +1558,13 @@ extension AiCallLogQueryWhereDistinct
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QDistinct> distinctByPromptVersion({
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<AiCallLog, AiCallLog, QDistinct> distinctByPromptVersion({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(
-        r'promptVersion',
-        caseSensitive: caseSensitive,
-      );
+      return query.addDistinctBy(r'promptVersion', caseSensitive: caseSensitive);
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QDistinct> distinctByRawResponse({
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<AiCallLog, AiCallLog, QDistinct> distinctByRawResponse({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'rawResponse', caseSensitive: caseSensitive);
     });
@@ -2058,9 +1576,7 @@ extension AiCallLogQueryWhereDistinct
     });
   }
 
-  QueryBuilder<AiCallLog, AiCallLog, QDistinct> distinctByTask({
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<AiCallLog, AiCallLog, QDistinct> distinctByTask({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'task', caseSensitive: caseSensitive);
     });
@@ -2073,8 +1589,7 @@ extension AiCallLogQueryWhereDistinct
   }
 }
 
-extension AiCallLogQueryProperty
-    on QueryBuilder<AiCallLog, AiCallLog, QQueryProperty> {
+extension AiCallLogQueryProperty on QueryBuilder<AiCallLog, AiCallLog, QQueryProperty> {
   QueryBuilder<AiCallLog, int, QQueryOperations> idProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'id');
@@ -2147,8 +1662,7 @@ extension AiCallLogQueryProperty
     });
   }
 
-  QueryBuilder<AiCallLog, List<String>, QQueryOperations>
-  validationFlagsProperty() {
+  QueryBuilder<AiCallLog, List<String>, QQueryOperations> validationFlagsProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'validationFlags');
     });
