@@ -55,6 +55,9 @@ class UserProfile {
 
   bool onboardingDone = false;
 
+  /// "system", "light" or "dark".
+  String themeMode = 'system';
+
   /// For data migrations.
   int schemaVersion = 1;
 

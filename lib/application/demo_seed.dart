@@ -19,6 +19,7 @@ class DemoSeed {
     final t = now ?? DateTime.now();
     final profile = ProfileService.defaults()
       ..onboardingDone = true
+      ..themeMode = const String.fromEnvironment('THEME', defaultValue: 'system')
       ..monthlyFoodBudgetMinor = 30000
       ..dailyKcalTarget = 2200
       ..dailyProteinTargetG = 140

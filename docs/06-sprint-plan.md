@@ -1,5 +1,7 @@
 # 06 · Sprint Plan (30–60 minute daily sprints)
 
+> **Status: all 33 sprints are implemented** (97 tests, analyzer clean, Linux desktop build verified). Android/iOS builds and live Gemini calls still need verifying on your machine. See the README's *Status* section.
+
 **Build order:** deterministic core first, AI last. By Sprint 16 you have a fully working **offline** app with manual entry: ledger, pantry, cooking, fridge and a complete dashboard. Everything after that is AI that *removes typing* from an app that already works. If Gemini is down, or you pause the project, you still have a useful tool.
 
 ### How to run a sprint

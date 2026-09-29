@@ -9,6 +9,7 @@ import '../../core/day_clock.dart';
 import '../../core/enums.dart';
 import '../../core/money.dart';
 import '../../domain/dashboard.dart';
+import '../../domain/streak.dart';
 import '../../domain/vibe.dart';
 import '../capture/ate_sheet.dart';
 import '../common/category_style.dart';
@@ -65,7 +66,7 @@ class _DashboardBody extends ConsumerWidget {
         const SizedBox(height: 12),
         _OtherSpendCard(state: s, money: money),
         const SizedBox(height: 12),
-        _WeekCard(state: s, kcalTarget: view.profile.dailyKcalTarget, money: money),
+        _WeekCard(state: s, kcalTarget: view.profile.dailyKcalTarget, money: money, streak: view.streak),
       ],
     );
   }
@@ -405,10 +406,11 @@ class _OtherSpendCard extends StatelessWidget {
 }
 
 class _WeekCard extends StatelessWidget {
-  const _WeekCard({required this.state, required this.kcalTarget, required this.money});
+  const _WeekCard({required this.state, required this.kcalTarget, required this.money, required this.streak});
   final DashboardState state;
   final double kcalTarget;
   final MoneyFormat money;
+  final StreakResult streak;
 
   @override
   Widget build(BuildContext context) {
@@ -421,6 +423,21 @@ class _WeekCard extends StatelessWidget {
               '${s.avgProtein!.round()} g protein';
     return SectionCard(
       title: 'Calories this week',
+      trailing: streak.days >= 2
+          ? Tooltip(
+              message: streak.freezesUsed > 0
+                  ? '${streak.freezesUsed} missed ${streak.freezesUsed == 1 ? 'day was' : 'days were'} covered by the weekly freeze'
+                  : 'Days in a row with something logged',
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.local_fire_department_outlined, size: 16, color: context.colors.protein),
+                  const SizedBox(width: 4),
+                  Text('${streak.days}-day streak', style: context.text.labelMedium),
+                ],
+              ),
+            )
+          : null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

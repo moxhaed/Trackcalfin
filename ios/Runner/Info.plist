@@ -66,5 +66,21 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Trackcalfin uses the camera to scan receipts and photograph your pantry.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Pick receipt photos and screenshots to add them to your ledger and pantry.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Hold the mic to say what you want to cook.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Your words are turned into text on the device before a recipe is suggested.</string>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>trackcalfin.morning-pick</string>
+	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+	</array>
 </dict>
 </plist>

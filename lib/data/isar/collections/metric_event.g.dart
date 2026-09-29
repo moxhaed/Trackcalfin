@@ -33,7 +33,13 @@ const MetricEventSchema = CollectionSchema(
       name: r'action',
       unique: false,
       replace: false,
-      properties: [IndexPropertySchema(name: r'action', type: IndexType.hash, caseSensitive: true)],
+      properties: [
+        IndexPropertySchema(
+          name: r'action',
+          type: IndexType.hash,
+          caseSensitive: true,
+        ),
+      ],
     ),
   },
   links: {},
@@ -45,19 +51,33 @@ const MetricEventSchema = CollectionSchema(
   version: '3.3.2',
 );
 
-int _metricEventEstimateSize(MetricEvent object, List<int> offsets, Map<Type, List<int>> allOffsets) {
+int _metricEventEstimateSize(
+  MetricEvent object,
+  List<int> offsets,
+  Map<Type, List<int>> allOffsets,
+) {
   var bytesCount = offsets.last;
   bytesCount += 3 + object.action.length * 3;
   return bytesCount;
 }
 
-void _metricEventSerialize(MetricEvent object, IsarWriter writer, List<int> offsets, Map<Type, List<int>> allOffsets) {
+void _metricEventSerialize(
+  MetricEvent object,
+  IsarWriter writer,
+  List<int> offsets,
+  Map<Type, List<int>> allOffsets,
+) {
   writer.writeString(offsets[0], object.action);
   writer.writeDateTime(offsets[1], object.at);
   writer.writeLong(offsets[2], object.millis);
 }
 
-MetricEvent _metricEventDeserialize(Id id, IsarReader reader, List<int> offsets, Map<Type, List<int>> allOffsets) {
+MetricEvent _metricEventDeserialize(
+  Id id,
+  IsarReader reader,
+  List<int> offsets,
+  Map<Type, List<int>> allOffsets,
+) {
   final object = MetricEvent();
   object.action = reader.readString(offsets[0]);
   object.at = reader.readDateTime(offsets[1]);
@@ -66,7 +86,12 @@ MetricEvent _metricEventDeserialize(Id id, IsarReader reader, List<int> offsets,
   return object;
 }
 
-P _metricEventDeserializeProp<P>(IsarReader reader, int propertyId, int offset, Map<Type, List<int>> allOffsets) {
+P _metricEventDeserializeProp<P>(
+  IsarReader reader,
+  int propertyId,
+  int offset,
+  Map<Type, List<int>> allOffsets,
+) {
   switch (propertyId) {
     case 0:
       return (reader.readString(offset)) as P;
@@ -87,11 +112,16 @@ List<IsarLinkBase<dynamic>> _metricEventGetLinks(MetricEvent object) {
   return [];
 }
 
-void _metricEventAttach(IsarCollection<dynamic> col, Id id, MetricEvent object) {
+void _metricEventAttach(
+  IsarCollection<dynamic> col,
+  Id id,
+  MetricEvent object,
+) {
   object.id = id;
 }
 
-extension MetricEventQueryWhereSort on QueryBuilder<MetricEvent, MetricEvent, QWhere> {
+extension MetricEventQueryWhereSort
+    on QueryBuilder<MetricEvent, MetricEvent, QWhere> {
   QueryBuilder<MetricEvent, MetricEvent, QAfterWhere> anyId() {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(const IdWhereClause.any());
@@ -99,36 +129,57 @@ extension MetricEventQueryWhereSort on QueryBuilder<MetricEvent, MetricEvent, QW
   }
 }
 
-extension MetricEventQueryWhere on QueryBuilder<MetricEvent, MetricEvent, QWhereClause> {
+extension MetricEventQueryWhere
+    on QueryBuilder<MetricEvent, MetricEvent, QWhereClause> {
   QueryBuilder<MetricEvent, MetricEvent, QAfterWhereClause> idEqualTo(Id id) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(IdWhereClause.between(lower: id, upper: id));
     });
   }
 
-  QueryBuilder<MetricEvent, MetricEvent, QAfterWhereClause> idNotEqualTo(Id id) {
+  QueryBuilder<MetricEvent, MetricEvent, QAfterWhereClause> idNotEqualTo(
+    Id id,
+  ) {
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
         return query
-            .addWhereClause(IdWhereClause.lessThan(upper: id, includeUpper: false))
-            .addWhereClause(IdWhereClause.greaterThan(lower: id, includeLower: false));
+            .addWhereClause(
+              IdWhereClause.lessThan(upper: id, includeUpper: false),
+            )
+            .addWhereClause(
+              IdWhereClause.greaterThan(lower: id, includeLower: false),
+            );
       } else {
         return query
-            .addWhereClause(IdWhereClause.greaterThan(lower: id, includeLower: false))
-            .addWhereClause(IdWhereClause.lessThan(upper: id, includeUpper: false));
+            .addWhereClause(
+              IdWhereClause.greaterThan(lower: id, includeLower: false),
+            )
+            .addWhereClause(
+              IdWhereClause.lessThan(upper: id, includeUpper: false),
+            );
       }
     });
   }
 
-  QueryBuilder<MetricEvent, MetricEvent, QAfterWhereClause> idGreaterThan(Id id, {bool include = false}) {
+  QueryBuilder<MetricEvent, MetricEvent, QAfterWhereClause> idGreaterThan(
+    Id id, {
+    bool include = false,
+  }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IdWhereClause.greaterThan(lower: id, includeLower: include));
+      return query.addWhereClause(
+        IdWhereClause.greaterThan(lower: id, includeLower: include),
+      );
     });
   }
 
-  QueryBuilder<MetricEvent, MetricEvent, QAfterWhereClause> idLessThan(Id id, {bool include = false}) {
+  QueryBuilder<MetricEvent, MetricEvent, QAfterWhereClause> idLessThan(
+    Id id, {
+    bool include = false,
+  }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IdWhereClause.lessThan(upper: id, includeUpper: include));
+      return query.addWhereClause(
+        IdWhereClause.lessThan(upper: id, includeUpper: include),
+      );
     });
   }
 
@@ -140,60 +191,102 @@ extension MetricEventQueryWhere on QueryBuilder<MetricEvent, MetricEvent, QWhere
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
-        IdWhereClause.between(lower: lowerId, includeLower: includeLower, upper: upperId, includeUpper: includeUpper),
+        IdWhereClause.between(
+          lower: lowerId,
+          includeLower: includeLower,
+          upper: upperId,
+          includeUpper: includeUpper,
+        ),
       );
     });
   }
 
-  QueryBuilder<MetricEvent, MetricEvent, QAfterWhereClause> actionEqualTo(String action) {
+  QueryBuilder<MetricEvent, MetricEvent, QAfterWhereClause> actionEqualTo(
+    String action,
+  ) {
     return QueryBuilder.apply(this, (query) {
-      return query.addWhereClause(IndexWhereClause.equalTo(indexName: r'action', value: [action]));
+      return query.addWhereClause(
+        IndexWhereClause.equalTo(indexName: r'action', value: [action]),
+      );
     });
   }
 
-  QueryBuilder<MetricEvent, MetricEvent, QAfterWhereClause> actionNotEqualTo(String action) {
+  QueryBuilder<MetricEvent, MetricEvent, QAfterWhereClause> actionNotEqualTo(
+    String action,
+  ) {
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
         return query
             .addWhereClause(
-              IndexWhereClause.between(indexName: r'action', lower: [], upper: [action], includeUpper: false),
+              IndexWhereClause.between(
+                indexName: r'action',
+                lower: [],
+                upper: [action],
+                includeUpper: false,
+              ),
             )
             .addWhereClause(
-              IndexWhereClause.between(indexName: r'action', lower: [action], includeLower: false, upper: []),
+              IndexWhereClause.between(
+                indexName: r'action',
+                lower: [action],
+                includeLower: false,
+                upper: [],
+              ),
             );
       } else {
         return query
             .addWhereClause(
-              IndexWhereClause.between(indexName: r'action', lower: [action], includeLower: false, upper: []),
+              IndexWhereClause.between(
+                indexName: r'action',
+                lower: [action],
+                includeLower: false,
+                upper: [],
+              ),
             )
             .addWhereClause(
-              IndexWhereClause.between(indexName: r'action', lower: [], upper: [action], includeUpper: false),
+              IndexWhereClause.between(
+                indexName: r'action',
+                lower: [],
+                upper: [action],
+                includeUpper: false,
+              ),
             );
       }
     });
   }
 }
 
-extension MetricEventQueryFilter on QueryBuilder<MetricEvent, MetricEvent, QFilterCondition> {
+extension MetricEventQueryFilter
+    on QueryBuilder<MetricEvent, MetricEvent, QFilterCondition> {
   QueryBuilder<MetricEvent, MetricEvent, QAfterFilterCondition> actionEqualTo(
     String value, {
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.equalTo(property: r'action', value: value, caseSensitive: caseSensitive),
+        FilterCondition.equalTo(
+          property: r'action',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
       );
     });
   }
 
-  QueryBuilder<MetricEvent, MetricEvent, QAfterFilterCondition> actionGreaterThan(
+  QueryBuilder<MetricEvent, MetricEvent, QAfterFilterCondition>
+  actionGreaterThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.greaterThan(include: include, property: r'action', value: value, caseSensitive: caseSensitive),
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'action',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
       );
     });
   }
@@ -205,7 +298,12 @@ extension MetricEventQueryFilter on QueryBuilder<MetricEvent, MetricEvent, QFilt
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.lessThan(include: include, property: r'action', value: value, caseSensitive: caseSensitive),
+        FilterCondition.lessThan(
+          include: include,
+          property: r'action',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
       );
     });
   }
@@ -231,13 +329,15 @@ extension MetricEventQueryFilter on QueryBuilder<MetricEvent, MetricEvent, QFilt
     });
   }
 
-  QueryBuilder<MetricEvent, MetricEvent, QAfterFilterCondition> actionStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
+  QueryBuilder<MetricEvent, MetricEvent, QAfterFilterCondition>
+  actionStartsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.startsWith(property: r'action', value: value, caseSensitive: caseSensitive),
+        FilterCondition.startsWith(
+          property: r'action',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
       );
     });
   }
@@ -248,7 +348,11 @@ extension MetricEventQueryFilter on QueryBuilder<MetricEvent, MetricEvent, QFilt
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.endsWith(property: r'action', value: value, caseSensitive: caseSensitive),
+        FilterCondition.endsWith(
+          property: r'action',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
       );
     });
   }
@@ -259,7 +363,11 @@ extension MetricEventQueryFilter on QueryBuilder<MetricEvent, MetricEvent, QFilt
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.contains(property: r'action', value: value, caseSensitive: caseSensitive),
+        FilterCondition.contains(
+          property: r'action',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
       );
     });
   }
@@ -270,38 +378,70 @@ extension MetricEventQueryFilter on QueryBuilder<MetricEvent, MetricEvent, QFilt
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
-        FilterCondition.matches(property: r'action', wildcard: pattern, caseSensitive: caseSensitive),
+        FilterCondition.matches(
+          property: r'action',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
       );
     });
   }
 
-  QueryBuilder<MetricEvent, MetricEvent, QAfterFilterCondition> actionIsEmpty() {
+  QueryBuilder<MetricEvent, MetricEvent, QAfterFilterCondition>
+  actionIsEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(property: r'action', value: ''));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'action', value: ''),
+      );
     });
   }
 
-  QueryBuilder<MetricEvent, MetricEvent, QAfterFilterCondition> actionIsNotEmpty() {
+  QueryBuilder<MetricEvent, MetricEvent, QAfterFilterCondition>
+  actionIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(property: r'action', value: ''));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'action', value: ''),
+      );
     });
   }
 
-  QueryBuilder<MetricEvent, MetricEvent, QAfterFilterCondition> atEqualTo(DateTime value) {
+  QueryBuilder<MetricEvent, MetricEvent, QAfterFilterCondition> atEqualTo(
+    DateTime value,
+  ) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(property: r'at', value: value));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'at', value: value),
+      );
     });
   }
 
-  QueryBuilder<MetricEvent, MetricEvent, QAfterFilterCondition> atGreaterThan(DateTime value, {bool include = false}) {
+  QueryBuilder<MetricEvent, MetricEvent, QAfterFilterCondition> atGreaterThan(
+    DateTime value, {
+    bool include = false,
+  }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(include: include, property: r'at', value: value));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'at',
+          value: value,
+        ),
+      );
     });
   }
 
-  QueryBuilder<MetricEvent, MetricEvent, QAfterFilterCondition> atLessThan(DateTime value, {bool include = false}) {
+  QueryBuilder<MetricEvent, MetricEvent, QAfterFilterCondition> atLessThan(
+    DateTime value, {
+    bool include = false,
+  }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(include: include, property: r'at', value: value));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'at',
+          value: value,
+        ),
+      );
     });
   }
 
@@ -324,21 +464,43 @@ extension MetricEventQueryFilter on QueryBuilder<MetricEvent, MetricEvent, QFilt
     });
   }
 
-  QueryBuilder<MetricEvent, MetricEvent, QAfterFilterCondition> idEqualTo(Id value) {
+  QueryBuilder<MetricEvent, MetricEvent, QAfterFilterCondition> idEqualTo(
+    Id value,
+  ) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(property: r'id', value: value));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'id', value: value),
+      );
     });
   }
 
-  QueryBuilder<MetricEvent, MetricEvent, QAfterFilterCondition> idGreaterThan(Id value, {bool include = false}) {
+  QueryBuilder<MetricEvent, MetricEvent, QAfterFilterCondition> idGreaterThan(
+    Id value, {
+    bool include = false,
+  }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(include: include, property: r'id', value: value));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'id',
+          value: value,
+        ),
+      );
     });
   }
 
-  QueryBuilder<MetricEvent, MetricEvent, QAfterFilterCondition> idLessThan(Id value, {bool include = false}) {
+  QueryBuilder<MetricEvent, MetricEvent, QAfterFilterCondition> idLessThan(
+    Id value, {
+    bool include = false,
+  }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(include: include, property: r'id', value: value));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'id',
+          value: value,
+        ),
+      );
     });
   }
 
@@ -361,21 +523,41 @@ extension MetricEventQueryFilter on QueryBuilder<MetricEvent, MetricEvent, QFilt
     });
   }
 
-  QueryBuilder<MetricEvent, MetricEvent, QAfterFilterCondition> millisEqualTo(int value) {
+  QueryBuilder<MetricEvent, MetricEvent, QAfterFilterCondition> millisEqualTo(
+    int value,
+  ) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(property: r'millis', value: value));
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'millis', value: value),
+      );
     });
   }
 
-  QueryBuilder<MetricEvent, MetricEvent, QAfterFilterCondition> millisGreaterThan(int value, {bool include = false}) {
+  QueryBuilder<MetricEvent, MetricEvent, QAfterFilterCondition>
+  millisGreaterThan(int value, {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(include: include, property: r'millis', value: value));
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'millis',
+          value: value,
+        ),
+      );
     });
   }
 
-  QueryBuilder<MetricEvent, MetricEvent, QAfterFilterCondition> millisLessThan(int value, {bool include = false}) {
+  QueryBuilder<MetricEvent, MetricEvent, QAfterFilterCondition> millisLessThan(
+    int value, {
+    bool include = false,
+  }) {
     return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(include: include, property: r'millis', value: value));
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'millis',
+          value: value,
+        ),
+      );
     });
   }
 
@@ -399,11 +581,14 @@ extension MetricEventQueryFilter on QueryBuilder<MetricEvent, MetricEvent, QFilt
   }
 }
 
-extension MetricEventQueryObject on QueryBuilder<MetricEvent, MetricEvent, QFilterCondition> {}
+extension MetricEventQueryObject
+    on QueryBuilder<MetricEvent, MetricEvent, QFilterCondition> {}
 
-extension MetricEventQueryLinks on QueryBuilder<MetricEvent, MetricEvent, QFilterCondition> {}
+extension MetricEventQueryLinks
+    on QueryBuilder<MetricEvent, MetricEvent, QFilterCondition> {}
 
-extension MetricEventQuerySortBy on QueryBuilder<MetricEvent, MetricEvent, QSortBy> {
+extension MetricEventQuerySortBy
+    on QueryBuilder<MetricEvent, MetricEvent, QSortBy> {
   QueryBuilder<MetricEvent, MetricEvent, QAfterSortBy> sortByAction() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'action', Sort.asc);
@@ -441,7 +626,8 @@ extension MetricEventQuerySortBy on QueryBuilder<MetricEvent, MetricEvent, QSort
   }
 }
 
-extension MetricEventQuerySortThenBy on QueryBuilder<MetricEvent, MetricEvent, QSortThenBy> {
+extension MetricEventQuerySortThenBy
+    on QueryBuilder<MetricEvent, MetricEvent, QSortThenBy> {
   QueryBuilder<MetricEvent, MetricEvent, QAfterSortBy> thenByAction() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'action', Sort.asc);
@@ -491,8 +677,11 @@ extension MetricEventQuerySortThenBy on QueryBuilder<MetricEvent, MetricEvent, Q
   }
 }
 
-extension MetricEventQueryWhereDistinct on QueryBuilder<MetricEvent, MetricEvent, QDistinct> {
-  QueryBuilder<MetricEvent, MetricEvent, QDistinct> distinctByAction({bool caseSensitive = true}) {
+extension MetricEventQueryWhereDistinct
+    on QueryBuilder<MetricEvent, MetricEvent, QDistinct> {
+  QueryBuilder<MetricEvent, MetricEvent, QDistinct> distinctByAction({
+    bool caseSensitive = true,
+  }) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'action', caseSensitive: caseSensitive);
     });
@@ -511,7 +700,8 @@ extension MetricEventQueryWhereDistinct on QueryBuilder<MetricEvent, MetricEvent
   }
 }
 
-extension MetricEventQueryProperty on QueryBuilder<MetricEvent, MetricEvent, QQueryProperty> {
+extension MetricEventQueryProperty
+    on QueryBuilder<MetricEvent, MetricEvent, QQueryProperty> {
   QueryBuilder<MetricEvent, int, QQueryOperations> idProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'id');

@@ -23,6 +23,7 @@ import '../data/ai/prompt_repository.dart';
 import '../data/isar/collections/schemas.dart';
 import '../domain/dashboard.dart';
 import '../domain/quick_check.dart';
+import '../domain/streak.dart';
 import '../domain/vibe.dart';
 import '../platform/image_store.dart';
 import '../platform/secret_store.dart';
@@ -162,10 +163,11 @@ final todayPickProvider = AsyncNotifierProvider<TodayPickNotifier, PickOutcome>(
 // Dashboard
 
 class DashboardView {
-  DashboardView(this.state, this.vibe, this.profile);
+  DashboardView(this.state, this.vibe, this.profile, this.streak);
   final DashboardState state;
   final VibeResult vibe;
   final UserProfile profile;
+  final StreakResult streak;
 }
 
 Future<DashboardView> loadDashboard(Isar isar, DateTime now, {Recipe? pick}) async {
@@ -200,7 +202,18 @@ Future<DashboardView> loadDashboard(Isar isar, DateTime now, {Recipe? pick}) asy
     ),
   );
   final vibe = VibeScorer.score(state, profile, money, pickTitle: pick?.title, pickProtein: pick?.perPortion.proteinG);
-  return DashboardView(state, vibe, profile);
+  final todayKey = clock.dateKey(now);
+  final since = DayClock.addDaysToKey(todayKey, -120);
+  final loggedDays = <int>{
+    ...(await isar.dailyLogs.where().dateKeyGreaterThan(since).filter().mealsCountGreaterThan(0).findAll()).map(
+      (l) => l.dateKey,
+    ),
+    ...(await isar.transactions.where().occurredAtGreaterThan(DayClock.dateOfKey(since)).findAll()).map(
+      (t) => clock.dateKey(t.occurredAt),
+    ),
+  };
+  final streak = StreakCalculator.compute(loggedDays, todayKey, weekStartsOn: profile.weekStartsOn);
+  return DashboardView(state, vibe, profile, streak);
 }
 
 final dashboardProvider = StreamProvider<DashboardView>((ref) {

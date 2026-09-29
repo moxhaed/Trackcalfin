@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'integrations.dart';
+import 'providers.dart';
 import 'messenger.dart';
 import 'theme.dart';
 
@@ -39,7 +40,13 @@ class _TrackcalfinAppState extends ConsumerState<TrackcalfinApp> with WidgetsBin
 
   @override
   Widget build(BuildContext context) {
+    final mode = switch (ref.watch(profileProvider).value?.themeMode) {
+      'light' => ThemeMode.light,
+      'dark' => ThemeMode.dark,
+      _ => ThemeMode.system,
+    };
     return MaterialApp.router(
+      themeMode: mode,
       title: 'Trackcalfin',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.build(Brightness.light),

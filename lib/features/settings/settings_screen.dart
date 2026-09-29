@@ -170,7 +170,19 @@ class SettingsScreen extends ConsumerWidget {
             value: p.geminiModel,
             onSave: (v) => update((x) => x.geminiModel = v.trim().isEmpty ? 'gemini-3.8-flash' : v.trim()),
           ),
-          const _Section('Region'),
+          const _Section('Appearance & region'),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(value: 'system', label: Text('System'), icon: Icon(Icons.brightness_auto_outlined)),
+                ButtonSegment(value: 'light', label: Text('Light'), icon: Icon(Icons.light_mode_outlined)),
+                ButtonSegment(value: 'dark', label: Text('Dark'), icon: Icon(Icons.dark_mode_outlined)),
+              ],
+              selected: {p.themeMode},
+              onSelectionChanged: (v) => update((x) => x.themeMode = v.first),
+            ),
+          ),
           _TextTile(
             title: 'Currency (ISO code)',
             value: p.currency,

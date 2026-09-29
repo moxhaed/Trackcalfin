@@ -1,5 +1,12 @@
 # 02 · Infrastructure & Data Flow
 
+> **As built (differences from this plan).** The code in `lib/` is the source of truth. Where it differs from this document:
+> - **HTTP client:** `package:http` instead of `dio`. It ships `MockClient`, which the AI tests use.
+> - **No separate repository classes.** Each use case in `lib/application/` talks to Isar directly and owns its write transaction. Screens read reactive Isar queries through Riverpod providers (`lib/app/providers.dart`).
+> - **Domain purity:** engines in `lib/domain/` never touch an `Isar` instance or do I/O, but they read the Isar entity classes as plain data rather than mapping to separate domain models.
+> - **Navigation:** Settings is a fourth bottom-bar slot next to the ⊕ button (more discoverable than a gear icon), and the Cook tab's ask bar sits at the top of the screen so the ⊕ button never covers it.
+> - **Extras:** a `MetricEvent` collection for time-to-log stats, a Light/Dark/System theme setting, a streak with a weekly freeze on the Dashboard, and opt-in demo data (`--dart-define=DEMO=true`).
+
 ## 2.1 Guiding rules
 
 1. **LLM proposes, Dart disposes.** Gemini makes the *semantic* decisions: what's on this receipt, which dish to cook, which pantry item matches "parmesan". **All arithmetic is Dart**: costs, macros, depletion, totals, projections, scores. Model numbers are only a cross-check.
@@ -15,7 +22,7 @@
 | UI / state | Flutter + `flutter_riverpod` | `StreamProvider`s wrap Isar watchers. `Notifier`s drive screen controllers. |
 | Routing | `go_router` | `StatefulShellRoute` for the 3 tabs. Deep links from notifications (`/cook`, `/buy/inbox`). |
 | Database | **`isar_community`** (+ `isar_community_flutter_libs`, `isar_community_generator`, `build_runner`) | Community-maintained fork of Isar 3.x with the same API. It exists to keep Isar 3 building on current Flutter and Android toolchains, so prefer it over the original `isar` package. |
-| AI | Gemini **`gemini-3.8-flash`** via REST (`dio`) | Thin in-house client. See §2.9 for why not an SDK. |
+| AI | Gemini **`gemini-3.8-flash`** via REST (`http`) | Thin in-house client. See §2.9 for why not an SDK. |
 | Secrets | `flutter_secure_storage` | Gemini API key only. Never stored in Isar, exports or logs. |
 | AI DTOs | `freezed` + `json_serializable` | Only for AI request and response payloads. Isar classes stay plain. |
 | Camera | Document-scanner plugin (e.g. `cunning_document_scanner`), fallback `image_picker` | Auto edge detection and auto-capture, multi-page for long receipts. |
