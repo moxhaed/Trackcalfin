@@ -99,6 +99,22 @@ void main() {
     expect(find.textContaining('receipt says'), findsOneWidget);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
+  testWidgets('a foreign receipt files in the home currency and keeps the original', (tester) async {
+    await pumpApp(tester, initial: '/inbox');
+    expect(find.textContaining('(CHF 23.10)'), findsOneWidget);
+    await tester.tap(find.textContaining('Migros'));
+    await settle(tester);
+    expect(find.text('Receipt in CHF'), findsOneWidget);
+    expect(find.textContaining('European Central Bank rate'), findsOneWidget);
+    await tester.tap(find.text('Looks good'));
+    await settle(tester);
+    final tx = await isar.transactions.filter().originalCurrencyEqualTo('CHF').findFirst();
+    expect(tx, isNotNull);
+    expect(tx!.currency, 'EUR');
+    expect(tx.originalTotalMinor, 2310);
+    expect(tx.totalMinor, 2474);
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
   testWidgets('settings and onboarding render', (tester) async {
     await pumpApp(tester, initial: '/settings');
     expect(find.text('Monthly food budget'), findsOneWidget);

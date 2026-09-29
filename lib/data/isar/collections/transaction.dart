@@ -32,6 +32,12 @@ class Transaction {
 
   int? scanJobId;
   String? note;
+
+  /// Set when the receipt was in another currency. [totalMinor] and the lines
+  /// are always in the home currency; these keep what was printed.
+  String? originalCurrency;
+  int? originalTotalMinor;
+  double? fxRate;
   DateTime createdAt = DateTime.now();
 }
 

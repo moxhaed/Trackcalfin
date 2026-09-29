@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:async/async.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:isar_community/isar.dart';
 
 import '../application/ai_gateway.dart';
@@ -10,6 +11,7 @@ import '../application/ask_service.dart';
 import '../application/backup_service.dart';
 import '../application/cook_service.dart';
 import '../application/daily_pick_service.dart';
+import '../application/fx_service.dart';
 import '../application/ledger_service.dart';
 import '../application/metrics_service.dart';
 import '../application/pantry_service.dart';
@@ -20,6 +22,7 @@ import '../core/day_clock.dart';
 import '../core/enums.dart';
 import '../core/money.dart';
 import '../data/ai/prompt_repository.dart';
+import '../data/fx/fx_rate_client.dart';
 import '../data/isar/collections/schemas.dart';
 import '../domain/dashboard.dart';
 import '../domain/quick_check.dart';
@@ -54,11 +57,15 @@ final aiGatewayProvider = Provider(
     prompts: ref.watch(promptRepositoryProvider),
   ),
 );
+final fxServiceProvider = Provider(
+  (ref) => FxService(ref.watch(isarProvider), client: FxRateClient(http.Client()), now: ref.watch(nowProvider)),
+);
 final scanServiceProvider = Provider(
   (ref) => ScanService(
     isar: ref.watch(isarProvider),
     images: ref.watch(imageStoreProvider),
     ai: ref.watch(aiGatewayProvider),
+    fx: ref.watch(fxServiceProvider),
     now: ref.watch(nowProvider),
   ),
 );

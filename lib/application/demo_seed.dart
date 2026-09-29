@@ -491,6 +491,54 @@ class DemoSeed {
       );
       await isar.dailyLogs.putAll(logs);
 
+      // A receipt from a trip, in Swiss francs, converted at the ECB rate.
+      await isar.scanJobs.put(
+        ScanJob()
+          ..status = ScanStatus.needsReview
+          ..kind = ScanKind.receipt
+          ..capturedAt = t.subtract(const Duration(days: 1))
+          ..merchant = 'Migros Zürich'
+          ..purchasedAt = t.subtract(const Duration(days: 1))
+          ..receiptTotalMinor = 2310
+          ..currency = 'CHF'
+          ..fxRate = 1.0712
+          ..fxSource = 'ecb'
+          ..fxDate = t.subtract(const Duration(days: 1))
+          ..flags = ['foreign_currency']
+          ..lines = [
+            DraftLine()
+              ..rawText = 'M-BUDGET TEIGWAREN 1.90'
+              ..name = 'Pasta'
+              ..totalMinor = 190
+              ..ingredientKey = 'dry_pasta'
+              ..qty = 500
+              ..qtySource = QtySource.printed,
+            DraftLine()
+              ..rawText = 'GRUYERE AOP 8.40'
+              ..name = 'Gruyère'
+              ..totalMinor = 840
+              ..ingredientKey = 'gruyere'
+              ..isNewIngredient = true
+              ..qty = 250
+              ..qtySource = QtySource.printed
+              ..profile = (NewIngredientProfile()
+                ..name = 'Gruyère'
+                ..category = IngredientCategory.dairyEggs
+                ..per100 = Nutrition(kcal: 413, proteinG: 30, fatG: 32)
+                ..shelfLifeDays = 30),
+            DraftLine()
+              ..rawText = 'SANDWICH POULET 6.95'
+              ..name = 'Chicken sandwich'
+              ..category = SpendCategory.eatingOut
+              ..totalMinor = 695,
+            DraftLine()
+              ..rawText = 'SONNENCREME 5.85'
+              ..name = 'Sunscreen'
+              ..category = SpendCategory.household
+              ..totalMinor = 585,
+          ],
+      );
+
       // One receipt waiting in the inbox.
       await isar.scanJobs.put(
         ScanJob()

@@ -34,7 +34,7 @@ void main() {
     final capturedAt = DateTime(2026, 9, 27, 19);
 
     ReceiptExtraction example([void Function(Map<String, dynamic>)? edit]) {
-      final json = jsonDecode(promptExample('receipt_extraction.v1.md')) as Map<String, dynamic>;
+      final json = jsonDecode(promptExample('receipt_extraction.v2.md')) as Map<String, dynamic>;
       edit?.call(json);
       return ReceiptExtraction.parse(json).value!;
     }
@@ -72,6 +72,17 @@ void main() {
       );
       expect(d.flags, containsAll(['total_mismatch', 'foreign_currency', 'merge_proposed']));
       expect(d.lines[0].mergeCandidateId, breast.id);
+      expect(d.autoCommitEligible, isFalse);
+    });
+
+    test('an uncertain currency blocks auto-commit', () {
+      final d = ReceiptValidator.validate(
+        example((j) => j['warnings'] = ['currency_uncertain']),
+        matcher: IngredientMatcher([ingredient('chicken_breast')]),
+        homeCurrency: 'EUR',
+        capturedAt: capturedAt,
+      );
+      expect(d.flags, contains('currency_uncertain'));
       expect(d.autoCommitEligible, isFalse);
     });
 

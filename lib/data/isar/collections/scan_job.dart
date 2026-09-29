@@ -36,6 +36,14 @@ class ScanJob {
   /// total_mismatch, foreign_currency, merge_proposed, ...
   List<String> flags = [];
 
+  /// Foreign-currency receipts: 1 [currency] = [fxRate] home currency.
+  /// Line amounts stay in the receipt's currency until commit.
+  double? fxRate;
+
+  /// ecb, manual, charged or remembered (see FxSource).
+  String? fxSource;
+  DateTime? fxDate;
+
   int? aiCallLogId;
 
   /// Set on commit.

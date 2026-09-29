@@ -60,7 +60,7 @@ void main() {
           ..name = 'Chicken breast'
           ..key = 'chicken_breast',
       );
-      fake.reply(promptExample('receipt_extraction.v1.md'));
+      fake.reply(promptExample('receipt_extraction.v2.md'));
       final s = service();
       final id = await s.enqueue([await photo()], hint: 'receipt');
       final results = await s.processQueue();
@@ -90,7 +90,7 @@ void main() {
     });
 
     test('messy receipt waits for review; commit is idempotent', () async {
-      final json = jsonDecode(promptExample('receipt_extraction.v1.md')) as Map<String, dynamic>;
+      final json = jsonDecode(promptExample('receipt_extraction.v2.md')) as Map<String, dynamic>;
       json['receipt_total_minor'] = 999;
       fake.replyJson(json);
       final s = service();

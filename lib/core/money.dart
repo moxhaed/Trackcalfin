@@ -21,7 +21,12 @@ class MoneyFormat {
   /// 1250 -> "€12.50". [whole] drops the minor digits: "€13".
   String format(int minor, {bool whole = false, bool signed = false}) {
     final f = NumberFormat.simpleCurrency(locale: locale, name: currency, decimalDigits: whole ? 0 : digits);
-    final text = f.format(minor / _factor);
+    var text = f.format(minor / _factor);
+    // Letter codes read better with a space: "CHF 23.10", not "CHF23.10".
+    final sym = f.currencySymbol;
+    if (RegExp(r'^[A-Za-z]{2,}$').hasMatch(sym) && !text.contains('$sym ')) {
+      text = text.replaceFirst(sym, '$sym ');
+    }
     if (signed && minor > 0) return '+$text';
     return text;
   }

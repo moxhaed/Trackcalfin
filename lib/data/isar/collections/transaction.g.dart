@@ -27,43 +27,54 @@ const TransactionSchema = CollectionSchema(
       name: r'currency',
       type: IsarType.string,
     ),
+    r'fxRate': PropertySchema(id: 2, name: r'fxRate', type: IsarType.double),
     r'lines': PropertySchema(
-      id: 2,
+      id: 3,
       name: r'lines',
       type: IsarType.objectList,
 
       target: r'LineItem',
     ),
     r'merchant': PropertySchema(
-      id: 3,
+      id: 4,
       name: r'merchant',
       type: IsarType.string,
     ),
-    r'note': PropertySchema(id: 4, name: r'note', type: IsarType.string),
+    r'note': PropertySchema(id: 5, name: r'note', type: IsarType.string),
     r'occurredAt': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'occurredAt',
       type: IsarType.dateTime,
     ),
+    r'originalCurrency': PropertySchema(
+      id: 7,
+      name: r'originalCurrency',
+      type: IsarType.string,
+    ),
+    r'originalTotalMinor': PropertySchema(
+      id: 8,
+      name: r'originalTotalMinor',
+      type: IsarType.long,
+    ),
     r'primaryCategory': PropertySchema(
-      id: 6,
+      id: 9,
       name: r'primaryCategory',
       type: IsarType.string,
       enumMap: _TransactionprimaryCategoryEnumValueMap,
     ),
     r'scanJobId': PropertySchema(
-      id: 7,
+      id: 10,
       name: r'scanJobId',
       type: IsarType.long,
     ),
     r'source': PropertySchema(
-      id: 8,
+      id: 11,
       name: r'source',
       type: IsarType.string,
       enumMap: _TransactionsourceEnumValueMap,
     ),
     r'totalMinor': PropertySchema(
-      id: 9,
+      id: 12,
       name: r'totalMinor',
       type: IsarType.long,
     ),
@@ -138,6 +149,12 @@ int _transactionEstimateSize(
       bytesCount += 3 + value.length * 3;
     }
   }
+  {
+    final value = object.originalCurrency;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount += 3 + object.primaryCategory.name.length * 3;
   bytesCount += 3 + object.source.name.length * 3;
   return bytesCount;
@@ -151,19 +168,22 @@ void _transactionSerialize(
 ) {
   writer.writeDateTime(offsets[0], object.createdAt);
   writer.writeString(offsets[1], object.currency);
+  writer.writeDouble(offsets[2], object.fxRate);
   writer.writeObjectList<LineItem>(
-    offsets[2],
+    offsets[3],
     allOffsets,
     LineItemSchema.serialize,
     object.lines,
   );
-  writer.writeString(offsets[3], object.merchant);
-  writer.writeString(offsets[4], object.note);
-  writer.writeDateTime(offsets[5], object.occurredAt);
-  writer.writeString(offsets[6], object.primaryCategory.name);
-  writer.writeLong(offsets[7], object.scanJobId);
-  writer.writeString(offsets[8], object.source.name);
-  writer.writeLong(offsets[9], object.totalMinor);
+  writer.writeString(offsets[4], object.merchant);
+  writer.writeString(offsets[5], object.note);
+  writer.writeDateTime(offsets[6], object.occurredAt);
+  writer.writeString(offsets[7], object.originalCurrency);
+  writer.writeLong(offsets[8], object.originalTotalMinor);
+  writer.writeString(offsets[9], object.primaryCategory.name);
+  writer.writeLong(offsets[10], object.scanJobId);
+  writer.writeString(offsets[11], object.source.name);
+  writer.writeLong(offsets[12], object.totalMinor);
 }
 
 Transaction _transactionDeserialize(
@@ -175,28 +195,31 @@ Transaction _transactionDeserialize(
   final object = Transaction();
   object.createdAt = reader.readDateTime(offsets[0]);
   object.currency = reader.readString(offsets[1]);
+  object.fxRate = reader.readDoubleOrNull(offsets[2]);
   object.id = id;
   object.lines =
       reader.readObjectList<LineItem>(
-        offsets[2],
+        offsets[3],
         LineItemSchema.deserialize,
         allOffsets,
         LineItem(),
       ) ??
       [];
-  object.merchant = reader.readStringOrNull(offsets[3]);
-  object.note = reader.readStringOrNull(offsets[4]);
-  object.occurredAt = reader.readDateTime(offsets[5]);
+  object.merchant = reader.readStringOrNull(offsets[4]);
+  object.note = reader.readStringOrNull(offsets[5]);
+  object.occurredAt = reader.readDateTime(offsets[6]);
+  object.originalCurrency = reader.readStringOrNull(offsets[7]);
+  object.originalTotalMinor = reader.readLongOrNull(offsets[8]);
   object.primaryCategory =
       _TransactionprimaryCategoryValueEnumMap[reader.readStringOrNull(
-        offsets[6],
+        offsets[9],
       )] ??
       SpendCategory.groceries;
-  object.scanJobId = reader.readLongOrNull(offsets[7]);
+  object.scanJobId = reader.readLongOrNull(offsets[10]);
   object.source =
-      _TransactionsourceValueEnumMap[reader.readStringOrNull(offsets[8])] ??
+      _TransactionsourceValueEnumMap[reader.readStringOrNull(offsets[11])] ??
       TxSource.receiptScan;
-  object.totalMinor = reader.readLong(offsets[9]);
+  object.totalMinor = reader.readLong(offsets[12]);
   return object;
 }
 
@@ -212,6 +235,8 @@ P _transactionDeserializeProp<P>(
     case 1:
       return (reader.readString(offset)) as P;
     case 2:
+      return (reader.readDoubleOrNull(offset)) as P;
+    case 3:
       return (reader.readObjectList<LineItem>(
                 offset,
                 LineItemSchema.deserialize,
@@ -220,25 +245,29 @@ P _transactionDeserializeProp<P>(
               ) ??
               [])
           as P;
-    case 3:
-      return (reader.readStringOrNull(offset)) as P;
     case 4:
       return (reader.readStringOrNull(offset)) as P;
     case 5:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 6:
+      return (reader.readDateTime(offset)) as P;
+    case 7:
+      return (reader.readStringOrNull(offset)) as P;
+    case 8:
+      return (reader.readLongOrNull(offset)) as P;
+    case 9:
       return (_TransactionprimaryCategoryValueEnumMap[reader.readStringOrNull(
                 offset,
               )] ??
               SpendCategory.groceries)
           as P;
-    case 7:
+    case 10:
       return (reader.readLongOrNull(offset)) as P;
-    case 8:
+    case 11:
       return (_TransactionsourceValueEnumMap[reader.readStringOrNull(offset)] ??
               TxSource.receiptScan)
           as P;
-    case 9:
+    case 12:
       return (reader.readLong(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -736,6 +765,98 @@ extension TransactionQueryFilter
     });
   }
 
+  QueryBuilder<Transaction, Transaction, QAfterFilterCondition> fxRateIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'fxRate'),
+      );
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterFilterCondition>
+  fxRateIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'fxRate'),
+      );
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterFilterCondition> fxRateEqualTo(
+    double? value, {
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'fxRate',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterFilterCondition>
+  fxRateGreaterThan(
+    double? value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'fxRate',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterFilterCondition> fxRateLessThan(
+    double? value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'fxRate',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterFilterCondition> fxRateBetween(
+    double? lower,
+    double? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'fxRate',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
   QueryBuilder<Transaction, Transaction, QAfterFilterCondition> idEqualTo(
     Id value,
   ) {
@@ -1229,6 +1350,238 @@ extension TransactionQueryFilter
   }
 
   QueryBuilder<Transaction, Transaction, QAfterFilterCondition>
+  originalCurrencyIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'originalCurrency'),
+      );
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterFilterCondition>
+  originalCurrencyIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'originalCurrency'),
+      );
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterFilterCondition>
+  originalCurrencyEqualTo(String? value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'originalCurrency',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterFilterCondition>
+  originalCurrencyGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'originalCurrency',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterFilterCondition>
+  originalCurrencyLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'originalCurrency',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterFilterCondition>
+  originalCurrencyBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'originalCurrency',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterFilterCondition>
+  originalCurrencyStartsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'originalCurrency',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterFilterCondition>
+  originalCurrencyEndsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'originalCurrency',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterFilterCondition>
+  originalCurrencyContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'originalCurrency',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterFilterCondition>
+  originalCurrencyMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'originalCurrency',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterFilterCondition>
+  originalCurrencyIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'originalCurrency', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterFilterCondition>
+  originalCurrencyIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'originalCurrency', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterFilterCondition>
+  originalTotalMinorIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'originalTotalMinor'),
+      );
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterFilterCondition>
+  originalTotalMinorIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'originalTotalMinor'),
+      );
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterFilterCondition>
+  originalTotalMinorEqualTo(int? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'originalTotalMinor', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterFilterCondition>
+  originalTotalMinorGreaterThan(int? value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'originalTotalMinor',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterFilterCondition>
+  originalTotalMinorLessThan(int? value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'originalTotalMinor',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterFilterCondition>
+  originalTotalMinorBetween(
+    int? lower,
+    int? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'originalTotalMinor',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterFilterCondition>
   primaryCategoryEqualTo(SpendCategory value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
@@ -1685,6 +2038,18 @@ extension TransactionQuerySortBy
     });
   }
 
+  QueryBuilder<Transaction, Transaction, QAfterSortBy> sortByFxRate() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'fxRate', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterSortBy> sortByFxRateDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'fxRate', Sort.desc);
+    });
+  }
+
   QueryBuilder<Transaction, Transaction, QAfterSortBy> sortByMerchant() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'merchant', Sort.asc);
@@ -1718,6 +2083,34 @@ extension TransactionQuerySortBy
   QueryBuilder<Transaction, Transaction, QAfterSortBy> sortByOccurredAtDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'occurredAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterSortBy>
+  sortByOriginalCurrency() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'originalCurrency', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterSortBy>
+  sortByOriginalCurrencyDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'originalCurrency', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterSortBy>
+  sortByOriginalTotalMinor() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'originalTotalMinor', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterSortBy>
+  sortByOriginalTotalMinorDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'originalTotalMinor', Sort.desc);
     });
   }
 
@@ -1797,6 +2190,18 @@ extension TransactionQuerySortThenBy
     });
   }
 
+  QueryBuilder<Transaction, Transaction, QAfterSortBy> thenByFxRate() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'fxRate', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterSortBy> thenByFxRateDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'fxRate', Sort.desc);
+    });
+  }
+
   QueryBuilder<Transaction, Transaction, QAfterSortBy> thenById() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.asc);
@@ -1842,6 +2247,34 @@ extension TransactionQuerySortThenBy
   QueryBuilder<Transaction, Transaction, QAfterSortBy> thenByOccurredAtDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'occurredAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterSortBy>
+  thenByOriginalCurrency() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'originalCurrency', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterSortBy>
+  thenByOriginalCurrencyDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'originalCurrency', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterSortBy>
+  thenByOriginalTotalMinor() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'originalTotalMinor', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QAfterSortBy>
+  thenByOriginalTotalMinorDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'originalTotalMinor', Sort.desc);
     });
   }
 
@@ -1911,6 +2344,12 @@ extension TransactionQueryWhereDistinct
     });
   }
 
+  QueryBuilder<Transaction, Transaction, QDistinct> distinctByFxRate() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'fxRate');
+    });
+  }
+
   QueryBuilder<Transaction, Transaction, QDistinct> distinctByMerchant({
     bool caseSensitive = true,
   }) {
@@ -1930,6 +2369,24 @@ extension TransactionQueryWhereDistinct
   QueryBuilder<Transaction, Transaction, QDistinct> distinctByOccurredAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'occurredAt');
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QDistinct> distinctByOriginalCurrency({
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(
+        r'originalCurrency',
+        caseSensitive: caseSensitive,
+      );
+    });
+  }
+
+  QueryBuilder<Transaction, Transaction, QDistinct>
+  distinctByOriginalTotalMinor() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'originalTotalMinor');
     });
   }
 
@@ -1985,6 +2442,12 @@ extension TransactionQueryProperty
     });
   }
 
+  QueryBuilder<Transaction, double?, QQueryOperations> fxRateProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'fxRate');
+    });
+  }
+
   QueryBuilder<Transaction, List<LineItem>, QQueryOperations> linesProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'lines');
@@ -2006,6 +2469,20 @@ extension TransactionQueryProperty
   QueryBuilder<Transaction, DateTime, QQueryOperations> occurredAtProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'occurredAt');
+    });
+  }
+
+  QueryBuilder<Transaction, String?, QQueryOperations>
+  originalCurrencyProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'originalCurrency');
+    });
+  }
+
+  QueryBuilder<Transaction, int?, QQueryOperations>
+  originalTotalMinorProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'originalTotalMinor');
     });
   }
 

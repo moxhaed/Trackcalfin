@@ -4,7 +4,7 @@ The three master prompts are **runtime assets**. The app loads them verbatim as 
 
 | Prompt | File | Task |
 |---|---|---|
-| **A** | [`assets/prompts/receipt_extraction.v1.md`](../assets/prompts/receipt_extraction.v1.md) | Receipt or pantry image → structured JSON (expenses, categories, stock quantities, new-ingredient profiles) |
+| **A** | [`assets/prompts/receipt_extraction.v2.md`](../assets/prompts/receipt_extraction.v2.md) | Receipt or pantry image → structured JSON (expenses, categories, stock quantities, new-ingredient profiles) |
 | **B** | [`assets/prompts/daily_recipe.v1.md`](../assets/prompts/daily_recipe.v1.md) | Inventory JSON → one stock-only recipe JSON (quantities per portion, estimates, hook line) |
 | **C** | [`assets/prompts/spontaneous_recipe.v1.md`](../assets/prompts/spontaneous_recipe.v1.md) | User text/voice + inventory JSON → feasibility verdict + adapted recipe + shopping list JSON |
 
@@ -46,7 +46,7 @@ Content-Type: application/json
 ```
 ```json
 {
-  "systemInstruction": { "parts": [{ "text": "<contents of receipt_extraction.v1.md>" }] },
+  "systemInstruction": { "parts": [{ "text": "<contents of receipt_extraction.v2.md>" }] },
   "contents": [{
     "role": "user",
     "parts": [
@@ -138,9 +138,9 @@ raw text ─► JSON.parse ─► DTO (freezed, strict enums) ─► task valida
 | R5 | Keys match `^[a-z][a-z0-9_]{1,40}$`. A known key must exist. A new key goes through the fuzzy check (§3.13). | remap, or `merge_proposed` → review |
 | R6 | `purchased_at` not in the future and ≤ 60 days old | use `capturedAt`, flag |
 | R7 | New-ingredient profile: required fields, `kcal ≤ 900/100 g`, **Atwater check** (§3.5) | flag `nutrition_suspect` (still committed, editable) |
-| R8 | `currency` equals the profile currency | flag `foreign_currency` → review (asks for the home-currency amount) |
+| R8 | `currency` equals the profile currency (a `currency_uncertain` warning is flagged too) | flag `foreign_currency` → review with a conversion card (see §5.8) |
 
-**Auto-commit** (when `autoCommitCleanScans` is on) requires: `image_type == receipt`, no `total_mismatch`, no `low` confidence line, no grocery line with `qty_source == unknown`, no `merge_proposed`, and no `foreign_currency`. Otherwise the job goes to `needsReview`. Pantry scans always go to review (a diff screen), because they overwrite quantities.
+**Auto-commit** (when `autoCommitCleanScans` is on) requires: `image_type == receipt`, no `total_mismatch`, no `low` confidence line, no grocery line with `qty_source == unknown`, no `merge_proposed`, no `foreign_currency` and no `currency_uncertain`. Otherwise the job goes to `needsReview`. Pantry scans always go to review (a diff screen), because they overwrite quantities.
 
 ### RecipeValidator (Prompts B and C)
 | # | Check | On failure |
@@ -175,7 +175,16 @@ Use an explicit `switch` per enum. An unknown value is a validation error (repai
 - `tool/eval_prompts.dart` (a dev-only CLI) runs a prompt version over the fixtures and prints a diff: line count, money-total accuracy, key-reuse rate, validation flags, Dart-vs-AI divergence.
 - Change prompts only through a new file version (`*.v2.md`). Switch the app over after the eval is at least as good as the previous version.
 
-## 5.8 References
+## 5.8 Foreign-currency receipts
+
+Prompt A v2 returns amounts in the receipt's own currency and minor units (¥1,200 is `1200`, 1.250 KWD is `1250`), plus that currency's ISO code. It never converts. Dart does the rest:
+
+1. **Rate lookup** (`FxService`): the European Central Bank reference rate for the purchase day via [Frankfurter](https://frankfurter.dev/v1/) (free, no key; only the two currency codes and a date leave the device). Offline or for an unsupported currency, it falls back to the last rate used for that currency, then to asking.
+2. **Review is always required** for a foreign receipt. A conversion card shows "CHF 23.10 → €24.74", the rate and where it came from. Each line shows the home amount with the printed amount underneath, and amounts are edited in the receipt currency so they match the paper.
+3. **Changing the rate**: *Amount charged* (type what the bank charged, which includes card fees so the ledger matches the statement) or *Exchange rate*. Rates you enter are remembered for the next receipt in that currency. *Wrong currency?* re-picks the currency and fetches a new rate.
+4. **Filing** converts every line with `FxMath.convertLines` (rounding drift goes on the largest line, so the lines add up to the converted total), costs stock in the home currency, and keeps `originalCurrency`, `originalTotalMinor` and `fxRate` on the `Transaction`. The ledger shows the printed amount next to the converted one.
+
+## 5.9 References
 
 - Gemini 3.8 Flash announcement and model ID: [Introducing Gemini 3.8 Flash](https://blog.google/innovation-and-ai/models-and-research/gemini-models/3-8-flash-and-3-8-flash-cyber/), [Gemini API: What's new in Gemini 3.8 Flash](https://ai.google.dev/gemini-api/docs/latest-model)
 - Structured output (`responseMimeType`, `responseJsonSchema` / `responseSchema`): [Gemini API structured outputs](https://ai.google.dev/gemini-api/docs/generate-content/structured-output), [Improving structured outputs in the Gemini API](https://blog.google/technology/developers/gemini-api-structured-outputs/)

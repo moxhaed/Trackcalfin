@@ -10,12 +10,24 @@ import '../data/ai/prompt_repository.dart';
 import '../data/ai/schemas.dart';
 import '../data/isar/collections/schemas.dart';
 import '../domain/costing.dart';
+import '../domain/fx.dart';
 import '../domain/ingredient_matcher.dart';
 import '../domain/receipt_math.dart';
 import '../domain/validation/receipt_validator.dart';
 import '../platform/image_store.dart';
 import 'ai_gateway.dart';
 import 'clock.dart';
+import 'fx_service.dart';
+
+/// A foreign-currency receipt can't be filed until it has an exchange rate.
+class MissingExchangeRate implements Exception {
+  MissingExchangeRate(this.from, this.to);
+  final String from;
+  final String to;
+
+  @override
+  String toString() => 'Set an exchange rate from $from to $to first';
+}
 
 class ScanResult {
   ScanResult(this.job, {this.autoCommitted = false, this.transactionId});
@@ -26,11 +38,15 @@ class ScanResult {
 
 /// Capture → queue → Prompt A → validate → review/auto-commit → ledger + pantry.
 class ScanService {
-  ScanService({required this.isar, required this.images, required this.ai, Now? now}) : now = now ?? DateTime.now;
+  ScanService({required this.isar, required this.images, required this.ai, this.fx, Now? now})
+    : now = now ?? DateTime.now;
 
   final Isar isar;
   final ImageStore images;
   final AiGateway ai;
+
+  /// Converts foreign-currency receipts; null disables automatic rates.
+  final FxService? fx;
   final Now now;
 
   static const maxAttempts = 3;
@@ -151,6 +167,10 @@ class ScanService {
       ..flags = draft.flags
       ..lastError = null
       ..status = ScanStatus.needsReview;
+    if (isForeign(job, profile.currency) && fx != null) {
+      final q = await fx!.quote(job.currency!, profile.currency, job.purchasedAt ?? job.capturedAt);
+      if (q != null) _setRate(job, q);
+    }
     await _save(job);
 
     if (draft.autoCommitEligible && profile.autoCommitCleanScans) {
@@ -164,6 +184,39 @@ class ScanService {
   Future<void> _save(ScanJob job) => isar.writeTxn(() => isar.scanJobs.put(job));
 
   Future<void> updateJob(ScanJob job) => _save(job);
+
+  static bool isForeign(ScanJob job, String homeCurrency) =>
+      job.kind == ScanKind.receipt && job.currency != null && job.currency!.toUpperCase() != homeCurrency.toUpperCase();
+
+  static void _setRate(ScanJob job, FxQuote q) {
+    job
+      ..fxRate = q.rate
+      ..fxSource = q.source.name
+      ..fxDate = q.date;
+  }
+
+  /// Review screen: use this rate for the receipt. Manual rates are remembered
+  /// for the next receipt in the same currency.
+  Future<void> applyRate(int jobId, FxQuote q) async {
+    final job = await isar.scanJobs.get(jobId);
+    if (job == null || !FxMath.plausible(q.rate)) return;
+    _setRate(job, q);
+    await _save(job);
+    if (q.source == FxSource.manual || q.source == FxSource.charged) await fx?.remember(q);
+  }
+
+  /// Re-tries the automatic rate (e.g. after coming back online).
+  Future<FxQuote?> refreshRate(int jobId) async {
+    final job = await isar.scanJobs.get(jobId);
+    final profile = await isar.userProfiles.get(1);
+    if (job == null || profile == null || fx == null || !isForeign(job, profile.currency)) return null;
+    final q = await fx!.quote(job.currency!, profile.currency, job.purchasedAt ?? job.capturedAt);
+    if (q != null) {
+      _setRate(job, q);
+      await _save(job);
+    }
+    return q;
+  }
 
   Future<void> retry(int jobId) async {
     final job = await isar.scanJobs.get(jobId);
@@ -216,9 +269,19 @@ class ScanService {
       }
 
       final lines = ReceiptMath.allocateAdjustments(included);
+      final home = (await isar.userProfiles.get(1))?.currency ?? job.currency ?? 'EUR';
+      final foreign = isForeign(job, home);
+      if (foreign && (job.fxRate == null || !FxMath.plausible(job.fxRate!))) {
+        throw MissingExchangeRate(job.currency!, home);
+      }
+      final originalTotal = lines.fold(0, (a, l) => a + l.totalMinor);
+      final amounts = foreign
+          ? FxMath.convertLines([for (final l in lines) l.totalMinor], from: job.currency!, to: home, rate: job.fxRate!)
+          : [for (final l in lines) l.totalMinor];
       final at = job.purchasedAt ?? job.capturedAt;
       final txLines = <LineItem>[];
-      for (final l in lines) {
+      for (final (i, l) in lines.indexed) {
+        l.totalMinor = amounts[i];
         final item = LineItem()
           ..rawText = l.rawText
           ..name = l.name
@@ -244,7 +307,10 @@ class ScanService {
         ..occurredAt = at
         ..source = TxSource.receiptScan
         ..merchant = job.merchant
-        ..currency = job.currency ?? 'EUR'
+        ..currency = home
+        ..originalCurrency = foreign ? job.currency!.toUpperCase() : null
+        ..originalTotalMinor = foreign ? originalTotal : null
+        ..fxRate = foreign ? job.fxRate : null
         ..lines = txLines
         ..totalMinor = txLines.fold(0, (a, l) => a + l.totalMinor)
         ..primaryCategory = ReceiptMath.primaryCategory(

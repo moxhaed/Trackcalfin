@@ -2,7 +2,7 @@
 
 Target: **`isar_community` 3.x** (API-compatible with Isar 3). Import `package:isar_community/isar.dart`, generate with `isar_community_generator` + `build_runner`.
 
-> **As built.** The Dart classes in `lib/data/isar/collections/` are the source of truth. They add a few fields to what's listed below: `Recipe.feasibilityStatus/summary/omitted/shoppingList` (Prompt C verdict), `ScanJob.userHint`, and `UserProfile.onboardingDone/notificationsEnabled/weeklyRecapEnabled/autoCommitCleanScans/themeMode`. There's also a ninth collection, `MetricEvent`, for local time-to-log stats. `late` fields were replaced with defaults so an unset field never throws.
+> **As built.** The Dart classes in `lib/data/isar/collections/` are the source of truth. They add a few fields to what's listed below: `Recipe.feasibilityStatus/summary/omitted/shoppingList` (Prompt C verdict), `ScanJob.userHint` and `ScanJob.fxRate/fxSource/fxDate`, `Transaction.originalCurrency/originalTotalMinor/fxRate`, and `UserProfile.onboardingDone/notificationsEnabled/weeklyRecapEnabled/autoCommitCleanScans/themeMode/fxMemory`. There's also a ninth collection, `MetricEvent`, for local time-to-log stats. `late` fields were replaced with defaults so an unset field never throws.
 
 ## 4.1 Design decisions
 
@@ -514,7 +514,7 @@ class AiCallLog {
   @Enumerated(EnumType.name)
   AiTask task = AiTask.receipt;
 
-  String promptVersion = '';           // "receipt_extraction.v1"
+  String promptVersion = '';           // "receipt_extraction.v2"
   String model = '';
   int latencyMs = 0;
   int? inputTokens;

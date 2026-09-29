@@ -9,6 +9,7 @@ import '../../data/isar/collections/schemas.dart';
 import '../common/category_style.dart';
 import '../common/format.dart';
 import '../common/widgets.dart';
+import 'fx_widgets.dart';
 import 'transaction_sheet.dart';
 
 class LedgerView extends ConsumerStatefulWidget {
@@ -144,7 +145,8 @@ class _TxTile extends ConsumerWidget {
             timeOf(tx.occurredAt),
             if (tx.lines.length > 1) '${tx.lines.length} items',
             if (stocked > 0) '$stocked stocked',
-            if (tx.source == TxSource.receiptScan) 'scanned',
+            if (tx.originalCurrency != null) moneyFor(tx.originalCurrency!).format(tx.originalTotalMinor ?? 0),
+            if (tx.source == TxSource.receiptScan && tx.originalCurrency == null) 'scanned',
           ].join(' · '),
         ),
         trailing: Text(money.format(amount), style: context.text.titleSmall),

@@ -89,82 +89,89 @@ const UserProfileSchema = CollectionSchema(
       name: r'equipment',
       type: IsarType.stringList,
     ),
-    r'geminiModel': PropertySchema(
+    r'fxMemory': PropertySchema(
       id: 16,
+      name: r'fxMemory',
+      type: IsarType.objectList,
+
+      target: r'FxMemo',
+    ),
+    r'geminiModel': PropertySchema(
+      id: 17,
       name: r'geminiModel',
       type: IsarType.string,
     ),
     r'learnedKeywords': PropertySchema(
-      id: 17,
+      id: 18,
       name: r'learnedKeywords',
       type: IsarType.objectList,
 
       target: r'KeywordCategory',
     ),
     r'maxActiveMinutes': PropertySchema(
-      id: 18,
+      id: 19,
       name: r'maxActiveMinutes',
       type: IsarType.long,
     ),
     r'mealReminderMinutes': PropertySchema(
-      id: 19,
+      id: 20,
       name: r'mealReminderMinutes',
       type: IsarType.longList,
     ),
     r'mealsPerDay': PropertySchema(
-      id: 20,
+      id: 21,
       name: r'mealsPerDay',
       type: IsarType.long,
     ),
     r'monthlyCategoryLimits': PropertySchema(
-      id: 21,
+      id: 22,
       name: r'monthlyCategoryLimits',
       type: IsarType.objectList,
 
       target: r'CategoryLimit',
     ),
     r'monthlyFoodBudgetMinor': PropertySchema(
-      id: 22,
+      id: 23,
       name: r'monthlyFoodBudgetMinor',
       type: IsarType.long,
     ),
     r'notificationsEnabled': PropertySchema(
-      id: 23,
+      id: 24,
       name: r'notificationsEnabled',
       type: IsarType.bool,
     ),
     r'onboardingDone': PropertySchema(
-      id: 24,
+      id: 25,
       name: r'onboardingDone',
       type: IsarType.bool,
     ),
     r'outputLanguage': PropertySchema(
-      id: 25,
+      id: 26,
       name: r'outputLanguage',
       type: IsarType.string,
     ),
     r'schemaVersion': PropertySchema(
-      id: 26,
+      id: 27,
       name: r'schemaVersion',
       type: IsarType.long,
     ),
     r'targetCostPerPortionMinor': PropertySchema(
-      id: 27,
+      id: 28,
       name: r'targetCostPerPortionMinor',
       type: IsarType.long,
     ),
     r'themeMode': PropertySchema(
-      id: 28,
+      id: 29,
       name: r'themeMode',
       type: IsarType.string,
     ),
     r'weekStartsOn': PropertySchema(
-      id: 29,
+      id: 30,
       name: r'weekStartsOn',
       type: IsarType.long,
     ),
     r'weeklyRecapEnabled': PropertySchema(
-      id: 30,
+      id: 31,
       name: r'weeklyRecapEnabled',
       type: IsarType.bool,
     ),
@@ -180,6 +187,7 @@ const UserProfileSchema = CollectionSchema(
   embeddedSchemas: {
     r'CategoryLimit': CategoryLimitSchema,
     r'KeywordCategory': KeywordCategorySchema,
+    r'FxMemo': FxMemoSchema,
   },
 
   getId: _userProfileGetId,
@@ -229,6 +237,14 @@ int _userProfileEstimateSize(
     for (var i = 0; i < object.equipment.length; i++) {
       final value = object.equipment[i];
       bytesCount += value.length * 3;
+    }
+  }
+  bytesCount += 3 + object.fxMemory.length * 3;
+  {
+    final offsets = allOffsets[FxMemo]!;
+    for (var i = 0; i < object.fxMemory.length; i++) {
+      final value = object.fxMemory[i];
+      bytesCount += FxMemoSchema.estimateSize(value, offsets, allOffsets);
     }
   }
   bytesCount += 3 + object.geminiModel.length * 3;
@@ -284,31 +300,37 @@ void _userProfileSerialize(
   writer.writeStringList(offsets[13], object.dislikes);
   writer.writeLong(offsets[14], object.eatingOutAvgMealMinor);
   writer.writeStringList(offsets[15], object.equipment);
-  writer.writeString(offsets[16], object.geminiModel);
+  writer.writeObjectList<FxMemo>(
+    offsets[16],
+    allOffsets,
+    FxMemoSchema.serialize,
+    object.fxMemory,
+  );
+  writer.writeString(offsets[17], object.geminiModel);
   writer.writeObjectList<KeywordCategory>(
-    offsets[17],
+    offsets[18],
     allOffsets,
     KeywordCategorySchema.serialize,
     object.learnedKeywords,
   );
-  writer.writeLong(offsets[18], object.maxActiveMinutes);
-  writer.writeLongList(offsets[19], object.mealReminderMinutes);
-  writer.writeLong(offsets[20], object.mealsPerDay);
+  writer.writeLong(offsets[19], object.maxActiveMinutes);
+  writer.writeLongList(offsets[20], object.mealReminderMinutes);
+  writer.writeLong(offsets[21], object.mealsPerDay);
   writer.writeObjectList<CategoryLimit>(
-    offsets[21],
+    offsets[22],
     allOffsets,
     CategoryLimitSchema.serialize,
     object.monthlyCategoryLimits,
   );
-  writer.writeLong(offsets[22], object.monthlyFoodBudgetMinor);
-  writer.writeBool(offsets[23], object.notificationsEnabled);
-  writer.writeBool(offsets[24], object.onboardingDone);
-  writer.writeString(offsets[25], object.outputLanguage);
-  writer.writeLong(offsets[26], object.schemaVersion);
-  writer.writeLong(offsets[27], object.targetCostPerPortionMinor);
-  writer.writeString(offsets[28], object.themeMode);
-  writer.writeLong(offsets[29], object.weekStartsOn);
-  writer.writeBool(offsets[30], object.weeklyRecapEnabled);
+  writer.writeLong(offsets[23], object.monthlyFoodBudgetMinor);
+  writer.writeBool(offsets[24], object.notificationsEnabled);
+  writer.writeBool(offsets[25], object.onboardingDone);
+  writer.writeString(offsets[26], object.outputLanguage);
+  writer.writeLong(offsets[27], object.schemaVersion);
+  writer.writeLong(offsets[28], object.targetCostPerPortionMinor);
+  writer.writeString(offsets[29], object.themeMode);
+  writer.writeLong(offsets[30], object.weekStartsOn);
+  writer.writeBool(offsets[31], object.weeklyRecapEnabled);
 }
 
 UserProfile _userProfileDeserialize(
@@ -334,36 +356,44 @@ UserProfile _userProfileDeserialize(
   object.dislikes = reader.readStringList(offsets[13]) ?? [];
   object.eatingOutAvgMealMinor = reader.readLong(offsets[14]);
   object.equipment = reader.readStringList(offsets[15]) ?? [];
-  object.geminiModel = reader.readString(offsets[16]);
+  object.fxMemory =
+      reader.readObjectList<FxMemo>(
+        offsets[16],
+        FxMemoSchema.deserialize,
+        allOffsets,
+        FxMemo(),
+      ) ??
+      [];
+  object.geminiModel = reader.readString(offsets[17]);
   object.id = id;
   object.learnedKeywords =
       reader.readObjectList<KeywordCategory>(
-        offsets[17],
+        offsets[18],
         KeywordCategorySchema.deserialize,
         allOffsets,
         KeywordCategory(),
       ) ??
       [];
-  object.maxActiveMinutes = reader.readLong(offsets[18]);
-  object.mealReminderMinutes = reader.readLongList(offsets[19]) ?? [];
-  object.mealsPerDay = reader.readLong(offsets[20]);
+  object.maxActiveMinutes = reader.readLong(offsets[19]);
+  object.mealReminderMinutes = reader.readLongList(offsets[20]) ?? [];
+  object.mealsPerDay = reader.readLong(offsets[21]);
   object.monthlyCategoryLimits =
       reader.readObjectList<CategoryLimit>(
-        offsets[21],
+        offsets[22],
         CategoryLimitSchema.deserialize,
         allOffsets,
         CategoryLimit(),
       ) ??
       [];
-  object.monthlyFoodBudgetMinor = reader.readLong(offsets[22]);
-  object.notificationsEnabled = reader.readBool(offsets[23]);
-  object.onboardingDone = reader.readBool(offsets[24]);
-  object.outputLanguage = reader.readString(offsets[25]);
-  object.schemaVersion = reader.readLong(offsets[26]);
-  object.targetCostPerPortionMinor = reader.readLong(offsets[27]);
-  object.themeMode = reader.readString(offsets[28]);
-  object.weekStartsOn = reader.readLong(offsets[29]);
-  object.weeklyRecapEnabled = reader.readBool(offsets[30]);
+  object.monthlyFoodBudgetMinor = reader.readLong(offsets[23]);
+  object.notificationsEnabled = reader.readBool(offsets[24]);
+  object.onboardingDone = reader.readBool(offsets[25]);
+  object.outputLanguage = reader.readString(offsets[26]);
+  object.schemaVersion = reader.readLong(offsets[27]);
+  object.targetCostPerPortionMinor = reader.readLong(offsets[28]);
+  object.themeMode = reader.readString(offsets[29]);
+  object.weekStartsOn = reader.readLong(offsets[30]);
+  object.weeklyRecapEnabled = reader.readBool(offsets[31]);
   return object;
 }
 
@@ -407,8 +437,17 @@ P _userProfileDeserializeProp<P>(
     case 15:
       return (reader.readStringList(offset) ?? []) as P;
     case 16:
-      return (reader.readString(offset)) as P;
+      return (reader.readObjectList<FxMemo>(
+                offset,
+                FxMemoSchema.deserialize,
+                allOffsets,
+                FxMemo(),
+              ) ??
+              [])
+          as P;
     case 17:
+      return (reader.readString(offset)) as P;
+    case 18:
       return (reader.readObjectList<KeywordCategory>(
                 offset,
                 KeywordCategorySchema.deserialize,
@@ -417,13 +456,13 @@ P _userProfileDeserializeProp<P>(
               ) ??
               [])
           as P;
-    case 18:
-      return (reader.readLong(offset)) as P;
     case 19:
-      return (reader.readLongList(offset) ?? []) as P;
-    case 20:
       return (reader.readLong(offset)) as P;
+    case 20:
+      return (reader.readLongList(offset) ?? []) as P;
     case 21:
+      return (reader.readLong(offset)) as P;
+    case 22:
       return (reader.readObjectList<CategoryLimit>(
                 offset,
                 CategoryLimitSchema.deserialize,
@@ -432,23 +471,23 @@ P _userProfileDeserializeProp<P>(
               ) ??
               [])
           as P;
-    case 22:
-      return (reader.readLong(offset)) as P;
     case 23:
-      return (reader.readBool(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 24:
       return (reader.readBool(offset)) as P;
     case 25:
-      return (reader.readString(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 26:
-      return (reader.readLong(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 27:
       return (reader.readLong(offset)) as P;
     case 28:
-      return (reader.readString(offset)) as P;
-    case 29:
       return (reader.readLong(offset)) as P;
+    case 29:
+      return (reader.readString(offset)) as P;
     case 30:
+      return (reader.readLong(offset)) as P;
+    case 31:
       return (reader.readBool(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -2268,6 +2307,59 @@ extension UserProfileQueryFilter
   }
 
   QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
+  fxMemoryLengthEqualTo(int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'fxMemory', length, true, length, true);
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
+  fxMemoryIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'fxMemory', 0, true, 0, true);
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
+  fxMemoryIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'fxMemory', 0, false, 999999, true);
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
+  fxMemoryLengthLessThan(int length, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'fxMemory', 0, true, length, include);
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
+  fxMemoryLengthGreaterThan(int length, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'fxMemory', length, include, 999999, true);
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
+  fxMemoryLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'fxMemory',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
   geminiModelEqualTo(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
@@ -3368,6 +3460,14 @@ extension UserProfileQueryFilter
 
 extension UserProfileQueryObject
     on QueryBuilder<UserProfile, UserProfile, QFilterCondition> {
+  QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition> fxMemoryElement(
+    FilterQuery<FxMemo> q,
+  ) {
+    return QueryBuilder.apply(this, (query) {
+      return query.object(q, r'fxMemory');
+    });
+  }
+
   QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
   learnedKeywordsElement(FilterQuery<KeywordCategory> q) {
     return QueryBuilder.apply(this, (query) {
@@ -4333,6 +4433,12 @@ extension UserProfileQueryProperty
     });
   }
 
+  QueryBuilder<UserProfile, List<FxMemo>, QQueryOperations> fxMemoryProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'fxMemory');
+    });
+  }
+
   QueryBuilder<UserProfile, String, QQueryOperations> geminiModelProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'geminiModel');
@@ -5117,3 +5223,512 @@ extension KeywordCategoryQueryFilter
 
 extension KeywordCategoryQueryObject
     on QueryBuilder<KeywordCategory, KeywordCategory, QFilterCondition> {}
+
+// coverage:ignore-file
+// ignore_for_file: duplicate_ignore, non_constant_identifier_names, constant_identifier_names, invalid_use_of_protected_member, unnecessary_cast, prefer_const_constructors, lines_longer_than_80_chars, require_trailing_commas, inference_failure_on_function_invocation, unnecessary_parenthesis, unnecessary_raw_strings, unnecessary_null_checks, join_return_with_assignment, prefer_final_locals, avoid_js_rounded_ints, avoid_positional_boolean_parameters, always_specify_types
+
+const FxMemoSchema = Schema(
+  name: r'FxMemo',
+  id: 8291751755241215275,
+  properties: {
+    r'from': PropertySchema(id: 0, name: r'from', type: IsarType.string),
+    r'rate': PropertySchema(id: 1, name: r'rate', type: IsarType.double),
+    r'to': PropertySchema(id: 2, name: r'to', type: IsarType.string),
+    r'updatedAt': PropertySchema(
+      id: 3,
+      name: r'updatedAt',
+      type: IsarType.dateTime,
+    ),
+  },
+
+  estimateSize: _fxMemoEstimateSize,
+  serialize: _fxMemoSerialize,
+  deserialize: _fxMemoDeserialize,
+  deserializeProp: _fxMemoDeserializeProp,
+);
+
+int _fxMemoEstimateSize(
+  FxMemo object,
+  List<int> offsets,
+  Map<Type, List<int>> allOffsets,
+) {
+  var bytesCount = offsets.last;
+  bytesCount += 3 + object.from.length * 3;
+  bytesCount += 3 + object.to.length * 3;
+  return bytesCount;
+}
+
+void _fxMemoSerialize(
+  FxMemo object,
+  IsarWriter writer,
+  List<int> offsets,
+  Map<Type, List<int>> allOffsets,
+) {
+  writer.writeString(offsets[0], object.from);
+  writer.writeDouble(offsets[1], object.rate);
+  writer.writeString(offsets[2], object.to);
+  writer.writeDateTime(offsets[3], object.updatedAt);
+}
+
+FxMemo _fxMemoDeserialize(
+  Id id,
+  IsarReader reader,
+  List<int> offsets,
+  Map<Type, List<int>> allOffsets,
+) {
+  final object = FxMemo();
+  object.from = reader.readString(offsets[0]);
+  object.rate = reader.readDouble(offsets[1]);
+  object.to = reader.readString(offsets[2]);
+  object.updatedAt = reader.readDateTime(offsets[3]);
+  return object;
+}
+
+P _fxMemoDeserializeProp<P>(
+  IsarReader reader,
+  int propertyId,
+  int offset,
+  Map<Type, List<int>> allOffsets,
+) {
+  switch (propertyId) {
+    case 0:
+      return (reader.readString(offset)) as P;
+    case 1:
+      return (reader.readDouble(offset)) as P;
+    case 2:
+      return (reader.readString(offset)) as P;
+    case 3:
+      return (reader.readDateTime(offset)) as P;
+    default:
+      throw IsarError('Unknown property with id $propertyId');
+  }
+}
+
+extension FxMemoQueryFilter on QueryBuilder<FxMemo, FxMemo, QFilterCondition> {
+  QueryBuilder<FxMemo, FxMemo, QAfterFilterCondition> fromEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'from',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<FxMemo, FxMemo, QAfterFilterCondition> fromGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'from',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<FxMemo, FxMemo, QAfterFilterCondition> fromLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'from',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<FxMemo, FxMemo, QAfterFilterCondition> fromBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'from',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<FxMemo, FxMemo, QAfterFilterCondition> fromStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'from',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<FxMemo, FxMemo, QAfterFilterCondition> fromEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'from',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<FxMemo, FxMemo, QAfterFilterCondition> fromContains(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'from',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<FxMemo, FxMemo, QAfterFilterCondition> fromMatches(
+    String pattern, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'from',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<FxMemo, FxMemo, QAfterFilterCondition> fromIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'from', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<FxMemo, FxMemo, QAfterFilterCondition> fromIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'from', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<FxMemo, FxMemo, QAfterFilterCondition> rateEqualTo(
+    double value, {
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'rate',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<FxMemo, FxMemo, QAfterFilterCondition> rateGreaterThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'rate',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<FxMemo, FxMemo, QAfterFilterCondition> rateLessThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'rate',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<FxMemo, FxMemo, QAfterFilterCondition> rateBetween(
+    double lower,
+    double upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'rate',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<FxMemo, FxMemo, QAfterFilterCondition> toEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'to',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<FxMemo, FxMemo, QAfterFilterCondition> toGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'to',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<FxMemo, FxMemo, QAfterFilterCondition> toLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'to',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<FxMemo, FxMemo, QAfterFilterCondition> toBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'to',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<FxMemo, FxMemo, QAfterFilterCondition> toStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'to',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<FxMemo, FxMemo, QAfterFilterCondition> toEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'to',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<FxMemo, FxMemo, QAfterFilterCondition> toContains(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'to',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<FxMemo, FxMemo, QAfterFilterCondition> toMatches(
+    String pattern, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'to',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<FxMemo, FxMemo, QAfterFilterCondition> toIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'to', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<FxMemo, FxMemo, QAfterFilterCondition> toIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'to', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<FxMemo, FxMemo, QAfterFilterCondition> updatedAtEqualTo(
+    DateTime value,
+  ) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'updatedAt', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<FxMemo, FxMemo, QAfterFilterCondition> updatedAtGreaterThan(
+    DateTime value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'updatedAt',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<FxMemo, FxMemo, QAfterFilterCondition> updatedAtLessThan(
+    DateTime value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'updatedAt',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<FxMemo, FxMemo, QAfterFilterCondition> updatedAtBetween(
+    DateTime lower,
+    DateTime upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'updatedAt',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
+    });
+  }
+}
+
+extension FxMemoQueryObject on QueryBuilder<FxMemo, FxMemo, QFilterCondition> {}

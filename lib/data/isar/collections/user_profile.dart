@@ -50,6 +50,9 @@ class UserProfile {
   // Parser memory
   List<KeywordCategory> learnedKeywords = [];
 
+  /// Last exchange rate used per foreign currency (offline fallback).
+  List<FxMemo> fxMemory = [];
+
   // AI
   String geminiModel = 'gemini-3.8-flash';
 
@@ -77,4 +80,12 @@ class KeywordCategory {
 
   @Enumerated(EnumType.name)
   SpendCategory category = SpendCategory.other;
+}
+
+@embedded
+class FxMemo {
+  String from = '';
+  String to = '';
+  double rate = 0;
+  DateTime updatedAt = DateTime.now();
 }

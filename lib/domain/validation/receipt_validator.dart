@@ -27,6 +27,7 @@ class ScanDraft {
       kind == ScanKind.receipt &&
       !flags.contains('total_mismatch') &&
       !flags.contains('foreign_currency') &&
+      !flags.contains('currency_uncertain') &&
       !flags.contains('merge_proposed') &&
       !flags.contains('date_adjusted') &&
       lines.every((l) => l.confidence != Confidence.low) &&
@@ -118,6 +119,7 @@ class ReceiptValidator {
       }
     }
     if (x.warnings.any((w) => w.startsWith('total_mismatch'))) flags.add('total_mismatch');
+    if (x.warnings.any((w) => w.startsWith('currency_uncertain'))) flags.add('currency_uncertain');
 
     // R8: currency
     final currency = x.currency ?? homeCurrency;

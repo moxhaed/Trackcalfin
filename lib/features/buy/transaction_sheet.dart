@@ -7,6 +7,7 @@ import '../../core/enums.dart';
 import '../../data/isar/collections/schemas.dart';
 import '../common/category_style.dart';
 import '../common/format.dart' show shortDate;
+import 'fx_widgets.dart';
 
 Future<void> showTransactionSheet(BuildContext context, Transaction tx) => showModalBottomSheet(
   context: context,
@@ -74,6 +75,15 @@ class _TransactionSheetState extends ConsumerState<TransactionSheet> {
                 )
               else
                 Text('Total ${money.format(tx.totalMinor)}', style: context.text.titleMedium),
+              if (tx.originalCurrency != null && tx.fxRate != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    'Paid ${moneyFor(tx.originalCurrency!).format(tx.originalTotalMinor ?? 0)} · '
+                    '1 ${tx.originalCurrency} = ${rateText(tx.fxRate!)} ${tx.currency}',
+                    style: context.text.bodySmall?.copyWith(color: context.scheme.onSurfaceVariant),
+                  ),
+                ),
               const SizedBox(height: 10),
               TextField(
                 controller: _merchant,

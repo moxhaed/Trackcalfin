@@ -4,12 +4,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/messenger.dart';
 import '../../app/providers.dart';
 import '../../app/theme.dart';
+import '../../application/scan_service.dart';
+import '../../core/currency.dart';
 import '../../core/enums.dart';
+import '../../core/money.dart';
 import '../../data/isar/collections/schemas.dart';
 import '../../domain/units.dart';
 import '../common/category_style.dart';
 import '../common/format.dart';
 import '../common/widgets.dart';
+import 'fx_widgets.dart';
 
 /// Review card: good lines collapsed, amber lines open, one "Looks good".
 class ReviewScreen extends ConsumerStatefulWidget {
@@ -24,6 +28,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
   ScanJob? _job;
   bool _showAll = false;
   bool _saving = false;
+  bool _fxBusy = false;
 
   @override
   void initState() {
@@ -35,22 +40,89 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
     if (_job != null) await ref.read(scanServiceProvider).updateJob(_job!);
   }
 
+  String get _home => ref.read(profileProvider).value?.currency ?? 'EUR';
+
+  int get _sum => _job!.lines.where((l) => l.include).fold(0, (a, l) => a + l.totalMinor);
+
+  Future<void> _reload() async {
+    final j = await ref.read(isarProvider).scanJobs.get(widget.jobId);
+    if (mounted && j != null) setState(() => _job = j);
+  }
+
   Future<void> _commit() async {
+    final job = _job!;
+    if (ScanService.isForeign(job, _home) && job.fxRate == null) return _setRate();
     setState(() => _saving = true);
     await _persist();
     final money = ref.read(moneyProvider);
-    final job = _job!;
-    final total = job.lines.where((l) => l.include).fold(0, (a, l) => a + l.totalMinor);
     final stocked = job.lines.where((l) => l.include && l.ingredientKey != null && (l.qty ?? 0) > 0).length;
-    await ref.read(scanServiceProvider).commit(job.id);
+    int? txId;
+    try {
+      txId = await ref.read(scanServiceProvider).commit(job.id);
+    } on MissingExchangeRate {
+      setState(() => _saving = false);
+      return _setRate();
+    }
+    final tx = txId == null ? null : await ref.read(isarProvider).transactions.get(txId);
     celebrate();
     if (!mounted) return;
     Navigator.of(context).pop();
+    final original = tx?.originalCurrency != null
+        ? ' (${moneyFor(tx!.originalCurrency!).format(tx.originalTotalMinor ?? 0)})'
+        : '';
     notifyApp(
       job.kind == ScanKind.pantry
           ? 'Pantry updated · $stocked items verified'
-          : '${job.merchant ?? 'Receipt'} ${money.format(total)} · $stocked items stocked',
+          : '${job.merchant ?? 'Receipt'} ${money.format(tx?.totalMinor ?? _sum)}$original · $stocked items stocked',
     );
+  }
+
+  Future<void> _setRate() async {
+    await _persist();
+    final job = _job!;
+    final home = _home;
+    final remembered = await ref.read(fxServiceProvider).remembered(job.currency!, home);
+    if (!mounted) return;
+    final q = await showRateSheet(
+      context,
+      from: job.currency!,
+      to: home,
+      foreignTotal: _sum,
+      currentRate: job.fxRate,
+      remembered: remembered,
+    );
+    if (q == null) return;
+    await ref.read(scanServiceProvider).applyRate(job.id, q);
+    await _reload();
+  }
+
+  Future<void> _retryRate() async {
+    await _persist();
+    setState(() => _fxBusy = true);
+    final q = await ref.read(scanServiceProvider).refreshRate(widget.jobId);
+    if (!mounted) return;
+    setState(() => _fxBusy = false);
+    if (q == null) showInfo(context, 'Still no rate. Enter what your card was charged instead.');
+    await _reload();
+  }
+
+  Future<void> _changeCurrency() async {
+    final job = _job!;
+    final home = _home;
+    final code = await showCurrencySheet(context, current: job.currency ?? home);
+    if (code == null) return;
+    job
+      ..currency = code
+      ..fxRate = null
+      ..fxSource = null
+      ..fxDate = null
+      ..flags = [
+        ...job.flags.where((f) => f != 'currency_uncertain' && f != 'foreign_currency'),
+        if (code != home.toUpperCase()) 'foreign_currency',
+      ];
+    await _persist();
+    if (code != home.toUpperCase()) await _retryRate();
+    await _reload();
   }
 
   @override
@@ -58,7 +130,14 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
     final job = _job;
     if (job == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
     final money = ref.watch(moneyProvider);
+    final home = ref.watch(profileProvider).value?.currency ?? 'EUR';
     final pantry = job.kind == ScanKind.pantry;
+    final foreign = ScanService.isForeign(job, home);
+    final receiptMoney = foreign ? moneyFor(job.currency!) : money;
+    int Function(int)? toHome;
+    if (foreign && job.fxRate != null) {
+      toHome = (m) => Currency.convert(m, from: job.currency!, to: home, rate: job.fxRate!);
+    }
     final ingredients = {for (final i in ref.watch(ingredientsProvider).value ?? const <Ingredient>[]) i.id: i};
     final attention = <int>[];
     final fine = <int>[];
@@ -82,14 +161,35 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
               icon: Icons.calculate_outlined,
               color: context.colors.serious,
               text:
-                  'Items add up to ${money.format(sum)} but the receipt says ${money.format(job.receiptTotalMinor!)}. '
+                  'Items add up to ${receiptMoney.format(sum)} but the receipt says ${receiptMoney.format(job.receiptTotalMinor!)}. '
                   'Fix an amount below or file it as is.',
             ),
-          if (job.flags.contains('foreign_currency'))
+          if (foreign)
+            ConversionCard(
+              from: job.currency!,
+              to: home,
+              foreignTotal: sum,
+              rate: job.fxRate,
+              source: job.fxSource,
+              date: job.fxDate,
+              busy: _fxBusy,
+              onSetRate: _setRate,
+              onRetry: _retryRate,
+              onChangeCurrency: _changeCurrency,
+            ),
+          if (job.flags.contains('currency_uncertain') && !pantry)
             _Banner(
-              icon: Icons.currency_exchange,
+              icon: Icons.help_outline,
               color: context.colors.warning,
-              text: 'This receipt is in ${job.currency}. Edit amounts into your home currency before filing.',
+              text: "Couldn't read the currency, so ${job.currency ?? home} was assumed.",
+              actions: [
+                TextButton(onPressed: _changeCurrency, child: const Text('Change')),
+                TextButton(
+                  onPressed: () =>
+                      setState(() => job.flags = job.flags.where((f) => f != 'currency_uncertain').toList()),
+                  child: const Text("It's right"),
+                ),
+              ],
             ),
           if (job.flags.contains('date_adjusted'))
             _Banner(
@@ -104,6 +204,9 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                 line: job.lines[i],
                 pantry: pantry,
                 ingredients: ingredients,
+                receiptMoney: receiptMoney,
+                toHome: toHome,
+                homeMoney: money,
                 onChanged: () => setState(() {}),
               ),
           ],
@@ -123,6 +226,9 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                 line: job.lines[i],
                 pantry: pantry,
                 ingredients: ingredients,
+                receiptMoney: receiptMoney,
+                toHome: toHome,
+                homeMoney: money,
                 onChanged: () => setState(() {}),
               ),
         ],
@@ -141,12 +247,23 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                 child: const Text('Discard'),
               ),
               const Spacer(),
-              if (!pantry) Text(money.format(sum), style: context.text.titleMedium),
+              if (!pantry)
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      toHome != null ? money.format(toHome(sum)) : receiptMoney.format(sum),
+                      style: context.text.titleMedium,
+                    ),
+                    if (toHome != null) Text(receiptMoney.format(sum), style: context.text.labelSmall),
+                  ],
+                ),
               const SizedBox(width: 12),
               FilledButton.icon(
                 onPressed: _saving ? null : _commit,
-                icon: const Icon(Icons.check),
-                label: Text(pantry ? 'Update pantry' : 'Looks good'),
+                icon: Icon(foreign && job.fxRate == null ? Icons.currency_exchange : Icons.check),
+                label: Text(pantry ? 'Update pantry' : (foreign && job.fxRate == null ? 'Set rate' : 'Looks good')),
               ),
             ],
           ),
@@ -170,10 +287,11 @@ class _Label extends StatelessWidget {
 }
 
 class _Banner extends StatelessWidget {
-  const _Banner({required this.icon, required this.color, required this.text});
+  const _Banner({required this.icon, required this.color, required this.text, this.actions = const []});
   final IconData icon;
   final Color color;
   final String text;
+  final List<Widget> actions;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -185,25 +303,48 @@ class _Banner extends StatelessWidget {
       children: [
         Icon(icon, color: color, size: 20),
         const SizedBox(width: 10),
-        Expanded(child: Text(text, style: context.text.bodyMedium)),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(text, style: context.text.bodyMedium),
+              if (actions.isNotEmpty) Wrap(spacing: 4, children: actions),
+            ],
+          ),
+        ),
       ],
     ),
   );
 }
 
 class _LineEditor extends ConsumerStatefulWidget {
-  const _LineEditor({required this.line, required this.pantry, required this.ingredients, required this.onChanged});
+  const _LineEditor({
+    required this.line,
+    required this.pantry,
+    required this.ingredients,
+    required this.onChanged,
+    required this.receiptMoney,
+    required this.homeMoney,
+    this.toHome,
+  });
   final DraftLine line;
   final bool pantry;
   final Map<int, Ingredient> ingredients;
   final VoidCallback onChanged;
+
+  /// Amounts are edited in the receipt's currency (so they match the paper).
+  final MoneyFormat receiptMoney;
+  final MoneyFormat homeMoney;
+
+  /// Converts to the home currency for display; null when not foreign or no rate yet.
+  final int Function(int minor)? toHome;
 
   @override
   ConsumerState<_LineEditor> createState() => _LineEditorState();
 }
 
 class _LineEditorState extends ConsumerState<_LineEditor> {
-  late final _amount = TextEditingController(text: ref.read(moneyProvider).toInput(widget.line.totalMinor));
+  late final _amount = TextEditingController(text: widget.receiptMoney.toInput(widget.line.totalMinor));
   late final _qty = TextEditingController(text: widget.line.qty == null ? '' : _fmt(widget.line.qty!));
   bool _open = false;
 
@@ -219,7 +360,6 @@ class _LineEditorState extends ConsumerState<_LineEditor> {
   @override
   Widget build(BuildContext context) {
     final l = widget.line;
-    final money = ref.watch(moneyProvider);
     final c = context.colors;
     final merge = l.mergeCandidateId == null ? null : widget.ingredients[l.mergeCandidateId];
     final current = l.matchedIngredientId == null ? null : widget.ingredients[l.matchedIngredientId];
@@ -263,7 +403,20 @@ class _LineEditorState extends ConsumerState<_LineEditor> {
                     ),
                   ),
                 ),
-                if (!widget.pantry) Text(money.format(l.totalMinor), style: context.text.titleSmall),
+                if (!widget.pantry)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        widget.toHome != null
+                            ? widget.homeMoney.format(widget.toHome!(l.totalMinor))
+                            : widget.receiptMoney.format(l.totalMinor),
+                        style: context.text.titleSmall,
+                      ),
+                      if (widget.toHome != null)
+                        Text(widget.receiptMoney.format(l.totalMinor), style: context.text.labelSmall),
+                    ],
+                  ),
               ],
             ),
             if (merge != null)
@@ -319,11 +472,11 @@ class _LineEditorState extends ConsumerState<_LineEditor> {
                               keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
                               decoration: InputDecoration(
                                 labelText: 'Amount',
-                                prefixText: '${money.symbol} ',
+                                prefixText: '${widget.receiptMoney.symbol} ',
                                 isDense: true,
                               ),
                               onChanged: (v) {
-                                l.totalMinor = money.parse(v) ?? l.totalMinor;
+                                l.totalMinor = widget.receiptMoney.parse(v) ?? l.totalMinor;
                                 if (v.trim().startsWith('-')) l.totalMinor = -l.totalMinor.abs();
                                 widget.onChanged();
                               },

@@ -34,57 +34,64 @@ const ScanJobSchema = CollectionSchema(
       type: IsarType.string,
     ),
     r'flags': PropertySchema(id: 4, name: r'flags', type: IsarType.stringList),
+    r'fxDate': PropertySchema(id: 5, name: r'fxDate', type: IsarType.dateTime),
+    r'fxRate': PropertySchema(id: 6, name: r'fxRate', type: IsarType.double),
+    r'fxSource': PropertySchema(
+      id: 7,
+      name: r'fxSource',
+      type: IsarType.string,
+    ),
     r'imagePaths': PropertySchema(
-      id: 5,
+      id: 8,
       name: r'imagePaths',
       type: IsarType.stringList,
     ),
     r'kind': PropertySchema(
-      id: 6,
+      id: 9,
       name: r'kind',
       type: IsarType.string,
       enumMap: _ScanJobkindEnumValueMap,
     ),
     r'lastError': PropertySchema(
-      id: 7,
+      id: 10,
       name: r'lastError',
       type: IsarType.string,
     ),
     r'lines': PropertySchema(
-      id: 8,
+      id: 11,
       name: r'lines',
       type: IsarType.objectList,
 
       target: r'DraftLine',
     ),
     r'merchant': PropertySchema(
-      id: 9,
+      id: 12,
       name: r'merchant',
       type: IsarType.string,
     ),
     r'purchasedAt': PropertySchema(
-      id: 10,
+      id: 13,
       name: r'purchasedAt',
       type: IsarType.dateTime,
     ),
     r'receiptTotalMinor': PropertySchema(
-      id: 11,
+      id: 14,
       name: r'receiptTotalMinor',
       type: IsarType.long,
     ),
     r'status': PropertySchema(
-      id: 12,
+      id: 15,
       name: r'status',
       type: IsarType.string,
       enumMap: _ScanJobstatusEnumValueMap,
     ),
     r'transactionId': PropertySchema(
-      id: 13,
+      id: 16,
       name: r'transactionId',
       type: IsarType.long,
     ),
     r'userHint': PropertySchema(
-      id: 14,
+      id: 17,
       name: r'userHint',
       type: IsarType.string,
     ),
@@ -142,6 +149,12 @@ int _scanJobEstimateSize(
       bytesCount += value.length * 3;
     }
   }
+  {
+    final value = object.fxSource;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount += 3 + object.imagePaths.length * 3;
   {
     for (var i = 0; i < object.imagePaths.length; i++) {
@@ -191,21 +204,24 @@ void _scanJobSerialize(
   writer.writeDateTime(offsets[2], object.capturedAt);
   writer.writeString(offsets[3], object.currency);
   writer.writeStringList(offsets[4], object.flags);
-  writer.writeStringList(offsets[5], object.imagePaths);
-  writer.writeString(offsets[6], object.kind.name);
-  writer.writeString(offsets[7], object.lastError);
+  writer.writeDateTime(offsets[5], object.fxDate);
+  writer.writeDouble(offsets[6], object.fxRate);
+  writer.writeString(offsets[7], object.fxSource);
+  writer.writeStringList(offsets[8], object.imagePaths);
+  writer.writeString(offsets[9], object.kind.name);
+  writer.writeString(offsets[10], object.lastError);
   writer.writeObjectList<DraftLine>(
-    offsets[8],
+    offsets[11],
     allOffsets,
     DraftLineSchema.serialize,
     object.lines,
   );
-  writer.writeString(offsets[9], object.merchant);
-  writer.writeDateTime(offsets[10], object.purchasedAt);
-  writer.writeLong(offsets[11], object.receiptTotalMinor);
-  writer.writeString(offsets[12], object.status.name);
-  writer.writeLong(offsets[13], object.transactionId);
-  writer.writeString(offsets[14], object.userHint);
+  writer.writeString(offsets[12], object.merchant);
+  writer.writeDateTime(offsets[13], object.purchasedAt);
+  writer.writeLong(offsets[14], object.receiptTotalMinor);
+  writer.writeString(offsets[15], object.status.name);
+  writer.writeLong(offsets[16], object.transactionId);
+  writer.writeString(offsets[17], object.userHint);
 }
 
 ScanJob _scanJobDeserialize(
@@ -220,28 +236,31 @@ ScanJob _scanJobDeserialize(
   object.capturedAt = reader.readDateTime(offsets[2]);
   object.currency = reader.readStringOrNull(offsets[3]);
   object.flags = reader.readStringList(offsets[4]) ?? [];
+  object.fxDate = reader.readDateTimeOrNull(offsets[5]);
+  object.fxRate = reader.readDoubleOrNull(offsets[6]);
+  object.fxSource = reader.readStringOrNull(offsets[7]);
   object.id = id;
-  object.imagePaths = reader.readStringList(offsets[5]) ?? [];
+  object.imagePaths = reader.readStringList(offsets[8]) ?? [];
   object.kind =
-      _ScanJobkindValueEnumMap[reader.readStringOrNull(offsets[6])] ??
+      _ScanJobkindValueEnumMap[reader.readStringOrNull(offsets[9])] ??
       ScanKind.unknown;
-  object.lastError = reader.readStringOrNull(offsets[7]);
+  object.lastError = reader.readStringOrNull(offsets[10]);
   object.lines =
       reader.readObjectList<DraftLine>(
-        offsets[8],
+        offsets[11],
         DraftLineSchema.deserialize,
         allOffsets,
         DraftLine(),
       ) ??
       [];
-  object.merchant = reader.readStringOrNull(offsets[9]);
-  object.purchasedAt = reader.readDateTimeOrNull(offsets[10]);
-  object.receiptTotalMinor = reader.readLongOrNull(offsets[11]);
+  object.merchant = reader.readStringOrNull(offsets[12]);
+  object.purchasedAt = reader.readDateTimeOrNull(offsets[13]);
+  object.receiptTotalMinor = reader.readLongOrNull(offsets[14]);
   object.status =
-      _ScanJobstatusValueEnumMap[reader.readStringOrNull(offsets[12])] ??
+      _ScanJobstatusValueEnumMap[reader.readStringOrNull(offsets[15])] ??
       ScanStatus.queued;
-  object.transactionId = reader.readLongOrNull(offsets[13]);
-  object.userHint = reader.readStringOrNull(offsets[14]);
+  object.transactionId = reader.readLongOrNull(offsets[16]);
+  object.userHint = reader.readStringOrNull(offsets[17]);
   return object;
 }
 
@@ -263,14 +282,20 @@ P _scanJobDeserializeProp<P>(
     case 4:
       return (reader.readStringList(offset) ?? []) as P;
     case 5:
-      return (reader.readStringList(offset) ?? []) as P;
+      return (reader.readDateTimeOrNull(offset)) as P;
     case 6:
-      return (_ScanJobkindValueEnumMap[reader.readStringOrNull(offset)] ??
-              ScanKind.unknown)
-          as P;
+      return (reader.readDoubleOrNull(offset)) as P;
     case 7:
       return (reader.readStringOrNull(offset)) as P;
     case 8:
+      return (reader.readStringList(offset) ?? []) as P;
+    case 9:
+      return (_ScanJobkindValueEnumMap[reader.readStringOrNull(offset)] ??
+              ScanKind.unknown)
+          as P;
+    case 10:
+      return (reader.readStringOrNull(offset)) as P;
+    case 11:
       return (reader.readObjectList<DraftLine>(
                 offset,
                 DraftLineSchema.deserialize,
@@ -279,19 +304,19 @@ P _scanJobDeserializeProp<P>(
               ) ??
               [])
           as P;
-    case 9:
-      return (reader.readStringOrNull(offset)) as P;
-    case 10:
-      return (reader.readDateTimeOrNull(offset)) as P;
-    case 11:
-      return (reader.readLongOrNull(offset)) as P;
     case 12:
+      return (reader.readStringOrNull(offset)) as P;
+    case 13:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 14:
+      return (reader.readLongOrNull(offset)) as P;
+    case 15:
       return (_ScanJobstatusValueEnumMap[reader.readStringOrNull(offset)] ??
               ScanStatus.queued)
           as P;
-    case 13:
+    case 16:
       return (reader.readLongOrNull(offset)) as P;
-    case 14:
+    case 17:
       return (reader.readStringOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -1026,6 +1051,333 @@ extension ScanJobQueryFilter
         includeLower,
         upper,
         includeUpper,
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition> fxDateIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'fxDate'),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition> fxDateIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'fxDate'),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition> fxDateEqualTo(
+    DateTime? value,
+  ) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'fxDate', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition> fxDateGreaterThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'fxDate',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition> fxDateLessThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'fxDate',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition> fxDateBetween(
+    DateTime? lower,
+    DateTime? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'fxDate',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition> fxRateIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'fxRate'),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition> fxRateIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'fxRate'),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition> fxRateEqualTo(
+    double? value, {
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'fxRate',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition> fxRateGreaterThan(
+    double? value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'fxRate',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition> fxRateLessThan(
+    double? value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'fxRate',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition> fxRateBetween(
+    double? lower,
+    double? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'fxRate',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition> fxSourceIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'fxSource'),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition> fxSourceIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'fxSource'),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition> fxSourceEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'fxSource',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition> fxSourceGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'fxSource',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition> fxSourceLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'fxSource',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition> fxSourceBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'fxSource',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition> fxSourceStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'fxSource',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition> fxSourceEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'fxSource',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition> fxSourceContains(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'fxSource',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition> fxSourceMatches(
+    String pattern, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'fxSource',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition> fxSourceIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'fxSource', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition> fxSourceIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'fxSource', value: ''),
       );
     });
   }
@@ -2398,6 +2750,42 @@ extension ScanJobQuerySortBy on QueryBuilder<ScanJob, ScanJob, QSortBy> {
     });
   }
 
+  QueryBuilder<ScanJob, ScanJob, QAfterSortBy> sortByFxDate() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'fxDate', Sort.asc);
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterSortBy> sortByFxDateDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'fxDate', Sort.desc);
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterSortBy> sortByFxRate() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'fxRate', Sort.asc);
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterSortBy> sortByFxRateDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'fxRate', Sort.desc);
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterSortBy> sortByFxSource() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'fxSource', Sort.asc);
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterSortBy> sortByFxSourceDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'fxSource', Sort.desc);
+    });
+  }
+
   QueryBuilder<ScanJob, ScanJob, QAfterSortBy> sortByKind() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'kind', Sort.asc);
@@ -2545,6 +2933,42 @@ extension ScanJobQuerySortThenBy
     });
   }
 
+  QueryBuilder<ScanJob, ScanJob, QAfterSortBy> thenByFxDate() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'fxDate', Sort.asc);
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterSortBy> thenByFxDateDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'fxDate', Sort.desc);
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterSortBy> thenByFxRate() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'fxRate', Sort.asc);
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterSortBy> thenByFxRateDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'fxRate', Sort.desc);
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterSortBy> thenByFxSource() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'fxSource', Sort.asc);
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterSortBy> thenByFxSourceDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'fxSource', Sort.desc);
+    });
+  }
+
   QueryBuilder<ScanJob, ScanJob, QAfterSortBy> thenById() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.asc);
@@ -2688,6 +3112,26 @@ extension ScanJobQueryWhereDistinct
     });
   }
 
+  QueryBuilder<ScanJob, ScanJob, QDistinct> distinctByFxDate() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'fxDate');
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QDistinct> distinctByFxRate() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'fxRate');
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QDistinct> distinctByFxSource({
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'fxSource', caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<ScanJob, ScanJob, QDistinct> distinctByImagePaths() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'imagePaths');
@@ -2788,6 +3232,24 @@ extension ScanJobQueryProperty
   QueryBuilder<ScanJob, List<String>, QQueryOperations> flagsProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'flags');
+    });
+  }
+
+  QueryBuilder<ScanJob, DateTime?, QQueryOperations> fxDateProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'fxDate');
+    });
+  }
+
+  QueryBuilder<ScanJob, double?, QQueryOperations> fxRateProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'fxRate');
+    });
+  }
+
+  QueryBuilder<ScanJob, String?, QQueryOperations> fxSourceProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'fxSource');
     });
   }
 

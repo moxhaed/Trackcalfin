@@ -4,11 +4,14 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/providers.dart';
 import '../../app/theme.dart';
+import '../../application/scan_service.dart';
+import '../../core/currency.dart';
 import '../../core/enums.dart';
 import '../../data/isar/collections/schemas.dart';
 import '../capture/scan_flow.dart';
 import '../common/format.dart';
 import '../common/widgets.dart';
+import 'fx_widgets.dart';
 
 /// Scans that need attention: review by exception (rule R5).
 class InboxScreen extends ConsumerWidget {
@@ -55,13 +58,20 @@ class _JobCard extends ConsumerWidget {
     final money = ref.watch(moneyProvider);
     final scans = ref.read(scanServiceProvider);
     final pantry = job.kind == ScanKind.pantry || job.userHint == 'pantry';
+    final home = ref.watch(profileProvider).value?.currency ?? 'EUR';
+    final foreign = ScanService.isForeign(job, home);
+    final receiptTotal = job.lines.where((l) => l.include).fold(0, (a, l) => a + l.totalMinor);
+    final amount = !foreign
+        ? money.format(receiptTotal)
+        : job.fxRate == null
+        ? moneyFor(job.currency!).format(receiptTotal)
+        : '${money.format(Currency.convert(receiptTotal, from: job.currency!, to: home, rate: job.fxRate!))} '
+              '(${moneyFor(job.currency!).format(receiptTotal)})';
     final title = switch (job.status) {
       ScanStatus.queued => pantry ? 'Pantry photo waiting' : 'Receipt waiting',
       ScanStatus.processing => 'Reading…',
       ScanStatus.needsReview =>
-        pantry
-            ? 'Pantry photo · ${job.lines.length} items'
-            : '${job.merchant ?? 'Receipt'} · ${money.format(job.lines.where((l) => l.include).fold(0, (a, l) => a + l.totalMinor))}',
+        pantry ? 'Pantry photo · ${job.lines.length} items' : '${job.merchant ?? 'Receipt'} · $amount',
       ScanStatus.failed => 'Could not read this scan',
       _ => 'Scan',
     };
@@ -72,9 +82,13 @@ class _JobCard extends ConsumerWidget {
       ScanStatus.needsReview => [
         if (attention > 0) '$attention to check',
         if (job.flags.contains('total_mismatch')) 'totals differ',
-        if (job.flags.contains('foreign_currency')) 'foreign currency',
+        if (foreign) job.fxRate == null ? 'needs an exchange rate' : 'converted from ${job.currency}',
+        if (job.flags.contains('currency_uncertain')) 'check the currency',
         if (job.flags.contains('merge_proposed')) 'possible duplicates',
-        if (attention == 0 && job.flags.isEmpty) 'ready to file',
+        if (attention == 0 &&
+            job.flags.where((f) => f != 'foreign_currency').isEmpty &&
+            (!foreign || job.fxRate != null))
+          'ready to file',
       ].join(' · '),
       ScanStatus.failed => job.lastError ?? '',
       _ => '',

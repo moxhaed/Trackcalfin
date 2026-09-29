@@ -15,7 +15,7 @@ class AiCallLog {
   @Enumerated(EnumType.name)
   AiTask task = AiTask.receipt;
 
-  /// e.g. "receipt_extraction.v1".
+  /// e.g. "receipt_extraction.v2".
   String promptVersion = '';
   String model = '';
   int latencyMs = 0;
