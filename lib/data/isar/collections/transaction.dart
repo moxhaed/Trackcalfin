@@ -10,7 +10,7 @@ class Transaction {
   Id id = Isar.autoIncrement;
 
   @Index()
-  late DateTime occurredAt;
+  DateTime occurredAt = DateTime.now();
 
   @Enumerated(EnumType.name)
   TxSource source = TxSource.manual;

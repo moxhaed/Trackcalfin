@@ -12,7 +12,7 @@ class DailyLog {
 
   /// yyyymmdd in local time with the rollover hour applied (DayClock.dateKey).
   @Index(unique: true, replace: false)
-  late int dateKey;
+  int dateKey = 0;
 
   List<MealEntry> meals = [];
 

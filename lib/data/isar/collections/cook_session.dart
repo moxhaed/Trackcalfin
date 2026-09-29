@@ -11,9 +11,9 @@ class CookSession {
   Id id = Isar.autoIncrement;
 
   @Index()
-  late DateTime cookedAt;
+  DateTime cookedAt = DateTime.now();
 
-  late int recipeId;
+  int recipeId = 0;
   String recipeTitle = '';
 
   int portionsCooked = 1;

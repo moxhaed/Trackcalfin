@@ -12,9 +12,9 @@ class Ingredient {
 
   /// Stable slug shared with the AI ("chicken_breast"). Never renamed after creation.
   @Index(unique: true, replace: false)
-  late String key;
+  String key = '';
 
-  late String name;
+  String name = '';
 
   /// Normalized raw receipt strings confirmed for this ingredient ("HOCHL BRUSTFILET").
   @Index(type: IndexType.hashElements)

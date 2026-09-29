@@ -9,7 +9,7 @@ part 'recipe.g.dart';
 class Recipe {
   Id id = Isar.autoIncrement;
 
-  late String title;
+  String title = '';
 
   /// At most 70 chars; notification line and card subtitle.
   String hook = '';
