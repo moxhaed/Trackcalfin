@@ -48,7 +48,7 @@ class Notifications {
       } catch (_) {
         tz.setLocalLocation(tz.UTC);
       }
-      const android = AndroidInitializationSettings('@mipmap/ic_launcher');
+      const android = AndroidInitializationSettings('ic_notification');
       final darwin = DarwinInitializationSettings(
         requestAlertPermission: false,
         requestBadgePermission: false,

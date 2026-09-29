@@ -6,6 +6,7 @@ import '../../app/providers.dart';
 import '../../app/theme.dart';
 import '../../core/enums.dart';
 import '../../data/isar/collections/schemas.dart';
+import '../../domain/units.dart';
 import '../common/category_style.dart';
 import '../common/format.dart';
 import '../common/widgets.dart';
@@ -276,10 +277,18 @@ class _LineEditorState extends ConsumerState<_LineEditor> {
                     TextButton(
                       onPressed: () {
                         setState(() {
+                          if (l.qty != null && l.unit != merge.baseUnit) {
+                            // Convert into the existing item's unit; unknown if impossible.
+                            final converted = UnitConverter.toBase(l.qty!, l.unit, merge);
+                            l.qty = converted;
+                            if (converted == null) l.qtySource = QtySource.unknown;
+                            _qty.text = converted == null ? '' : _fmt(converted);
+                          }
                           l.matchedIngredientId = merge.id;
                           l.ingredientKey = merge.key;
                           l.isNewIngredient = false;
                           l.mergeCandidateId = null;
+                          l.profile = null;
                           l.unit = merge.baseUnit;
                         });
                         widget.onChanged();

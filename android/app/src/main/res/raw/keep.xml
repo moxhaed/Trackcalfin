@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Resources looked up by name at runtime (notifications, quick actions) must survive shrinking. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/ic_notification,@drawable/ic_shortcut_scan,@drawable/ic_shortcut_expense,@drawable/ic_shortcut_cooked" />
