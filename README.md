@@ -13,6 +13,11 @@ A personal **micro-procurement, pantry and meal-prep tracker** built with Flutte
     <td><img src="docs/screenshots/review.png" width="200" alt="Receipt review showing a totals mismatch and one line to check"></td>
     <td><img src="docs/screenshots/dashboard-dark.png" width="200" alt="Dashboard in dark mode"></td>
   </tr>
+  <tr>
+    <td><img src="docs/screenshots/food-history.png" width="200" alt="Food by month: eaten next to spent per month, and a month's weeks"></td>
+    <td><img src="docs/screenshots/store-prices.png" width="200" alt="An item's stores, cheapest first"></td>
+    <td><img src="docs/screenshots/say-it-prices.png" width="200" alt="Say it answering where chicken and eggs are cheaper"></td>
+  </tr>
 </table>
 
 *Screenshots are from the Linux desktop build with demo data (`--dart-define=DEMO=true`).*
