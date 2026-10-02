@@ -121,16 +121,58 @@ class FloatingNav extends StatelessWidget {
   }
 }
 
-class _BlurPill extends StatelessWidget {
+/// The Flutter pill. One animated position drives the indicator and every tab's highlight:
+/// a tab lights up as much as the indicator covers it, so the highlight travels with the
+/// indicator instead of jumping to the new tab before the indicator gets there.
+class _BlurPill extends StatefulWidget {
   const _BlurPill({required this.tabs, required this.index, required this.onSelect});
   final List<NavTab> tabs;
   final int index;
   final ValueChanged<int> onSelect;
 
   @override
+  State<_BlurPill> createState() => _BlurPillState();
+}
+
+class _BlurPillState extends State<_BlurPill> with SingleTickerProviderStateMixin {
+  late final _move = AnimationController(vsync: this, duration: const Duration(milliseconds: 380));
+  late double _from = widget.index.toDouble();
+  late double _to = widget.index.toDouble();
+
+  /// Where the indicator is, in tabs (1.5 is halfway between the second and third).
+  double get _at => _from + (_to - _from) * Curves.easeOutCubic.transform(_move.value);
+
+  @override
+  void didUpdateWidget(_BlurPill old) {
+    super.didUpdateWidget(old);
+    if (widget.index != _to) {
+      // Start from wherever it is now, so a quick second tap doesn't jump.
+      _from = _at;
+      _to = widget.index.toDouble();
+      _move.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _move.dispose();
+    super.dispose();
+  }
+
+  /// The indicator for one frame, as a span of tabs: it stretches a little in flight, like a
+  /// drop of liquid, and is one tab wide at rest.
+  (double, double) _span() {
+    final flight = math.min(1.0, (_to - _from).abs());
+    final width = 1 + 0.28 * flight * math.sin(math.pi * _move.value);
+    final n = widget.tabs.length.toDouble();
+    final left = (_at + (1 - width) / 2).clamp(0.0, n - width);
+    return (left, left + width);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final scheme = context.scheme;
-    final n = tabs.length;
+    final n = widget.tabs.length;
     return DecoratedBox(
       decoration: ShapeDecoration(
         shape: const StadiumBorder(),
@@ -145,33 +187,42 @@ class _BlurPill extends StatelessWidget {
               color: scheme.surfaceContainer.withValues(alpha: 0.72),
               shape: StadiumBorder(side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5), width: 0.5)),
             ),
-            child: Material(
-              type: MaterialType.transparency,
-              child: Padding(
-                padding: const EdgeInsets.all(4),
-                child: Stack(
-                  children: [
-                    AnimatedAlign(
-                      alignment: Alignment(n > 1 ? -1 + 2 * index / (n - 1) : 0, 0),
-                      duration: const Duration(milliseconds: 280),
-                      curve: Curves.easeOutCubic,
-                      child: FractionallySizedBox(
-                        widthFactor: 1 / n,
-                        heightFactor: 1,
-                        child: DecoratedBox(
-                          decoration: ShapeDecoration(color: scheme.secondaryContainer, shape: const StadiumBorder()),
-                        ),
-                      ),
-                    ),
-                    Row(
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: LayoutBuilder(
+                builder: (context, box) => AnimatedBuilder(
+                  animation: _move,
+                  builder: (context, _) {
+                    final (left, right) = _span();
+                    final w = box.maxWidth / n;
+                    return Stack(
                       children: [
-                        for (var i = 0; i < n; i++)
-                          Expanded(
-                            child: _PillTab(tab: tabs[i], selected: i == index, onTap: () => onSelect(i)),
+                        Positioned(
+                          left: left * w,
+                          width: (right - left) * w,
+                          top: 0,
+                          bottom: 0,
+                          child: DecoratedBox(
+                            decoration: ShapeDecoration(color: scheme.secondaryContainer, shape: const StadiumBorder()),
                           ),
+                        ),
+                        Row(
+                          children: [
+                            for (var i = 0; i < n; i++)
+                              Expanded(
+                                child: _PillTab(
+                                  tab: widget.tabs[i],
+                                  // How much of this tab the indicator covers right now.
+                                  glow: (math.min(right, i + 1.0) - math.max(left, i.toDouble())).clamp(0.0, 1.0),
+                                  current: i == widget.index,
+                                  onTap: () => widget.onSelect(i),
+                                ),
+                              ),
+                          ],
+                        ),
                       ],
-                    ),
-                  ],
+                    );
+                  },
                 ),
               ),
             ),
@@ -183,21 +234,26 @@ class _BlurPill extends StatelessWidget {
 }
 
 class _PillTab extends StatelessWidget {
-  const _PillTab({required this.tab, required this.selected, required this.onTap});
+  const _PillTab({required this.tab, required this.glow, required this.current, required this.onTap});
   final NavTab tab;
-  final bool selected;
+
+  /// 0 = plain, 1 = fully selected look (filled icon, strong color, bold label).
+  final double glow;
+
+  /// The tab that is selected, for screen readers; [glow] is only the look.
+  final bool current;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? context.scheme.onSecondaryContainer : context.scheme.onSurfaceVariant;
+    final color = Color.lerp(context.scheme.onSurfaceVariant, context.scheme.onSecondaryContainer, glow)!;
     return Semantics(
-      selected: selected,
+      selected: current,
       button: true,
       label: tab.label,
       excludeSemantics: true,
-      child: InkWell(
-        customBorder: const StadiumBorder(),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -205,7 +261,14 @@ class _PillTab extends StatelessWidget {
             Badge(
               isLabelVisible: tab.badge > 0,
               label: Text('${tab.badge}'),
-              child: Icon(selected ? tab.activeIcon : tab.icon, color: color, size: 22),
+              // The filled icon fades in over the outline one as the indicator arrives.
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Icon(tab.icon, color: color.withValues(alpha: 1 - glow), size: 22),
+                  Icon(tab.activeIcon, color: color.withValues(alpha: glow), size: 22),
+                ],
+              ),
             ),
             const SizedBox(height: 2),
             Text(
@@ -213,7 +276,7 @@ class _PillTab extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.fade,
               softWrap: false,
-              style: context.text.labelSmall?.copyWith(color: color, fontWeight: selected ? FontWeight.w700 : null),
+              style: context.text.labelSmall?.copyWith(color: color, fontWeight: glow > 0.5 ? FontWeight.w700 : null),
             ),
           ],
         ),

@@ -122,6 +122,14 @@ struct GlassNavBar: View {
         HStack(spacing: 0) {
           ForEach(model.tabs.indices, id: \.self, content: tab)
         }
+        .background {
+          // One capsule that slides to the selected tab. With a capsule per tab shown only
+          // when selected, the old one faded out while the new one faded in, so the new tab
+          // seemed to light up before the selection got there.
+          Capsule()
+            .fill(.primary.opacity(0.08))
+            .matchedGeometryEffect(id: model.index, in: selection, isSource: false)
+        }
         .padding(4)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .glassEffect(.regular.interactive(), in: .capsule)
@@ -153,6 +161,7 @@ struct GlassNavBar: View {
       VStack(spacing: 2) {
         Image(systemName: selected ? tab.activeSymbol : tab.symbol)
           .font(.system(size: 19, weight: .medium))
+          .contentTransition(.symbolEffect(.replace))
           .frame(height: 26)
           .overlay(alignment: .topTrailing) {
             if badge > 0 {
@@ -171,13 +180,7 @@ struct GlassNavBar: View {
       }
       .foregroundStyle(selected ? model.tint : .primary)
       .frame(maxWidth: .infinity, maxHeight: .infinity)
-      .background {
-        if selected {
-          Capsule()
-            .fill(.primary.opacity(0.08))
-            .matchedGeometryEffect(id: "selection", in: selection)
-        }
-      }
+      .matchedGeometryEffect(id: index, in: selection)
       .contentShape(.capsule)
     }
     .buttonStyle(.plain)
