@@ -513,7 +513,7 @@ class ScanService {
           item
             ..ingredientKey = ing.key
             ..qtyBought = l.qty
-            ..unit = ing.baseUnit
+            ..unit = l.unit
             ..product = l.product;
           if (stocked) {
             item
