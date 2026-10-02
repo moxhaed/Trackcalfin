@@ -7,9 +7,11 @@ import '../../app/theme.dart';
 import '../../core/enums.dart';
 import '../../data/isar/collections/schemas.dart';
 import '../../domain/feasibility.dart';
+import '../../domain/shopping.dart';
 import '../../domain/stock_index.dart';
 import '../../domain/units.dart';
 import '../buy/ingredient_sheet.dart';
+import '../buy/shopping_view.dart';
 import '../common/format.dart';
 import '../common/widgets.dart';
 import 'cook_actions.dart';
@@ -39,6 +41,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     final stock = StockIndex(ingredients);
     final portions = _portions ?? (r.lastPortionsCooked > 0 ? r.lastPortionsCooked : r.defaultPortions);
     final f = FeasibilityChecker.check(r.ingredients, portions, stock);
+    final toBuy = Shopping.forRecipe(r, f);
     final c = context.colors;
     final recipes = ref.read(recipeServiceProvider);
 
@@ -137,6 +140,22 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
               ],
             ),
           ),
+          if (toBuy.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () => addToShoppingList(context, ref, toBuy),
+                  icon: const Icon(Icons.playlist_add, size: 18),
+                  label: Text(
+                    toBuy.length == 1
+                        ? 'Add ${toBuy.single.name} to the shopping list'
+                        : 'Add the ${toBuy.length} missing items to the shopping list',
+                  ),
+                ),
+              ),
+            ),
           if (r.shoppingList.isNotEmpty) ...[
             const SizedBox(height: 12),
             SectionCard(

@@ -16,6 +16,7 @@ import '../../domain/units.dart';
 import '../../domain/validation/receipt_validator.dart';
 import '../common/category_style.dart';
 import '../common/format.dart';
+import '../common/photo_viewer.dart';
 import '../common/search_suggestions.dart';
 import '../common/store_prices.dart';
 import '../common/widgets.dart';
@@ -276,7 +277,19 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
     );
 
     return Scaffold(
-      appBar: AppBar(title: Text(pantry ? 'Pantry photo' : (job.merchant ?? 'Receipt'))),
+      appBar: AppBar(
+        title: Text(pantry ? 'Pantry photo' : (job.merchant ?? 'Receipt')),
+        actions: [
+          // Check a hard-to-read line against the receipt itself.
+          if (keptPhotos(job.imagePaths).isNotEmpty)
+            TextButton.icon(
+              onPressed: () => showPhotos(context, job.imagePaths),
+              icon: const Icon(Icons.photo_outlined, size: 18),
+              label: const Text('Photo'),
+            ),
+          const SizedBox(width: 4),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
         children: [

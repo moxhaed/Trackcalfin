@@ -6,9 +6,12 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/providers.dart';
 import '../../app/theme.dart';
+import '../../application/profile_service.dart';
+import '../../core/region.dart';
 import '../../platform/notifications.dart';
 import '../capture/scan_flow.dart';
 import '../common/format.dart';
+import '../common/pickers.dart';
 import '../common/widgets.dart';
 
 /// Cold start in about 3 minutes: goals, key, kitchen sweep, rhythm.
@@ -191,9 +194,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     context,
     icon: Icons.flag_outlined,
     title: 'Your goals',
-    body: 'These drive the Vibe Check. Change them any time in Settings.',
+    body: 'Change them any time in Settings.',
     child: Column(
       children: [
+        _whereYouShop(context),
+        const SizedBox(height: 4),
         TextField(
           controller: _budget,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -228,6 +233,28 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       ],
     ),
   );
+
+  /// Taken from the phone's region; one tap to change. It sets the currency, and the country
+  /// products and shop prices are looked up in.
+  Widget _whereYouShop(BuildContext context) {
+    final p = ref.watch(profileProvider).value;
+    if (p == null) return const SizedBox.shrink();
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      title: const Text('Where you shop'),
+      subtitle: const Text('Sets your currency'),
+      trailing: Text('${Region.countryName(p.country)} · ${p.currency}', style: context.text.titleSmall),
+      onTap: () async {
+        final c = await showCountryPicker(context, current: p.country);
+        if (c == null) return;
+        final currency = Region.currencyOf(c);
+        await ref.read(profileServiceProvider).update((x) {
+          x.country = c;
+          if (currency != null) ProfileService.applyCurrency(x, currency);
+        });
+      },
+    );
+  }
 
   Widget _apiKey(BuildContext context) => _page0(
     context,

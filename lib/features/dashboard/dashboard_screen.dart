@@ -306,8 +306,8 @@ class _FoodCard extends ConsumerWidget {
       // A month from payday to payday says when it began.
       if (s.customMonth) 'Since ${DateFormat('EEE d MMM').format(s.monthStart)}',
       f.collecting
-          ? (eaten ? 'Projection after 7 days of logged meals' : 'Projection after 7 days of data')
-          : 'Projected month: ${money.compact(f.projectedMonth ?? 0)} (trailing week × 4.33)',
+          ? 'A month estimate after a week of data'
+          : 'Heading for ${money.compact(f.projectedMonth ?? 0)} this month',
     ].join(' · ');
     return SectionCard(
       title: 'Food',
@@ -331,9 +331,7 @@ class _FoodCard extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
             child: Text(
-              eaten
-                  ? 'What the food you ate was worth. Groceries count when you eat them, not when you buy them.'
-                  : 'What you paid for groceries, on the day you paid.',
+              eaten ? 'Groceries count when you eat them.' : 'Groceries count on the day you pay.',
               style: muted,
             ),
           ),
@@ -507,7 +505,7 @@ class _WeekCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'Dashed line: your daily target. Today is still in progress.',
+            'Dashed line: your daily target.',
             style: context.text.labelSmall?.copyWith(color: context.scheme.onSurfaceVariant),
           ),
         ],

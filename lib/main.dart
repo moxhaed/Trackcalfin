@@ -23,7 +23,9 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final isar = await openAppIsar();
   if (DemoSeed.enabled) await DemoSeed.run(isar);
-  final profile = await ProfileService(isar).load();
+  // A first run takes money, country and language from the phone's region.
+  final locale = WidgetsBinding.instance.platformDispatcher.locale;
+  final profile = await ProfileService(isar).load(country: locale.countryCode, language: locale.languageCode);
   await Migrations.run(isar);
   final secrets = SecureSecretStore(fallbackDir: await appSupportPath());
   final mobile = Platform.isAndroid || Platform.isIOS;

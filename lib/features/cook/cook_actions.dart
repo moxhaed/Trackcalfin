@@ -27,6 +27,7 @@ Future<void> cookNow(BuildContext context, WidgetRef ref, Recipe recipe, int por
         content: Text(msg),
         duration: const Duration(seconds: 5),
         action: SnackBarAction(label: 'Undo', onPressed: () => cook.undoCook(res.sessionId)),
+        persist: false,
       ),
     );
     if (res.plan.hasShortfall) {

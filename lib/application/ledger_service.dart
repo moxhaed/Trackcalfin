@@ -5,6 +5,7 @@ import '../data/isar/collections/schemas.dart';
 import '../domain/costing.dart';
 import '../domain/quick_text_parser.dart';
 import 'clock.dart';
+import 'shopping_service.dart';
 
 /// A deleted transaction, with the used-up food its old receipt recorded, for undo.
 class DeletedTransaction {
@@ -75,6 +76,7 @@ class LedgerService {
       if (ing == null) throw StateError('Ingredient $ingredientId not found');
       CostingEngine.applyPurchase(ing, qtyAdded: qty, lineTotalMinor: totalMinor, at: when);
       await isar.ingredients.put(ing);
+      await ShoppingService.tickOff(isar, [ing.key], now());
       final tx = Transaction()
         ..occurredAt = when
         ..source = TxSource.manual

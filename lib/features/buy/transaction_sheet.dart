@@ -7,6 +7,7 @@ import '../../core/enums.dart';
 import '../../data/isar/collections/schemas.dart';
 import '../common/category_style.dart';
 import '../common/format.dart' show shortDate;
+import '../common/photo_viewer.dart';
 import 'fx_widgets.dart';
 
 Future<void> showTransactionSheet(BuildContext context, Transaction tx) => showModalBottomSheet(
@@ -31,6 +32,21 @@ class _TransactionSheetState extends ConsumerState<TransactionSheet> {
   late DateTime _date = widget.tx.occurredAt;
 
   bool get _single => widget.tx.lines.length == 1;
+
+  /// The scanned receipt's photos, while they are kept.
+  List<String> _photos = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    final jobId = widget.tx.scanJobId;
+    if (jobId != null) {
+      ref.read(isarProvider).scanJobs.get(jobId).then((job) {
+        final kept = keptPhotos(job?.imagePaths ?? const []);
+        if (mounted && kept.isNotEmpty) setState(() => _photos = [for (final f in kept) f.path]);
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -66,7 +82,19 @@ class _TransactionSheetState extends ConsumerState<TransactionSheet> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(_single ? 'Edit expense' : (tx.merchant ?? 'Receipt'), style: context.text.titleLarge),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(_single ? 'Edit expense' : (tx.merchant ?? 'Receipt'), style: context.text.titleLarge),
+                  ),
+                  if (_photos.isNotEmpty)
+                    TextButton.icon(
+                      onPressed: () => showPhotos(context, _photos),
+                      icon: const Icon(Icons.photo_outlined, size: 18),
+                      label: const Text('Receipt'),
+                    ),
+                ],
+              ),
               const SizedBox(height: 12),
               if (_single)
                 TextField(

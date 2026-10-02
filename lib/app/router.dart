@@ -35,7 +35,13 @@ GoRouter buildRouter({required bool onboarded, String? initialLocation}) {
             routes: [
               GoRoute(
                 path: '/buy',
-                builder: (_, s) => BuyScreen(initialTab: s.uri.queryParameters['tab'] == 'ledger' ? 1 : 0),
+                builder: (_, s) => BuyScreen(
+                  initialTab: switch (s.uri.queryParameters['tab']) {
+                    'list' => 1,
+                    'ledger' => 2,
+                    _ => 0,
+                  },
+                ),
               ),
             ],
           ),

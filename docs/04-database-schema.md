@@ -518,6 +518,22 @@ class FoodUse {
 ```
 Written by an old receipt's "What's left?", Quick Check and hand counts, pantry photos that count less, and Say it ("we're out of milk", "threw away"). The dashboard spreads each eaten use evenly over its days (docs/03 §3.16). Backups include it.
 
+## 4.10c Supporting collection · `ShoppingListItem` (the shopping list)
+
+```dart
+@collection
+class ShoppingListItem {
+  Id id = Isar.autoIncrement;
+  String name = '';
+  @Index()
+  String? ingredientKey;               // a pantry item: its cheapest store shows, a receipt ticks it off
+  String? amount;                      // "2 l", "6", as said; optional
+  DateTime? doneAt;                    // ticked off (by hand or by a purchase)
+  DateTime addedAt = DateTime.now();
+}
+```
+Not to be confused with the embedded `ShoppingItem` on a recipe (the AI's "To buy" list for that recipe). Backups include it (`shoppingList`). Rules: docs/03 §3.18.
+
 ## 4.11 Supporting collection · `UserProfile` (singleton: goals & settings)
 
 ```dart
@@ -583,6 +599,8 @@ class KeywordCategory {
   SpendCategory category = SpendCategory.other;
 }
 ```
+A new profile takes its country, currency (and its decimals) and recipe language from the phone's region (`ProfileService.defaults`, `Region`); unknown regions start in euros in Germany. Changing the currency later sets its decimals too, and the amounts already logged are not converted (Settings says so first).
+
 
 ## 4.12 Supporting collection · `AiCallLog` (debugging & prompt tuning)
 

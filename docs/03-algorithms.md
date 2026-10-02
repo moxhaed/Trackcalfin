@@ -174,6 +174,8 @@ DiscardPortions(sessionId, n): s.portionsRemaining -= n; s.portionsDiscarded += 
 ```
 When there are several active sessions, a notification action picks the **oldest** one (`cookedAt` ascending).
 
+**Eating straight from the pantry** (`CookService.eatFromPantry`, the **I ate** sheet's "From the pantry"): a piece is one tap, grams and ml ask how much (presets or typed). It takes `min(qty, onHand)` out of stock, logs a `MealEntry` (`source: pantry`, macros from the item's per-100 values, cost = qty × average cost) in one transaction, and Undo deletes the meal, which puts the stock back. Eating more than the pantry had clears `lastVerifiedAt`, so Quick Check asks.
+
 ## 3.9 DashboardAggregator
 
 Inputs: committed transactions for `[monthStart − 28 d, now]`, DailyLogs from the earliest of last week's start, the month's start and 28 days back, the day of the first logged meal, CookSessions for the waste count, and the profile.
@@ -419,4 +421,18 @@ tip(receipt, i)  = cheapest OTHER store for i in the last 90 days, when
 - **Proactive:** after a receipt is filed, by review or on its own, the message adds the biggest saving ("Chicken breast: 26% cheaper at Aldi (and 2 more)") with **See**, which lists each tip: both prices per kg, l or piece, and the saving. A receipt filed in the background puts it in the notification too.
 - **On demand:** an item's sheet lists each store's last price, cheapest first, with how much more the others cost. **Running low** says where an item is cheapest. Say it answers "where is X cheaper?" with a `price_check` ([05 §5.11](05-ai-layer-and-prompts.md#511-say-it-logging-what-the-user-says-prompt-g)), from the same book.
 - A sale price counts like any other: it is what that store charged last. Products differ (store brand or Barilla); the product name is shown so the user can judge.
+
+## 3.18 Shopping list
+
+Buy → **List**. Lines are a pantry item (`ingredientKey`) or anything typed; the pure parts are `Shopping` (`lib/domain/shopping.dart`):
+```
+suggestions  = pantry items running low (qty ≤ threshold), or out and bought in the last 30 days,
+               not on the open list (by key or name); "out" first. One tap adds one.
+forRecipe(r) = items short for the portions, role=missing rows, and the recipe's AI "To buy" list, once each
+storeFor(i)  = the cheapest store in the PriceBook (§3.17), or the only one known
+byStore      = open lines grouped by that store, stores by name, "Anywhere" last
+```
+- Adding skips what is already on the open list (same key, or same name). Typing a pantry item's exact name, or picking it from the matches, links its key.
+- **Bought means ticked off:** filing a receipt, a Say it purchase or a manual purchase ticks off the open lines for those items inside the same write transaction (`ShoppingService.tickOff`); Say it's Undo puts them back.
+- Recipes ("Add the N missing items"), Cook again (the cart button) and an item's sheet ("Add to list") add to it with Undo. **Send the list** shares it as text, by store.
 

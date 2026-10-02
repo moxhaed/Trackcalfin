@@ -77,6 +77,7 @@ class _QuickCheckScreenState extends ConsumerState<QuickCheckScreen> {
             content: Text('${ing.name} counts as eaten'),
             duration: const Duration(seconds: 4),
             action: SnackBarAction(label: 'Thrown away', onPressed: () => pantry.setUseKind(use, UseKind.thrownAway)),
+            persist: false,
           ),
         );
       }

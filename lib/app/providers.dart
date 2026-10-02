@@ -21,6 +21,7 @@ import '../application/profile_service.dart';
 import '../application/quick_log_service.dart';
 import '../application/recipe_service.dart';
 import '../application/scan_service.dart';
+import '../application/shopping_service.dart';
 import '../core/day_clock.dart';
 import '../core/enums.dart';
 import '../core/money.dart';
@@ -57,6 +58,9 @@ final recipeServiceProvider = Provider((ref) => RecipeService(ref.watch(isarProv
 final metricsServiceProvider = Provider((ref) => MetricsService(ref.watch(isarProvider)));
 final backupServiceProvider = Provider((ref) => BackupService(ref.watch(isarProvider)));
 final priceServiceProvider = Provider((ref) => PriceService(ref.watch(isarProvider), now: ref.watch(nowProvider)));
+final shoppingServiceProvider = Provider(
+  (ref) => ShoppingService(ref.watch(isarProvider), now: ref.watch(nowProvider)),
+);
 
 /// `--dart-define=GEMINI_BASE_URL=http://127.0.0.1:8765/v1beta` points the app at a local
 /// stand-in for Gemini, to check AI screens on the desktop without a key or quota.
@@ -155,6 +159,12 @@ final todayLogProvider = StreamProvider<DailyLog?>((ref) {
   final isar = ref.watch(isarProvider);
   final key = ref.watch(dayClockProvider).dateKey(ref.watch(nowProvider)());
   return isar.dailyLogs.where().dateKeyEqualTo(key).watch(fireImmediately: true).map((l) => l.firstOrNull);
+});
+
+/// The shopping list, oldest first.
+final shoppingListProvider = StreamProvider<List<ShoppingListItem>>((ref) {
+  final isar = ref.watch(isarProvider);
+  return isar.shoppingListItems.where().sortByAddedAt().watch(fireImmediately: true);
 });
 
 /// Each store's latest price per item, from the ledger (the last 500 transactions are months

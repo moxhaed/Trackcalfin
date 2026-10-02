@@ -11,9 +11,12 @@ import 'package:share_plus/share_plus.dart';
 import '../../app/providers.dart';
 import '../../app/theme.dart';
 import '../../application/habit_scheduler.dart';
+import '../../application/profile_service.dart';
 import '../../core/enums.dart';
+import '../../core/region.dart';
 import '../../data/isar/collections/schemas.dart';
 import '../common/format.dart';
+import '../common/pickers.dart';
 import '../common/widgets.dart';
 
 const dietOptions = ['vegetarian', 'vegan', 'pescatarian', 'halal', 'gluten_free', 'high_protein', 'low_carb'];
@@ -51,7 +54,7 @@ class SettingsScreen extends ConsumerWidget {
           _MoneyTile(
             title: 'Monthly food budget',
             valueMinor: p.monthlyFoodBudgetMinor,
-            subtitle: 'Weekly: ${money.compact((p.monthlyFoodBudgetMinor / 4.33).round())} (÷ 4.33)',
+            subtitle: 'About ${money.compact((p.monthlyFoodBudgetMinor / 4.33).round())} a week',
             onSave: (v) => update((x) => x.monthlyFoodBudgetMinor = v),
           ),
           ListTile(
@@ -176,11 +179,6 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const _Section('AI'),
           const _ApiKeyTile(),
-          ListTile(
-            title: const Text('Model'),
-            subtitle: const Text('gemini-3.5-flash-lite (fallback: gemini-3.8-flash)'),
-            trailing: const Icon(Icons.lock_outline, size: 20),
-          ),
           SwitchListTile(
             title: const Text('Look up prices on Google'),
             subtitle: const Text(
@@ -202,27 +200,47 @@ class SettingsScreen extends ConsumerWidget {
               onSelectionChanged: (v) => update((x) => x.themeMode = v.first),
             ),
           ),
-          _TextTile(
-            title: 'Currency (ISO code)',
-            value: p.currency,
-            onSave: (v) => update((x) => x.currency = v.trim().toUpperCase()),
+          ListTile(
+            title: const Text('Country'),
+            subtitle: const Text('Where you shop: products and shop prices'),
+            trailing: Text(Region.countryName(p.country), style: context.text.titleSmall),
+            onTap: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              final c = await showCountryPicker(context, current: p.country);
+              if (c == null || c == p.country) return;
+              await update((x) => x.country = c);
+              final theirs = Region.currencyOf(c);
+              if (theirs != null && theirs != p.currency) {
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text('Your currency is still ${p.currency}. Change it below if you pay in $theirs now.'),
+                  ),
+                );
+              }
+            },
           ),
-          _TextTile(
-            title: 'Country (ISO code)',
-            value: p.country,
-            onSave: (v) => update((x) => x.country = v.trim().toUpperCase()),
+          ListTile(
+            title: const Text('Currency'),
+            trailing: Text(p.currency, style: context.text.titleSmall),
+            onTap: () => _changeCurrency(context, ref, p.currency),
           ),
-          _TextTile(
-            title: 'Recipe language',
-            value: p.outputLanguage,
-            onSave: (v) => update((x) => x.outputLanguage = v.trim().toLowerCase()),
+          ListTile(
+            title: const Text('Language'),
+            subtitle: const Text('For recipes and item names'),
+            trailing: Text(Region.languageName(p.outputLanguage), style: context.text.titleSmall),
+            onTap: () async {
+              final l = await showLanguagePicker(context, current: p.outputLanguage);
+              if (l != null) await update((x) => x.outputLanguage = l);
+            },
           ),
-          _NumberTile(
-            title: 'New day starts at',
-            value: p.dayRolloverHour.toDouble(),
-            suffix: ':00',
-            subtitle: 'A late snack counts toward the previous day',
-            onSave: (v) => update((x) => x.dayRolloverHour = v.round().clamp(0, 8)),
+          ListTile(
+            title: const Text('New day starts at'),
+            subtitle: const Text('A late snack counts toward the day before'),
+            trailing: Text(hourLabel(p.dayRolloverHour), style: context.text.titleSmall),
+            onTap: () async {
+              final h = await showDayStartPicker(context, current: p.dayRolloverHour);
+              if (h != null) await update((x) => x.dayRolloverHour = h);
+            },
           ),
           SwitchListTile(
             title: const Text('Week starts on Sunday'),
@@ -235,12 +253,6 @@ class SettingsScreen extends ConsumerWidget {
             title: const Text('Quick check'),
             subtitle: const Text('Verify the pantry items most likely to be wrong'),
             onTap: () => context.push('/quick-check'),
-          ),
-          ListTile(
-            leading: const Icon(Icons.insights_outlined),
-            title: const Text('Stats'),
-            subtitle: const Text('Time-to-log and AI usage'),
-            onTap: () => context.push('/stats'),
           ),
           ListTile(
             leading: const Icon(Icons.ios_share),
@@ -259,11 +271,61 @@ class SettingsScreen extends ConsumerWidget {
             title: const Text('Run onboarding again'),
             onTap: () => context.push('/onboarding'),
           ),
+          // For checking how the app performs; nothing here is needed day to day.
+          ExpansionTile(
+            title: const Text('Advanced'),
+            shape: const Border(),
+            collapsedShape: const Border(),
+            children: [
+              ListTile(
+                leading: const Icon(Icons.insights_outlined),
+                title: const Text('Stats'),
+                subtitle: const Text('How fast logging is, and AI usage'),
+                onTap: () => context.push('/stats'),
+              ),
+              const ListTile(
+                leading: Icon(Icons.memory_outlined),
+                title: Text('AI model'),
+                subtitle: Text('gemini-3.5-flash-lite (fallback: gemini-3.8-flash)'),
+              ),
+            ],
+          ),
           const SizedBox(height: 12),
           Center(child: Text('Trackcalfin 1.0', style: context.text.labelSmall)),
         ],
       ),
     );
+  }
+
+  /// A new home currency. Amounts already logged keep their numbers (they aren't converted),
+  /// so with data in the app it asks first.
+  Future<void> _changeCurrency(BuildContext context, WidgetRef ref, String current) async {
+    final typed = await _prompt(context, 'Currency', current, hint: 'EUR, USD, CHF…');
+    final code = typed?.trim().toUpperCase();
+    if (code == null || code == current) return;
+    if (!RegExp(r'^[A-Z]{3}$').hasMatch(code)) {
+      if (context.mounted) showInfo(context, 'A currency is three letters, like EUR or USD.');
+      return;
+    }
+    final logged = await ref.read(isarProvider).transactions.count();
+    if (logged > 0 && context.mounted) {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (c) => AlertDialog(
+          title: Text('Switch to $code?'),
+          content: Text(
+            'The $logged amounts already logged keep their numbers: they are not converted from $current. '
+            'New receipts in $current will be converted.',
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(c, true), child: Text('Switch to $code')),
+          ],
+        ),
+      );
+      if (ok != true) return;
+    }
+    await ref.read(profileServiceProvider).update((x) => ProfileService.applyCurrency(x, code));
   }
 
   Future<void> _export(BuildContext context, WidgetRef ref) async {
@@ -339,6 +401,7 @@ Future<String?> _prompt(
   TextInputType? keyboard,
   String? suffix,
   String? prefix,
+  String? hint,
   bool obscure = false,
 }) {
   final c = TextEditingController(text: initial);
@@ -351,7 +414,7 @@ Future<String?> _prompt(
         autofocus: true,
         obscureText: obscure,
         keyboardType: keyboard,
-        decoration: InputDecoration(suffixText: suffix, prefixText: prefix),
+        decoration: InputDecoration(suffixText: suffix, prefixText: prefix, hintText: hint),
         onSubmitted: (v) => Navigator.pop(ctx, v),
       ),
       actions: [
@@ -421,23 +484,6 @@ class _MoneyTile extends ConsumerWidget {
       },
     );
   }
-}
-
-class _TextTile extends StatelessWidget {
-  const _TextTile({required this.title, required this.value, required this.onSave});
-  final String title;
-  final String value;
-  final void Function(String) onSave;
-
-  @override
-  Widget build(BuildContext context) => ListTile(
-    title: Text(title),
-    trailing: Text(value, style: context.text.titleSmall),
-    onTap: () async {
-      final v = await _prompt(context, title, value);
-      if (v != null) onSave(v);
-    },
-  );
 }
 
 class _ChipsTile extends StatelessWidget {

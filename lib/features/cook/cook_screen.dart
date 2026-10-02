@@ -9,8 +9,10 @@ import '../../app/theme.dart';
 import '../../application/daily_pick_service.dart';
 import '../../core/enums.dart';
 import '../../domain/feasibility.dart';
+import '../../domain/shopping.dart';
 import '../../domain/stock_index.dart';
 import '../../platform/speech.dart';
+import '../buy/shopping_view.dart';
 import '../common/format.dart';
 import '../common/widgets.dart';
 import 'cook_actions.dart';
@@ -369,10 +371,10 @@ class _CookAgain extends ConsumerWidget {
               ),
               trailing: f.ready
                   ? Icon(Icons.check_circle, color: context.colors.good, semanticLabel: 'Ready')
-                  : Icon(
-                      Icons.shopping_cart_outlined,
-                      color: context.scheme.onSurfaceVariant,
-                      semanticLabel: 'Needs shopping',
+                  : IconButton(
+                      tooltip: 'Add what is missing to the shopping list',
+                      onPressed: () => addToShoppingList(context, ref, Shopping.forRecipe(r, f)),
+                      icon: Icon(Icons.add_shopping_cart, color: context.scheme.onSurfaceVariant),
                     ),
               onTap: () => context.push('/recipe/${r.id}'),
             ),

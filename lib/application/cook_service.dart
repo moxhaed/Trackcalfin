@@ -3,9 +3,12 @@ import 'package:isar_community/isar.dart';
 import '../core/day_clock.dart';
 import '../core/enums.dart';
 import '../data/isar/collections/schemas.dart';
+import '../domain/costing.dart';
 import '../domain/depletion.dart';
+import '../domain/nutrition.dart';
 import '../domain/stock_index.dart';
 import 'clock.dart';
+import 'recipe_service.dart';
 
 class CookResult {
   CookResult(this.sessionId, this.plan, this.autoLoggedEntryId, this.portionsInFridge);
@@ -149,6 +152,47 @@ class CookService {
       ];
       log.recomputeTotals();
       await isar.dailyLogs.put(log);
+      return id;
+    });
+  }
+
+  /// Something eaten straight from the pantry (a banana, a yogurt, a can of cola): taken out
+  /// of stock and logged with its macros and cost. Returns the meal's entry id; [deleteMeal]
+  /// puts the stock back.
+  Future<String?> eatFromPantry(int ingredientId, double qty, {DateTime? at}) async {
+    if (qty <= 0) return null;
+    final t = at ?? now();
+    final clock = await _clock();
+    return isar.writeTxn(() async {
+      final ing = await isar.ingredients.get(ingredientId);
+      if (ing == null) return null;
+      final had = ing.qtyOnHand;
+      final taken = qty < had ? qty : had;
+      ing
+        ..qtyOnHand = had - taken
+        ..updatedAt = t;
+      ExpiryEstimator.onDeplete(ing);
+      // Ate more than the pantry had: a purchase was missed, so the count is worth a check.
+      if (qty > had + 1e-9) ing.lastVerifiedAt = null;
+      await isar.ingredients.put(ing);
+      final log = await _logFor(clock.dateKey(t));
+      final id = _entryId(t);
+      log.meals = [
+        ...log.meals,
+        MealEntry()
+          ..entryId = id
+          ..eatenAt = t
+          ..source = MealSource.pantry
+          ..title = ing.name
+          ..portions = 1
+          ..ingredientKey = ing.key
+          ..qtyBase = taken
+          ..nutrition = (ing.needsNutrition ? null : NutritionEngine.nutrientsFor(ing, qty)) ?? Nutrition()
+          ..costMinor = (qty * ing.avgCostPerUnitMinor).round(),
+      ];
+      log.recomputeTotals();
+      await isar.dailyLogs.put(log);
+      await RecipeService.refreshUsing(isar, {ing.id});
       return id;
     });
   }

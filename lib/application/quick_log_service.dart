@@ -16,6 +16,7 @@ import 'ai_gateway.dart';
 import 'clock.dart';
 import 'profile_service.dart';
 import 'recipe_service.dart';
+import 'shopping_service.dart';
 
 /// What the user said, as Prompt G read it: the actions and the card's steps, or why not.
 class QuickLogDraft {
@@ -37,6 +38,7 @@ class QuickLogReceipt {
     required this.sessions,
     required this.logs,
     required this.uses,
+    this.ticked = const [],
     required this.ingredientsBefore,
     required this.sessionsBefore,
     required this.logsBefore,
@@ -50,6 +52,9 @@ class QuickLogReceipt {
   final List<int> sessions;
   final List<int> logs;
   final List<int> uses;
+
+  /// Shopping list lines ticked off by the purchases: Undo puts them back on.
+  final List<int> ticked;
 
   // Changed, as they were before, so Undo puts them back.
   final List<Ingredient> ingredientsBefore;
@@ -173,6 +178,11 @@ class QuickLogService {
       await isar.recipes.putAll(w.changedRecipes.toList());
       // Prices and stock changed: recipes using these items are costed again.
       await RecipeService.refreshUsing(isar, {for (final i in w.changedIngredients) i.id});
+      final ticked = await ShoppingService.tickOff(isar, [
+        for (final tx in w.transactions)
+          for (final l in tx.lines)
+            if (l.category.isFood && l.ingredientKey != null) l.ingredientKey!,
+      ], now());
       return QuickLogReceipt(
         steps: steps,
         transactions: txIds,
@@ -180,6 +190,7 @@ class QuickLogService {
         sessions: sessionIds.values.toList(),
         logs: [for (final l in newLogs) l.id],
         uses: useIds,
+        ticked: ticked,
         ingredientsBefore: ingredientsBefore,
         sessionsBefore: sessionsBefore,
         logsBefore: logsBefore,
@@ -195,6 +206,7 @@ class QuickLogService {
       await isar.cookSessions.deleteAll(r.sessions);
       await isar.dailyLogs.deleteAll(r.logs);
       await isar.foodUses.deleteAll(r.uses);
+      await ShoppingService.untick(isar, r.ticked);
       await isar.ingredients.deleteAll(r.ingredients);
       await isar.ingredients.putAll(r.ingredientsBefore);
       await isar.cookSessions.putAll(r.sessionsBefore);

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -71,7 +72,7 @@ void main() {
     expect(find.textContaining('Vibe ·'), findsOneWidget);
     expect(find.text('TODAY'), findsOneWidget);
     expect(find.text('FOOD'), findsOneWidget);
-    expect(find.textContaining('Groceries count when you eat them'), findsOneWidget, reason: 'eaten is the default');
+    expect(find.text('Groceries count when you eat them.'), findsOneWidget, reason: 'eaten is the default');
     expect(find.text('spent this week'), findsOneWidget);
     await tester.tap(find.text('Spent'));
     await settle(tester);
@@ -103,6 +104,83 @@ void main() {
     await settle(tester);
     expect(find.text('Week'), findsOneWidget);
     expect(find.text('Eaten'), findsWidgets);
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  testWidgets('the shopping list: running-low suggestions, adding, ticking off', (tester) async {
+    await pumpApp(tester, initial: '/buy?tab=list');
+    expect(find.text('RUNNING LOW OR OUT'), findsOneWidget);
+    await tester.tap(find.widgetWithText(ActionChip, 'Whole milk'));
+    await settle(tester);
+    await tester.enterText(find.widgetWithText(TextField, 'Add to the list'), 'Birthday candles');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await settle(tester);
+    expect(find.text('List · 2'), findsOneWidget);
+    final milk = (await isar.shoppingListItems.filter().nameEqualTo('Whole milk').findFirst())!;
+    expect(milk.ingredientKey, 'whole_milk', reason: 'a suggestion is the pantry item');
+    expect(find.widgetWithText(ActionChip, 'Whole milk'), findsNothing, reason: 'on the list: no longer suggested');
+
+    await tester.tap(find.descendant(of: find.widgetWithText(ListTile, 'Whole milk'), matching: find.byType(Checkbox)));
+    await settle(tester);
+    expect(find.text('IN THE BASKET · 1'), findsOneWidget);
+    expect(find.text('List · 1'), findsOneWidget);
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  testWidgets('I ate: something from the pantry is one tap, with its macros and Undo', (tester) async {
+    await pumpApp(tester);
+    await tester.tap(find.byTooltip('Log something'));
+    await settle(tester);
+    await tester.tap(find.text('I ate'));
+    await settle(tester);
+    expect(find.text('From the pantry'), findsOneWidget);
+    await tester.tap(find.descendant(of: find.widgetWithText(ListTile, 'Bananas'), matching: find.text('Eat 1')));
+    await settle(tester);
+    expect(find.textContaining('Ate Bananas · 1 pc'), findsOneWidget);
+    expect((await isar.ingredients.getByKey('banana'))!.qtyOnHand, 2);
+    await tester.tap(find.text('Undo'));
+    await settle(tester);
+    expect((await isar.ingredients.getByKey('banana'))!.qtyOnHand, 3);
+
+    // Undo is offered for a few seconds; then the bar goes by itself.
+    await tester.tap(find.byTooltip('Log something'));
+    await settle(tester);
+    await tester.tap(find.text('I ate'));
+    await settle(tester);
+    await tester.tap(find.descendant(of: find.widgetWithText(ListTile, 'Bananas'), matching: find.text('Eat 1')));
+    await settle(tester);
+    expect(find.text('Undo'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 6));
+    await settle(tester);
+    expect(find.text('Undo'), findsNothing);
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  testWidgets('review shows the receipt photo, to check a hard-to-read line', (tester) async {
+    await DemoSeed.run(isar);
+    final png = File('${tmp.path}/receipt.png')
+      ..writeAsBytesSync(
+        base64Decode(
+          'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+        ),
+      );
+    final id = await isar.writeTxn(
+      () => isar.scanJobs.put(
+        ScanJob()
+          ..status = ScanStatus.needsReview
+          ..kind = ScanKind.receipt
+          ..merchant = 'Rewe'
+          ..purchasedAt = DateTime.now()
+          ..imagePaths = [png.path]
+          ..lines = [
+            DraftLine()
+              ..name = 'Butter'
+              ..totalMinor = 249
+              ..category = SpendCategory.groceries,
+          ],
+      ),
+    );
+    await pumpApp(tester, initial: '/inbox/$id');
+    await tester.tap(find.widgetWithText(TextButton, 'Photo'));
+    await settle(tester);
+    expect(find.byType(InteractiveViewer), findsOneWidget);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   testWidgets('buy tab shows pantry and ledger', (tester) async {

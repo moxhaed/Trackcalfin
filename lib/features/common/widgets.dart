@@ -464,6 +464,8 @@ void showUndoOn(ScaffoldMessengerState messenger, String message, {VoidCallback?
         ],
       ),
       action: onUndo == null ? null : SnackBarAction(label: 'Undo', onPressed: onUndo),
+      // Undo is offered for a few seconds, then the bar goes (with an action it would stay).
+      persist: false,
     ),
   );
 }

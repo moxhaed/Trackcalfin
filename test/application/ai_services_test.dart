@@ -13,6 +13,7 @@ import 'package:trackcalfin/application/profile_service.dart';
 import 'package:trackcalfin/application/quick_log_service.dart';
 import 'package:trackcalfin/application/recipe_service.dart';
 import 'package:trackcalfin/application/scan_service.dart';
+import 'package:trackcalfin/application/shopping_service.dart';
 import 'package:trackcalfin/core/enums.dart';
 import 'package:trackcalfin/data/ai/gemini_client.dart';
 import 'package:trackcalfin/data/ai/prompt_repository.dart';
@@ -80,6 +81,8 @@ void main() {
 
     test('clean receipt auto-commits: ledger, stock, WAC, new ingredient, aliases', () async {
       await addChicken();
+      final list = ShoppingService(isar);
+      await list.addAll([('Chicken breast', 'chicken_breast'), ('Oats', 'oat_flakes')]);
       fake.reply(promptExample('receipt_extraction.v4.md'));
       final s = service();
       final id = await s.enqueue([await photo()], hint: 'receipt');
@@ -109,6 +112,8 @@ void main() {
       expect(yogurt.per100.kcal, 124);
       expect(yogurt.shelfLifeDays, 14);
       expect(yogurt.expiresAt, DateTime(2026, 10, 11, 18, 42));
+      final lines = await isar.shoppingListItems.where().findAll();
+      expect([for (final l in lines) (l.name, l.doneAt != null)], [('Chicken breast', true), ('Oats', false)]);
     });
 
     test('messy receipt waits for review; commit is idempotent', () async {
@@ -732,8 +737,10 @@ void main() {
         {'key': 'cola_zero', 'name': 'Cola Zero', 'unit': 'pc', 'on_hand': 5.0},
       ]);
       expect(await isar.transactions.count(), 0, reason: 'nothing is saved before Log it');
+      final listed = (await ShoppingService(isar).add('Cola Zero', key: 'cola_zero'))!;
 
       final receipt = await s.apply(draft.log!);
+      expect((await isar.shoppingListItems.get(listed))!.doneAt, isNotNull, reason: 'bought: ticked off');
       final tx = (await isar.transactions.where().findFirst())!;
       expect((tx.totalMinor, tx.primaryCategory, tx.lines.single.ingredientId), (129, SpendCategory.groceries, cola));
       final after = (await isar.ingredients.get(cola))!;
@@ -744,6 +751,7 @@ void main() {
       await s.undo(receipt);
       expect(await isar.transactions.count(), 0);
       expect(await isar.dailyLogs.count(), 0);
+      expect((await isar.shoppingListItems.get(listed))!.doneAt, isNull, reason: 'back on the list');
       final back = (await isar.ingredients.get(cola))!;
       expect((back.qtyOnHand, back.avgCostPerUnitMinor), (5.0, 75.0));
     });

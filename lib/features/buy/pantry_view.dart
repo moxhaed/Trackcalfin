@@ -74,10 +74,21 @@ class _PantryViewState extends ConsumerState<PantryView> {
       padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom + 24),
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          child: TextField(
-            decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Search pantry'),
-            onChanged: (v) => setState(() => _query = v),
+          padding: const EdgeInsets.fromLTRB(16, 0, 8, 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Search pantry'),
+                  onChanged: (v) => setState(() => _query = v),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Add an item',
+                onPressed: () => showIngredientSheet(context),
+                icon: const Icon(Icons.add),
+              ),
+            ],
           ),
         ),
         if (unknownMacros > 0 && q.isEmpty)
@@ -239,7 +250,7 @@ class _IngredientTile extends ConsumerWidget {
             if (value > 0) '${ing.costIsEstimate ? '~' : ''}${money.compact(value)}',
             if (ing.qtyOnHand > 0 && ing.avgCostPerUnitMinor <= 0) 'no price',
             if (d != null) '${daysLeftLabel(d)} left'.replaceAll('use today left', 'use today'),
-            if (unverified) 'check',
+            if (unverified) 'not counted yet',
             if (ing.needsNutrition) 'no macros',
           ].join(' · '),
         ),

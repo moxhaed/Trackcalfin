@@ -174,6 +174,37 @@ void main() {
     expect((await isar.foodUses.get(useId))!.qtyBase, 600);
   });
 
+  test('eating straight from the pantry: stock out, macros and cost logged; deleting puts it back', () async {
+    final pantry = PantryService(isar, now: now);
+    final banana = await pantry.upsert(
+      Ingredient()
+        ..name = 'Banana'
+        ..baseUnit = BaseUnit.pc
+        ..gramsPerPiece = 120
+        ..qtyOnHand = 3
+        ..avgCostPerUnitMinor = 25
+        ..per100 = Nutrition(kcal: 89, proteinG: 1.1)
+        ..nutritionSource = DataSource.aiEstimate,
+    );
+    final cook = CookService(isar, now: now);
+    final id = (await cook.eatFromPantry(banana, 1))!;
+    expect((await isar.ingredients.get(banana))!.qtyOnHand, 2);
+    final log = (await isar.dailyLogs.getByDateKey(20260928))!;
+    final meal = log.meals.single;
+    expect((meal.source, meal.title, meal.ingredientKey, meal.qtyBase), (MealSource.pantry, 'Banana', 'banana', 1.0));
+    expect(meal.nutrition.kcal, closeTo(106.8, 0.01), reason: '120 g at 89 kcal per 100 g');
+    expect((meal.costMinor, log.foodCostMinor), (25, 25));
+
+    await cook.deleteMeal(20260928, id);
+    expect((await isar.ingredients.get(banana))!.qtyOnHand, 3);
+    expect((await isar.dailyLogs.getByDateKey(20260928))!.meals, isEmpty);
+
+    // More than the pantry had: all of it goes, and the count is worth a check.
+    await cook.eatFromPantry(banana, 5);
+    final after = (await isar.ingredients.get(banana))!;
+    expect((after.qtyOnHand, after.lastVerifiedAt), (0, null));
+  });
+
   test('slugify and unique keys', () async {
     expect(PantryService.slugify('Greek yogurt 10%'), 'greek_yogurt');
     expect(PantryService.slugify('Crème fraîche'), 'creme_fraiche');

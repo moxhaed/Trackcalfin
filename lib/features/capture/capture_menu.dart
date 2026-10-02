@@ -66,7 +66,12 @@ class CaptureMenu extends StatelessWidget {
       ),
       _Option(Icons.payments_outlined, 'Expense', 'Type an amount, any category', () => showExpenseSheet(outer)),
       _Option(Icons.soup_kitchen_outlined, 'I cooked', 'Uses up your stock', () => showCookedSheet(outer)),
-      _Option(Icons.restaurant_outlined, 'I ate', 'From the fridge, or anything', () => showAteSheet(outer)),
+      _Option(
+        Icons.restaurant_outlined,
+        'I ate',
+        'From the fridge, the pantry, or anything',
+        () => showAteSheet(outer),
+      ),
       _Option(
         Icons.receipt_long_outlined,
         'Scan receipt',

@@ -18,6 +18,8 @@ void notifyApp(
       content: Text(message),
       duration: duration,
       action: actionLabel == null ? null : SnackBarAction(label: actionLabel, onPressed: onAction ?? () {}),
+      // A bar with an action would otherwise stay until dismissed.
+      persist: false,
     ),
   );
 }

@@ -24,6 +24,7 @@ import 'ai_gateway.dart';
 import 'clock.dart';
 import 'fx_service.dart';
 import 'recipe_service.dart';
+import 'shopping_service.dart';
 
 /// A foreign-currency receipt can't be filed until it has an exchange rate.
 class MissingExchangeRate implements Exception {
@@ -557,6 +558,11 @@ class ScanService {
         ..createdAt = t;
       final txId = await isar.transactions.put(tx);
       await isar.foodUses.putAll([for (final u in uses) u..transactionId = txId]);
+      // Bought: the shopping list's lines for these items are ticked off.
+      await ShoppingService.tickOff(isar, [
+        for (final l in txLines)
+          if (l.category.isFood && l.ingredientKey != null) l.ingredientKey!,
+      ], t);
       job
         ..status = ScanStatus.committed
         ..transactionId = txId;

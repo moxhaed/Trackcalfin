@@ -11,11 +11,13 @@ import '../../application/nutrition_service.dart';
 import '../../core/enums.dart';
 import '../../core/money.dart';
 import '../../data/isar/collections/schemas.dart';
+import '../../domain/shopping.dart';
 import '../../domain/units.dart';
 import '../../platform/photo_capture.dart';
 import '../common/format.dart';
 import '../common/store_prices.dart';
 import '../common/widgets.dart';
+import 'shopping_view.dart';
 
 /// In review mode ([review] set) the sheet pops `true` to move on to the next item.
 Future<bool?> showIngredientSheet(BuildContext context, {Ingredient? ingredient, ({int index, int total})? review}) =>
@@ -373,6 +375,11 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
                         await ref.read(pantryServiceProvider).verify(_ing.id);
                         if (context.mounted) Navigator.of(context).pop();
                       },
+                    ),
+                    ActionChip(
+                      avatar: const Icon(Icons.playlist_add, size: 18),
+                      label: const Text('Add to list'),
+                      onPressed: () => addToShoppingList(context, ref, [ShoppingSuggestion(_ing.name, _ing.key, '')]),
                     ),
                   ],
                 ),

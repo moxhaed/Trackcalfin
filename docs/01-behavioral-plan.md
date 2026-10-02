@@ -142,11 +142,12 @@ Three tabs plus a **global capture button (⊕)** beside the bottom bar. ⊕ ope
 
 **Where it's cheaper.** Every receipt line keeps its store and product, so the app knows what each store charged last. After a receipt is filed it says when another store sold something clearly cheaper ("Chicken breast: 26% cheaper at Aldi"), an item's sheet lists the stores cheapest first, Running low says where to buy, and Say it answers "where is it cheaper?". All from the user's own receipts, in Dart: no AI call except reading the question.
 
-### Tab 2: Buy (Inventory & Ledger)
+### Tab 2: Buy (Pantry, List & Ledger)
 ```
 ┌──────────────────────────────────────────┐
-│ [ Pantry | Ledger ]           Inbox (2)  │
-│ [ Scan receipt / pantry ]  [ + Expense ] │
+│ Buy                           Inbox (2)  │
+│ [ Scan receipt ]                          │
+│ [ Pantry | List · 3 | Ledger ]            │
 ├──────────────────────────────────────────┤
 │ USE SOON                                  │
 │  Spinach 210 g · 1 d   Chicken 650 g · 2 d│
@@ -158,7 +159,9 @@ Three tabs plus a **global capture button (⊕)** beside the bottom bar. ⊕ ope
 └──────────────────────────────────────────┘
 ```
 - **Inbox:** scans that need review, and failed scans ("Retake?"). The review card shows high-confidence lines collapsed as ✓ and amber lines expanded, plus a totals-mismatch banner, and a single **Looks good** button.
-- **Ledger:** reverse-chronological transactions with category filter chips. Tap to edit, swipe to delete (with undo).
+- **List:** the shopping list. Running-low and recently-out items are one-tap suggestions; lines are grouped by the store each is cheapest at; a receipt with an item ticks it off. Recipes add what they're missing. **Send the list** shares it as text.
+- **Ledger:** reverse-chronological transactions with category filter chips. Tap to edit (a scanned receipt shows its photo for 30 days), swipe to delete (with undo).
+- **Review** has a **Photo** button: check a hard-to-read line against the receipt itself.
 
 ### Tab 3: Cook (Recipe & Meal Prep)
 ```

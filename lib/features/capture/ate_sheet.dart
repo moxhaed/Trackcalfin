@@ -5,6 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
 import '../../app/theme.dart';
+import '../../core/enums.dart';
+import '../../data/isar/collections/schemas.dart';
+import '../../domain/costing.dart';
+import '../../domain/nutrition.dart';
+import '../common/format.dart';
 import '../common/widgets.dart';
 import '../cook/cook_actions.dart';
 
@@ -15,7 +20,7 @@ Future<void> showAteSheet(BuildContext context, {bool quickAddFirst = false}) =>
   builder: (_) => AteSheet(quickAddFirst: quickAddFirst),
 );
 
-/// Eat a prepped portion (1 tap) or log something else by hand.
+/// Eat a prepped portion or something from the pantry (1 tap), or log something else by hand.
 class AteSheet extends ConsumerStatefulWidget {
   const AteSheet({super.key, this.quickAddFirst = false});
   final bool quickAddFirst;
@@ -31,6 +36,7 @@ class _AteSheetState extends ConsumerState<AteSheet> {
   final _protein = TextEditingController();
   final _cost = TextEditingController();
   final _timer = LogTimer();
+  String _query = '';
 
   @override
   void dispose() {
@@ -38,6 +44,99 @@ class _AteSheetState extends ConsumerState<AteSheet> {
       c.dispose();
     }
     super.dispose();
+  }
+
+  /// Pantry items to eat from: what matches the search, use-soon items first.
+  List<Ingredient> _pantry(List<Ingredient> all) {
+    final now = DateTime.now();
+    final q = _query.trim().toLowerCase();
+    final items =
+        all
+            .where((i) => i.qtyOnHand > 0 && (q.isEmpty || i.name.toLowerCase().contains(q) || i.key.contains(q)))
+            .toList()
+          ..sort((a, b) {
+            final da = ExpiryEstimator.daysLeft(a, now) ?? 999;
+            final db = ExpiryEstimator.daysLeft(b, now) ?? 999;
+            return da != db ? da.compareTo(db) : a.name.compareTo(b.name);
+          });
+    return items.take(q.isEmpty ? 4 : 6).toList();
+  }
+
+  /// One piece at once (a banana, a can); grams and ml ask how much.
+  Future<void> _eatPantry(Ingredient ing) async {
+    final amount = ing.baseUnit == BaseUnit.pc ? 1.0 : await _askAmount(ing);
+    if (amount == null || !mounted) return;
+    final cook = ref.read(cookServiceProvider);
+    final nav = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final id = await cook.eatFromPantry(ing.id, amount);
+    if (id == null || !mounted) return;
+    celebrate();
+    unawaited(ref.read(metricsServiceProvider).record('eat', _timer.elapsed));
+    final key = ref.read(dayClockProvider).dateKey(DateTime.now());
+    nav.pop();
+    final n = ing.needsNutrition ? null : NutritionEngine.nutrientsFor(ing, amount);
+    final verb = ing.category == IngredientCategory.beverages ? 'Drank' : 'Ate';
+    showUndoOn(
+      messenger,
+      '$verb ${ing.name} · ${qty(amount, ing.baseUnit)}',
+      detail: n == null ? 'Its macros aren\'t known yet' : '${n.kcal.round()} kcal · ${n.proteinG.round()} g protein',
+      onUndo: () => cook.deleteMeal(key, id),
+    );
+  }
+
+  Future<double?> _askAmount(Ingredient ing) async {
+    final presets = ing.baseUnit == BaseUnit.ml
+        ? const <double>[100, 200, 250, 330, 500]
+        : const <double>[30, 50, 100, 150, 200];
+    final other = TextEditingController();
+    double? typed() {
+      final v = double.tryParse(other.text.replaceAll(',', '.'));
+      return v != null && v > 0 ? v : null;
+    }
+
+    final out = await showDialog<double>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('How much ${ing.name}?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final p in presets)
+                  ActionChip(label: Text(qty(p, ing.baseUnit)), onPressed: () => Navigator.of(context).pop(p)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: other,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(labelText: 'Other amount', suffixText: ing.baseUnit.label),
+              onSubmitted: (_) {
+                final v = typed();
+                if (v != null) Navigator.of(context).pop(v);
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () {
+              final v = typed();
+              if (v != null) Navigator.of(context).pop(v);
+            },
+            child: const Text('Eat'),
+          ),
+        ],
+      ),
+    );
+    other.dispose();
+    return out;
   }
 
   Future<void> _logManual() async {
@@ -65,10 +164,14 @@ class _AteSheetState extends ConsumerState<AteSheet> {
   @override
   Widget build(BuildContext context) {
     final fridge = ref.watch(fridgeProvider).value ?? const [];
+    final all = ref.watch(ingredientsProvider).value ?? const <Ingredient>[];
+    final stocked = all.any((i) => i.qtyOnHand > 0);
+    final pantry = _pantry(all);
+    final muted = context.text.bodySmall?.copyWith(color: context.scheme.onSurfaceVariant);
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -77,7 +180,7 @@ class _AteSheetState extends ConsumerState<AteSheet> {
               Text('What did you eat?', style: context.text.titleLarge),
               const SizedBox(height: 8),
               if (!_manual) ...[
-                if (fridge.isEmpty)
+                if (fridge.isEmpty && !stocked)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     child: Text('Nothing prepped in the fridge.', style: context.text.bodyMedium),
@@ -101,6 +204,34 @@ class _AteSheetState extends ConsumerState<AteSheet> {
                       child: const Text('Eat 1'),
                     ),
                   ),
+                if (stocked) ...[
+                  const SizedBox(height: 8),
+                  Text('From the pantry', style: context.text.titleSmall),
+                  const SizedBox(height: 6),
+                  TextField(
+                    decoration: const InputDecoration(
+                      hintText: 'Banana, yogurt, a can of cola…',
+                      prefixIcon: Icon(Icons.search),
+                      isDense: true,
+                    ),
+                    onChanged: (v) => setState(() => _query = v),
+                  ),
+                  for (final ing in pantry)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(ing.name),
+                      subtitle: Text('${qty(ing.qtyOnHand, ing.baseUnit)} on hand', style: muted),
+                      trailing: FilledButton.tonal(
+                        onPressed: () => _eatPantry(ing),
+                        child: Text(ing.baseUnit == BaseUnit.pc ? 'Eat 1' : 'Eat…'),
+                      ),
+                    ),
+                  if (pantry.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Text('Nothing in the pantry by that name.', style: muted),
+                    ),
+                ],
                 const SizedBox(height: 8),
                 OutlinedButton.icon(
                   onPressed: () => setState(() => _manual = true),
