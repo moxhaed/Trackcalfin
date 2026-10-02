@@ -14,6 +14,7 @@ import '../domain/costing.dart';
 import '../domain/fx.dart';
 import '../domain/ingredient_matcher.dart';
 import '../domain/receipt_math.dart';
+import '../domain/stock_index.dart';
 import '../domain/validation/receipt_validator.dart';
 import '../platform/image_store.dart';
 import 'ai_gateway.dart';
@@ -244,13 +245,13 @@ class ScanService {
     job
       ..purchasedAt = date
       ..flags = job.flags.where((f) => !ReceiptValidator.dateFlags.contains(f)).toList();
-    final byId = {for (final i in await isar.ingredients.where().findAll()) i.id: i};
+    final pantry = StockIndex(await isar.ingredients.where().findAll());
     for (final l in job.lines) {
       if (l.ingredientKey == null) continue;
       ReceiptValidator.checkStock(
         l,
         kind: job.kind,
-        existing: byId[l.matchedIngredientId],
+        existing: pantry.byId[l.matchedIngredientId] ?? (l.isNewIngredient ? null : pantry.byKey[l.ingredientKey]),
         purchasedAt: date,
         capturedAt: job.capturedAt,
       );

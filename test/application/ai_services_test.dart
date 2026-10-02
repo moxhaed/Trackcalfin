@@ -347,6 +347,8 @@ void main() {
       final r = (await s.processQueue()).single;
       expect(r.job.flags, contains('date_missing'));
       expect(r.job.lines[0].stockCheck, isNull);
+      // A line known by its key alone is still looked up.
+      await s.updateJob(r.job..lines[0].matchedIngredientId = null);
       await s.setPurchaseDate(id, DateTime(2026, 9, 20, 18, 42));
       final job = (await isar.scanJobs.get(id))!;
       expect(job.purchasedAt, DateTime(2026, 9, 20, 18, 42));

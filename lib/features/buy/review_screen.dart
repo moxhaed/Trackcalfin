@@ -366,7 +366,9 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
               ],
             ),
           if (attention.isNotEmpty) ...[_Label('Check ${attention.length}'), for (final i in attention) line(i)],
-          _Label(pantry ? '${fine.length} items detected' : '${fine.length} look good'),
+          _Label(
+            pantry ? '${fine.length} ${fine.length == 1 ? 'item' : 'items'} detected' : '${fine.length} look good',
+          ),
           if (!_showAll && fine.isNotEmpty)
             Card(
               child: ListTile(
@@ -543,7 +545,9 @@ class _LineEditorState extends ConsumerState<_LineEditor> {
     final l = widget.line;
     final c = context.colors;
     final merge = l.mergeCandidateId == null ? null : widget.ingredients[l.mergeCandidateId];
-    final current = l.matchedIngredientId == null ? null : widget.ingredients[l.matchedIngredientId];
+    final current =
+        widget.ingredients[l.matchedIngredientId] ??
+        (l.isNewIngredient ? null : widget.ingredients.values.where((i) => i.key == l.ingredientKey).firstOrNull);
     final open = _open || l.needsAttention;
     final product = l.product != null && l.product!.toLowerCase() != l.name.toLowerCase() ? l.product : null;
     final outOfPantry = !_pantry && l.ingredientKey != null && l.effectFor(widget.job.kind) == StockEffect.none;
