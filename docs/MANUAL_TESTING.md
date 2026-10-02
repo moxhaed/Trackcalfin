@@ -1,6 +1,6 @@
 # Manual test plan: first run on a real phone
 
-The automated tests (159 of them) cover the math, the database, the AI pipeline against a fake Gemini, and the main screens. What they **can't** cover is anything that needs a real phone: the camera, the real Gemini API, notifications, the share sheet, voice input and background work. This checklist is for that.
+The automated tests (219 of them) cover the math, the database, the AI pipeline against a fake Gemini, and the main screens. What they **can't** cover is anything that needs a real phone: the camera, the real Gemini API, notifications, the share sheet, voice input and background work. This checklist is for that.
 
 **Time:** about 60–90 minutes. You don't have to do it all at once. Sections 1–4 are the important ones.
 **Tick boxes as you go.** GitHub renders them as checkboxes when you edit the file.
@@ -13,7 +13,7 @@ You'll need:
 - 3–4 real receipts: a supermarket receipt, a restaurant or café receipt, a long receipt if you have one, and ideally one in **another currency**. No foreign receipt? Photograph one on a screen: search the web for "Migros receipt" or "US grocery receipt".
 - Something in your fridge to photograph.
 
-When something goes wrong, note the **test ID** (e.g. `R3`), what you expected, what happened, and a screenshot. For anything AI-related, also open **Settings → Stats → Recent calls**, expand the call and copy the text. That shows exactly what Gemini answered. Paste all of that into the next session.
+When something goes wrong, note the **test ID** (e.g. `R3`), what you expected, what happened, and a screenshot. For anything AI-related, also open **Settings → Advanced → Stats → Recent calls**, expand the call and copy the text. That shows exactly what Gemini answered. Paste all of that into the next session.
 
 ---
 
@@ -58,6 +58,7 @@ When something goes wrong, note the **test ID** (e.g. `R3`), what you expected, 
   *Expect:* the snackbar says its pantry items were taken back out. Tap **Undo**: both the receipt and the pantry quantities come back.
 - [ ] **R10 · Nutrition sanity.** Open a newly created pantry item.
   *Expect:* its kcal and protein per 100 g look plausible.
+- [ ] **R11 · Receipt photo.** Open a receipt waiting in the Inbox → **Photo**. *Expect:* the photo full screen; pinch to zoom. A scanned receipt in the Ledger shows **Receipt** too, for 30 days.
 
 ## 2b · Receipt dates, duplicates and pantry photos (new)
 
@@ -134,6 +135,7 @@ When something goes wrong, note the **test ID** (e.g. `R3`), what you expected, 
   *Expect:* a "ran out sooner than expected" note, and the item appears in **Quick check**.
 - [ ] **C8 · "I'm out".** On a recipe, long-press an ingredient → **I'm out of …**.
   *Expect:* the pantry shows it as out. If it was in today's pick, the pick refreshes.
+- [ ] **C9 · Eat from the pantry.** ⊕ → **I ate** → From the pantry → **Eat 1** on a piece (banana, can). *Expect:* "Ate … · 1 pc" with calories and Undo; the pantry has one less. For grams or ml it asks how much. The Undo bar goes away by itself after a few seconds.
 
 ## 4b · Macros on pantry items (new)
 
@@ -149,6 +151,11 @@ When something goes wrong, note the **test ID** (e.g. `R3`), what you expected, 
   *Expect:* one sheet per item without macros ("Check macros · 1 of N"); **Skip** moves on, swiping the sheet down stops.
 - [ ] **M6 · New item without numbers.** **Add an item** named `Tahini`, leave the nutrition fields empty, and save.
   *Expect:* a moment later its sheet shows about 600 kcal per 100 g as an AI estimate.
+
+## 4c · Shopping list (new)
+
+- [ ] **L1 · Shopping list.** Buy → **List**. *Expect:* running-low items as suggestions; tap one and type another ("Birthday candles"). Lines with a known price sit under "Cheapest at …". File a receipt that has one of them. *Expect:* it's ticked off by itself. **Send the list** opens the share sheet with the list by store.
+- [ ] **L2 · From a recipe.** Open a recipe that's missing something. *Expect:* "Add the N missing items to the shopping list", with Undo. On the Cook tab, the cart button next to a recipe that needs shopping does the same.
 
 ## 5 · Ask ("What do you want to cook?")
 
@@ -191,9 +198,9 @@ When something goes wrong, note the **test ID** (e.g. `R3`), what you expected, 
 
 ## 8 · Shortcuts and sharing
 
-- [ ] **S1 · App-icon shortcuts.** Long-press the app icon.
-  *Expect:* **Scan receipt**, **Log expense** and **I cooked**, and each opens the right flow.
-- [ ] **S2 · Share a screenshot (Android).** In your gallery, share a receipt screenshot to Trackcalfin.
+- [ ] **H1 · App-icon shortcuts.** Long-press the app icon.
+  *Expect:* **Say it**, **Scan receipt**, **Log expense** and **I cooked**, and each opens the right flow.
+- [ ] **H2 · Share a screenshot (Android).** In your gallery, share a receipt screenshot to Trackcalfin.
   *Expect:* the app opens on Buy and the scan is queued. (iOS needs an extra Share Extension, so skip this there.)
 
 ## 9 · Offline
@@ -213,10 +220,6 @@ When something goes wrong, note the **test ID** (e.g. `R3`), what you expected, 
 - [ ] **D2b · Payday month.** In **Settings → Month starts on**, pick the 17th. *Expect:* the Food card says "Since … 17 …", its Month row and Other spend only count from that day, and the 16th's shopping is last month.
 - [ ] **D2c · Past months.** On the Food card, tap **Past months: eaten and spent**. *Expect:* a pair of columns per month (eaten, spent) with the budget as a dashed line, and a card per month below. Tap a month in the chart: its numbers show above it. Open last month's card: its weeks add up to the month, and it says how much more was bought than eaten (or the other way round) and what was thrown away. A first month you only used for part of shows no over/under pill.
 - [ ] **D2d · Where it's cheaper.** File receipts from two stores that both have an item (the same milk, say), the pricier one last, at least 10% and 0.30 apart. *Expect:* the "filed" message adds "Milk: N% cheaper at …" with **See**, which shows both prices per litre and the saving. Open the item in the pantry: **Where it's cheapest** lists both stores, cheapest first. In **Say it**, ask "where is milk cheaper?". *Expect:* the same answer, with **Done** and nothing logged.
-- [ ] **L1 · Shopping list.** Buy → **List**. *Expect:* running-low items as suggestions; tap one and type another ("Birthday candles"). Lines with a known price sit under "Cheapest at …". File a receipt that has one of them. *Expect:* it's ticked off by itself. **Send the list** opens the share sheet with the list by store.
-- [ ] **L2 · From a recipe.** Open a recipe that's missing something. *Expect:* "Add the N missing items to the shopping list", with Undo.
-- [ ] **E1 · Eat from the pantry.** ⊕ → **I ate** → From the pantry → **Eat 1** on a piece (banana, can). *Expect:* "Ate … · 1 pc" with calories and Undo; the pantry has one less. For grams or ml it asks how much.
-- [ ] **R1 · Receipt photo.** Open a receipt waiting in the Inbox → **Photo**. *Expect:* the photo full screen; pinch to zoom.
 - [ ] **D3 · Status.** *Expect:* a colored circle with an icon and a word (On track / Slipping / Off track), no number and no streak. Tap it. *Expect:* each part as a status, and the line under the word makes sense. "Saved vs eating out" only shows once you have logged 3 or more meals out.
 - [ ] **D4 · Dark mode.** Go to **Settings → Appearance → Dark**. *Expect:* everything stays readable.
 
@@ -228,7 +231,7 @@ When something goes wrong, note the **test ID** (e.g. `R3`), what you expected, 
 
 ## 12 · Speed check (after a few days of use)
 
-- [ ] **T1 · Time to log.** Go to **Settings → Stats**.
+- [ ] **T1 · Time to log.** Go to **Settings → Advanced → Stats**.
   *Expect:* median times for expense, cook and eat under 3 s (green ticks). Anything slower tells us which flow to simplify.
 - [ ] **T2 · AI health.** On the same screen, look at failed and repaired calls.
   *Expect:* few failures. If Prompt A fails often, copy one raw response from **Recent calls**.
@@ -243,7 +246,7 @@ Passed: A1–A3, O1–O4, R1, R2, ...
 Failed:
 - R4: two photos of one receipt counted "Milk" twice. Screenshot attached.
 - F2: typed €25.10, total showed €25.09.
-AI raw responses (Settings → Stats → Recent calls): ...
+AI raw responses (Settings → Advanced → Stats → Recent calls): ...
 Build errors (first block only): ...
 Anything that felt slow or confusing: ...
 ```
