@@ -215,6 +215,22 @@ eatingOutAvg    = mean(eating_out transactions, last 90 d) if count ≥ 3 else p
 ```
 Spent and Eaten are two views of the same money, never added together. Eating out is in neither: it is its own line under Other spend, and a meal eaten out logged with Say it costs 0 in the meal log. Home meals (cost per meal, saved vs eating out) are cooked ones: a can of cola from the pantry counts as eaten food, but not as a meal.
 
+### Food by month (`FoodHistory`, Food card → Past months)
+Past budget months, eaten next to spent, so a month that is over can be told from one that only bought ahead.
+```
+months       = budget months (they follow monthStartDay) from the one holding the first data
+               (first transaction, logged meal or FoodUse) to the current one, at most 12
+weeks(month) = clock weeks cut at the month's ends; weeks not started yet are left out
+spent(week)  = groceries(week)                                  // as above
+eaten(week)  = eaten(week)                                      // as above, up to today
+thrown(week) = Σ thrown-away FoodUse.costMinor whose `to` day is in the week
+month        = Σ its weeks                                      // the weeks always add up to it
+stocked      = spent − eaten   // > 0: bought ahead, or not logged as eaten; < 0: ate from older shops
+```
+- A first month whose data starts more than 3 days in is marked partial (`dataFrom`): no budget verdict, and its empty weeks are left out.
+- Each finished month gets an over/under pill against today's monthly budget, counted the way the Food card counts (Eaten or Spent).
+- The chart shows the last 6 months as pairs of columns (eaten, spent) on one money axis with the budget as a dashed line; the month list below is its table and holds every number.
+
 ### Non-food spend
 For each `c ∈ {household, clothes, eatingOut, entertainment, other}`: `monthSpend[c]` vs `limit[c]`, with `pace[c]` as above. There's **no ×4.33 projection** for these lumpy categories (one pair of shoes isn't a trend). Bars show month-to-date against the limit, with a pace marker at `limit · elapsedFraction(month)`.
 

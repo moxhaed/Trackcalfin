@@ -8,6 +8,7 @@ import '../features/cook/cook_screen.dart';
 import '../features/cook/recipe_detail_screen.dart';
 import '../features/cook/recipe_editor_screen.dart';
 import '../features/dashboard/dashboard_screen.dart';
+import '../features/dashboard/food_history_screen.dart';
 import '../features/onboarding/onboarding_screen.dart';
 import '../features/settings/quick_check_screen.dart';
 import '../features/settings/settings_screen.dart';
@@ -73,6 +74,11 @@ GoRouter buildRouter({required bool onboarded, String? initialLocation}) {
       ),
       GoRoute(path: '/quick-check', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const QuickCheckScreen()),
       GoRoute(path: '/stats', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const StatsScreen()),
+      GoRoute(
+        path: '/food-history',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const FoodHistoryScreen(),
+      ),
       GoRoute(path: '/onboarding', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const OnboardingScreen()),
     ],
   );

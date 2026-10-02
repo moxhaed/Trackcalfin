@@ -15,6 +15,7 @@ import 'package:trackcalfin/core/enums.dart';
 import 'package:trackcalfin/data/ai/prompt_repository.dart';
 import 'package:trackcalfin/data/isar/collections/schemas.dart';
 import 'package:trackcalfin/features/buy/ingredient_sheet.dart';
+import 'package:trackcalfin/features/dashboard/food_history_screen.dart';
 import 'package:trackcalfin/platform/image_store.dart';
 import 'package:trackcalfin/platform/secret_store.dart';
 
@@ -80,6 +81,28 @@ void main() {
     await settle(tester);
     expect(find.text('OTHER SPEND · MONTH'), findsOneWidget);
     expect(find.text('CALORIES THIS WEEK'), findsOneWidget);
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  testWidgets('food by month opens from the Food card: months with eaten next to spent, and their weeks', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    // Mid-screen, clear of the floating nav.
+    final link = find.text('Past months: eaten and spent');
+    await Scrollable.ensureVisible(tester.element(link), alignment: 0.5);
+    await settle(tester);
+    await tester.tap(link);
+    await settle(tester);
+    expect(find.text('Food by month'), findsOneWidget);
+    expect(find.text('EATEN AND SPENT'), findsOneWidget);
+    expect(find.byType(FoodHistoryChart), findsOneWidget);
+    expect(find.textContaining('so far'), findsWidgets, reason: 'the current month leads the list');
+    // The demo's months each have a card; open the latest one for its weeks.
+    final current = find.textContaining('· so far').first;
+    await tester.tap(current);
+    await settle(tester);
+    expect(find.text('Week'), findsOneWidget);
+    expect(find.text('Eaten'), findsWidgets);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   testWidgets('buy tab shows pantry and ledger', (tester) async {

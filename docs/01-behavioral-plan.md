@@ -123,6 +123,7 @@ Three tabs plus a **global capture button (⊕)** beside the bottom bar. ⊕ ope
 │ Week    €27 / €69    ████░░░░░░  on pace  │
 │ Month  €118 / €300   proj. €245 (×4.33)   │
 │ €41 spent this week · €2.14 per meal      │
+│ ▮▮ Past months: eaten and spent       ›   │
 ├──────────────────────────────────────────┤
 │ OTHER SPEND · month                       │
 │ Household      €22 / €40   █████░░░░      │
@@ -136,6 +137,8 @@ Three tabs plus a **global capture button (⊕)** beside the bottom bar. ⊕ ope
 └──────────────────────────────────────────┘
       Dashboard       (⊕)       Buy    Cook
 ```
+
+**Past months** opens Food by month: a pair of columns per budget month (eaten, spent) against the budget, and a card per month with its weeks, what was thrown away, and whether more was bought than eaten. It answers "was last month really over, or did I just stock up?"
 
 ### Tab 2: Buy (Inventory & Ledger)
 ```

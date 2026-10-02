@@ -211,6 +211,7 @@ When something goes wrong, note the **test ID** (e.g. `R3`), what you expected, 
 - [ ] **D1b · Week eaten.** Pick **Eaten** (the default). Eat a portion from the fridge. *Expect:* "Week" goes up by that portion's cost, and a big grocery shop doesn't change it until you eat from it. The small number below says what was spent.
 - [ ] **D2 · Budget.** *Expect:* the weekly budget = monthly budget ÷ 4.33.
 - [ ] **D2b · Payday month.** In **Settings → Month starts on**, pick the 17th. *Expect:* the Food card says "Since … 17 …", its Month row and Other spend only count from that day, and the 16th's shopping is last month.
+- [ ] **D2c · Past months.** On the Food card, tap **Past months: eaten and spent**. *Expect:* a pair of columns per month (eaten, spent) with the budget as a dashed line, and a card per month below. Tap a month in the chart: its numbers show above it. Open last month's card: its weeks add up to the month, and it says how much more was bought than eaten (or the other way round) and what was thrown away. A first month you only used for part of shows no over/under pill.
 - [ ] **D3 · Vibe explanation.** Tap the Vibe card. *Expect:* a breakdown of the parts, and the insight line makes sense.
 - [ ] **D4 · Dark mode.** Go to **Settings → Appearance → Dark**. *Expect:* everything stays readable.
 

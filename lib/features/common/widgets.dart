@@ -509,14 +509,7 @@ Future<int?> showMonthStartPicker(BuildContext context, {required int current}) 
             physics: const NeverScrollableScrollPhysics(),
             children: [
               for (var d = 1; d <= 31; d++)
-                ChoiceChip(
-                  label: Text('$d'),
-                  showCheckmark: false,
-                  padding: EdgeInsets.zero,
-                  labelPadding: EdgeInsets.zero,
-                  selected: d == current,
-                  onSelected: (_) => Navigator.of(context).pop(d),
-                ),
+                _DayButton(day: d, selected: d == current, onTap: () => Navigator.of(context).pop(d)),
             ],
           ),
           const SizedBox(height: 8),
@@ -530,3 +523,38 @@ Future<int?> showMonthStartPicker(BuildContext context, {required int current}) 
     actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel'))],
   ),
 );
+
+/// A day of the month in [showMonthStartPicker]: the same round button for 1 and for 31.
+class _DayButton extends StatelessWidget {
+  const _DayButton({required this.day, required this.selected, required this.onTap});
+  final int day;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.scheme;
+    return Center(
+      child: Semantics(
+        selected: selected,
+        child: Material(
+          color: selected ? s.primary : Colors.transparent,
+          shape: CircleBorder(side: BorderSide(color: selected ? s.primary : s.outlineVariant)),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: onTap,
+            child: SizedBox.square(
+              dimension: 36,
+              child: Center(
+                child: Text(
+                  '$day',
+                  style: context.text.labelLarge?.copyWith(color: selected ? s.onPrimary : s.onSurface),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

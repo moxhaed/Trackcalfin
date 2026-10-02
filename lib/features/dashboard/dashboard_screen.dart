@@ -361,6 +361,16 @@ class _FoodCard extends ConsumerWidget {
               ),
             ],
           ),
+          const SizedBox(height: 4),
+          TextButton.icon(
+            onPressed: () => context.push('/food-history'),
+            icon: const Icon(Icons.bar_chart_rounded, size: 18),
+            label: const Text('Past months: eaten and spent'),
+            style: TextButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+            ),
+          ),
         ],
       ),
     );

@@ -12,6 +12,8 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.critical,
     required this.track,
     required this.gridLine,
+    required this.eaten,
+    required this.spent,
   });
 
   final Color kcal;
@@ -23,6 +25,11 @@ class AppColors extends ThemeExtension<AppColors> {
   final Color track;
   final Color gridLine;
 
+  /// Food history series: categorical slots 1 and 2, so the pair stays apart for
+  /// color-blind readers too. Always with a legend.
+  final Color eaten;
+  final Color spent;
+
   static const light = AppColors(
     kcal: Color(0xFF2A78D6),
     protein: Color(0xFFEB6834),
@@ -32,6 +39,8 @@ class AppColors extends ThemeExtension<AppColors> {
     critical: Color(0xFFD03B3B),
     track: Color(0xFFE9E8E4),
     gridLine: Color(0xFFD9D8D3),
+    eaten: Color(0xFF2A78D6),
+    spent: Color(0xFFEB6834),
   );
 
   static const dark = AppColors(
@@ -43,6 +52,8 @@ class AppColors extends ThemeExtension<AppColors> {
     critical: Color(0xFFD03B3B),
     track: Color(0xFF34342F),
     gridLine: Color(0xFF45453F),
+    eaten: Color(0xFF3987E5),
+    spent: Color(0xFFD95926),
   );
 
   /// Status for a pace ratio (spent / expected-so-far).

@@ -388,6 +388,18 @@ class DemoSeed {
       txs.add(tx(base + 5, 13, 'Rewe', [('Top-up shop', SpendCategory.groceries, 1150 + (w * 210) % 500)]));
       txs.add(tx(base + 3, 13, 'Ramen place', [('Lunch', SpendCategory.eatingOut, 1450)], source: TxSource.manual));
     }
+    // Older months, so Food by month has a history: a weekly shop, a top-up every other week
+    // and one big stock-up, back about four months.
+    for (var w = 5; w < 17; w++) {
+      final base = w * 7;
+      txs.add(
+        tx(base + 2, 18, w.isEven ? 'Lidl' : 'Aldi', [
+          ('Groceries', SpendCategory.groceries, w == 9 ? 9450 : 5200 + (w * 530) % 1400),
+          if (w % 3 == 0) ('Paper towels', SpendCategory.household, 245),
+        ]),
+      );
+      if (w.isOdd) txs.add(tx(base + 5, 13, 'Rewe', [('Top-up shop', SpendCategory.groceries, 950 + (w * 170) % 600)]));
+    }
     txs.add(tx(4, 20, 'Cinema', [('Tickets', SpendCategory.entertainment, 1100)], source: TxSource.manual));
     txs.add(tx(11, 16, 'Uniqlo', [('T-shirts', SpendCategory.clothes, 2990)], source: TxSource.manual));
     txs.add(tx(1, 12, 'Café', [('Coffee & cake', SpendCategory.eatingOut, 780)], source: TxSource.quickText));
@@ -437,6 +449,32 @@ class DemoSeed {
         (1890.0, 120.0, 620),
         (2080.0, 131.0, 700),
       ];
+      // Older days, most of them logged: what was eaten in past months.
+      for (var d = 8; d <= 118; d++) {
+        if (d % 9 == 4) continue;
+        final key = DayClock.addDaysToKey(weekStartKey, -d);
+        final p = pattern[d % 7];
+        logs.add(
+          DailyLog()
+            ..dateKey = key
+            ..meals = [
+              MealEntry()
+                ..entryId = '$key-1'
+                ..title = 'Breakfast'
+                ..source = MealSource.quickAdd
+                ..nutrition = Nutrition(kcal: p.$1 * 0.3, proteinG: p.$2 * 0.25)
+                ..costMinor = 120,
+              MealEntry()
+                ..entryId = '$key-2'
+                ..title = 'Dinner'
+                ..source = MealSource.cookedNow
+                ..portions = 1
+                ..nutrition = Nutrition(kcal: p.$1 * 0.7, proteinG: p.$2 * 0.75)
+                ..costMinor = p.$3,
+            ]
+            ..recomputeTotals(),
+        );
+      }
       for (var d = -7; d < 7; d++) {
         final key = DayClock.addDaysToKey(weekStartKey, d);
         if (key >= todayKey) break;
@@ -489,6 +527,27 @@ class DemoSeed {
           ..recomputeTotals(),
       );
       await isar.dailyLogs.putAll(logs);
+
+      // Food found gone without a meal: rice eaten over a month, spinach that went off.
+      await isar.foodUses.putAll([
+        FoodUse()
+          ..from = t.subtract(const Duration(days: 70))
+          ..to = t.subtract(const Duration(days: 40))
+          ..ingredientKey = 'white_rice'
+          ..name = 'White rice'
+          ..qtyBase = 1500
+          ..costMinor = 435
+          ..createdAt = t.subtract(const Duration(days: 40)),
+        FoodUse()
+          ..from = t.subtract(const Duration(days: 26))
+          ..to = t.subtract(const Duration(days: 23))
+          ..ingredientKey = 'spinach'
+          ..name = 'Spinach'
+          ..qtyBase = 200
+          ..costMinor = 159
+          ..kind = UseKind.thrownAway
+          ..createdAt = t.subtract(const Duration(days: 20)),
+      ]);
 
       // A receipt from a trip, in Swiss francs, converted at the ECB rate.
       await isar.scanJobs.put(

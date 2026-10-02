@@ -28,6 +28,7 @@ import '../data/ai/prompt_repository.dart';
 import '../data/fx/fx_rate_client.dart';
 import '../data/isar/collections/schemas.dart';
 import '../domain/dashboard.dart';
+import '../domain/food_history.dart';
 import '../domain/quick_check.dart';
 import '../domain/streak.dart';
 import '../domain/vibe.dart';
@@ -213,10 +214,8 @@ Future<DashboardView> loadDashboard(Isar isar, DateTime now, {Recipe? pick}) asy
   final logs = await isar.dailyLogs.where().dateKeyBetween(logsFrom, DayClock.addDaysToKey(weekStartKey, 7)).findAll();
   final firstMeal = await isar.dailyLogs.where().anyDateKey().filter().mealsCountGreaterThan(0).findFirst();
   final uses = await isar.foodUses.where().toGreaterThan(clock.startOfKey(logsFrom)).findAll();
-  DateTime? firstEaten = firstMeal == null ? null : DayClock.dateOfKey(firstMeal.dateKey);
-  for (final u in await isar.foodUses.where().findAll()) {
-    if (firstEaten == null || u.from.isBefore(firstEaten)) firstEaten = u.from;
-  }
+  final firstUse = await isar.foodUses.where().sortByFrom().findFirst();
+  final firstEaten = _earliest([if (firstMeal != null) DayClock.dateOfKey(firstMeal.dateKey), ?firstUse?.from]);
   final outTx = await isar.transactions
       .where()
       .occurredAtGreaterThan(now.subtract(const Duration(days: 90)))
@@ -251,6 +250,8 @@ Future<DashboardView> loadDashboard(Isar isar, DateTime now, {Recipe? pick}) asy
   return DashboardView(state, vibe, profile, streak);
 }
 
+DateTime? _earliest(Iterable<DateTime> times) => times.isEmpty ? null : times.reduce((a, b) => a.isBefore(b) ? a : b);
+
 final dashboardProvider = StreamProvider<DashboardView>((ref) {
   final isar = ref.watch(isarProvider);
   final now = ref.watch(nowProvider);
@@ -263,4 +264,52 @@ final dashboardProvider = StreamProvider<DashboardView>((ref) {
     Stream<void>.periodic(const Duration(minutes: 10)),
   ]);
   return triggers.asyncMap((_) => loadDashboard(isar, now(), pick: pick));
+});
+
+// ---------------------------------------------------------------------------
+// Food history
+
+class FoodHistoryView {
+  FoodHistoryView(this.months, this.profile);
+
+  /// Budget months, oldest first; the last one is the current month.
+  final List<FoodPeriod> months;
+  final UserProfile profile;
+}
+
+Future<FoodHistoryView> loadFoodHistory(Isar isar, DateTime now) async {
+  final profile = await isar.userProfiles.get(1) ?? ProfileService.defaults();
+  final clock = ProfileService.clockFor(profile);
+  final from = FoodHistory.oldestStart(now, clock);
+  final txs = await isar.transactions.where().occurredAtBetween(from, now.add(const Duration(minutes: 1))).findAll();
+  final logs = await isar.dailyLogs.where().dateKeyBetween(clock.dateKey(from), clock.dateKey(now)).findAll();
+  final uses = await isar.foodUses.where().toGreaterThan(from, include: true).findAll();
+  final firstTx = await isar.transactions.where().anyOccurredAt().findFirst();
+  final firstMeal = await isar.dailyLogs.where().anyDateKey().filter().mealsCountGreaterThan(0).findFirst();
+  final firstUse = await isar.foodUses.where().sortByFrom().findFirst();
+  final months = FoodHistory.months(
+    now: now,
+    clock: clock,
+    transactions: txs,
+    logs: logs,
+    uses: uses,
+    firstData: _earliest([
+      ?firstTx?.occurredAt,
+      if (firstMeal != null) clock.startOfKey(firstMeal.dateKey),
+      ?firstUse?.from,
+    ]),
+  );
+  return FoodHistoryView(months, profile);
+}
+
+final foodHistoryProvider = StreamProvider.autoDispose<FoodHistoryView>((ref) {
+  final isar = ref.watch(isarProvider);
+  final now = ref.watch(nowProvider);
+  final triggers = StreamGroup.merge<void>([
+    isar.transactions.watchLazy(fireImmediately: true),
+    isar.dailyLogs.watchLazy(),
+    isar.foodUses.watchLazy(),
+    isar.userProfiles.watchLazy(),
+  ]);
+  return triggers.asyncMap((_) => loadFoodHistory(isar, now()));
 });
