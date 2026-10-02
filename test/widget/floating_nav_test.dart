@@ -40,6 +40,6 @@ void main() {
 
     await tester.pumpAndSettle();
     expect((lit(Icons.insights), lit(Icons.shopping_basket), lit(Icons.soup_kitchen)), (0.0, 0.0, 1.0));
-    expect(tester.getSemantics(find.bySemanticsLabel('Cook')), containsSemantics(isSelected: true, isButton: true));
+    expect(tester.getSemantics(find.bySemanticsLabel('Cook')), isSemantics(isSelected: true, isButton: true));
   });
 }
