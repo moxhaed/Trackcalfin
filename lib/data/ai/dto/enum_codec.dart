@@ -47,11 +47,7 @@ class EnumCodec {
 
   static const unit = {'g': BaseUnit.g, 'ml': BaseUnit.ml, 'pc': BaseUnit.pc};
 
-  static const role = {
-    'stock': IngredientRole.stock,
-    'staple': IngredientRole.staple,
-    'missing': IngredientRole.missing,
-  };
+  static const role = {'stock': IngredientRole.stock, 'missing': IngredientRole.missing};
 
   static const imageType = {'receipt': ScanKind.receipt, 'pantry': ScanKind.pantry, 'unreadable': ScanKind.unreadable};
 

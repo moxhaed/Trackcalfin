@@ -9,25 +9,7 @@ import '../../app/theme.dart';
 import '../../platform/notifications.dart';
 import '../capture/scan_flow.dart';
 
-const defaultStaples = [
-  'Salt',
-  'Black pepper',
-  'Olive oil',
-  'Vegetable oil',
-  'Sugar',
-  'Flour',
-  'Garlic powder',
-  'Paprika',
-  'Cumin',
-  'Chili flakes',
-  'Oregano',
-  'Soy sauce',
-  'Vinegar',
-  'Stock cubes',
-  'Butter',
-];
-
-/// Cold start in about 3 minutes: goals, staples, key, pantry sweep, rhythm.
+/// Cold start in about 3 minutes: goals, key, kitchen sweep, rhythm.
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -42,12 +24,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final _kcal = TextEditingController(text: '2200');
   final _protein = TextEditingController(text: '140');
   final _key = TextEditingController();
-  final Set<String> _staples = {...defaultStaples.take(10)};
   int _portions = 3;
   int _pickMinute = 450;
   int _sweeps = 0;
 
-  static const _pages = 6;
+  static const _pages = 5;
 
   @override
   void initState() {
@@ -128,14 +109,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 controller: _page,
                 physics: const NeverScrollableScrollPhysics(),
                 onPageChanged: (i) => setState(() => _index = i),
-                children: [
-                  _welcome(context),
-                  _goals(context),
-                  _staplesPage(context),
-                  _apiKey(context),
-                  _sweep(context),
-                  _rhythm(context),
-                ],
+                children: [_welcome(context), _goals(context), _apiKey(context), _sweep(context), _rhythm(context)],
               ),
             ),
             Padding(
@@ -152,11 +126,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   FilledButton(
                     onPressed: () async {
                       if (_index == 1) await _saveGoals();
-                      if (_index == 2) await ref.read(pantryServiceProvider).ensureStaples(_staples.toList());
-                      if (_index == 3 && _key.text.trim().isNotEmpty) {
+                      if (_index == 2 && _key.text.trim().isNotEmpty) {
                         await ref.read(secretStoreProvider).writeApiKey(_key.text.trim());
                         ref.invalidate(hasApiKeyProvider);
-                        // Staples from the previous page get their macros while the user carries on.
+                        // Items already in the pantry get their macros while the user carries on.
                         unawaited(ref.read(nutritionServiceProvider).fillMissing());
                       }
                       _next();
@@ -240,25 +213,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     ),
   );
 
-  Widget _staplesPage(BuildContext context) => _page0(
-    context,
-    icon: Icons.inventory_2_outlined,
-    title: 'Staples you always have',
-    body: 'These are assumed available and never counted, so the app never nags you about salt.',
-    child: Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        for (final s in defaultStaples)
-          FilterChip(
-            label: Text(s),
-            selected: _staples.contains(s),
-            onSelected: (v) => setState(() => v ? _staples.add(s) : _staples.remove(s)),
-          ),
-      ],
-    ),
-  );
-
   Widget _apiKey(BuildContext context) => _page0(
     context,
     icon: Icons.key_outlined,
@@ -278,21 +232,24 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     icon: Icons.photo_camera_outlined,
     title: 'Snap your kitchen',
     body:
-        'Three photos (fridge, freezer, cupboard) fill your pantry in one go. '
-        'You review them in the Inbox. Skip if you prefer to start with your next receipt.',
+        'Recipes only use what the app has seen, salt and oil included. Snap it all: the AI '
+        'recognizes each product and what it usually costs. Got recent receipts? Scan them too. '
+        'If something shows up twice, you get asked whether it is the same one before anything is counted.',
     child: Column(
       children: [
-        for (final (label, icon) in [
-          ('Fridge', Icons.kitchen_outlined),
-          ('Freezer', Icons.ac_unit),
-          ('Cupboard', Icons.door_sliding_outlined),
+        for (final (label, icon, hint) in [
+          ('Fridge', Icons.kitchen_outlined, 'pantry'),
+          ('Freezer', Icons.ac_unit, 'pantry'),
+          ('Cupboard', Icons.door_sliding_outlined, 'pantry'),
+          ('Spices & oils', Icons.local_dining_outlined, 'pantry'),
+          ('A receipt', Icons.receipt_long_outlined, 'receipt'),
         ])
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: OutlinedButton.icon(
               style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
               onPressed: () async {
-                await startScan(context, ref, hint: 'pantry');
+                await startScan(context, ref, hint: hint);
                 setState(() => _sweeps++);
               },
               icon: Icon(icon),

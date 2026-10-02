@@ -53,7 +53,7 @@ WAC is chosen over FIFO lots because it needs one number per ingredient, is robu
 ```
 applyPurchase(ing, qtyAdded, lineTotalMinor, purchasedAt):
   unitCost = lineTotalMinor / qtyAdded                       // minor units per base unit
-  if ing.qtyOnHand <= 0:
+  if ing.qtyOnHand <= 0 or ing.costIsEstimate:               // a price paid replaces an estimate
       ing.avgCostPerUnitMinor = unitCost
   else:
       ing.avgCostPerUnitMinor =
@@ -66,7 +66,9 @@ applyPurchase(ing, qtyAdded, lineTotalMinor, purchasedAt):
 ```
 - `lineTotalMinor` is **net** of discounts, and basket-level adjustments are allocated first (§3.10). WAC therefore reflects what you actually paid.
 - Setting stock to 0 (Quick Check "out") keeps `avgCostPerUnitMinor` as the last known price, which is still used for estimates.
-- A pantry snapshot (`stock_mode: set`) changes quantity only, never cost.
+- `purchasedAt` is the date printed on the receipt, not the day it was scanned (§3.16).
+- A pantry photo (`stock_mode: set`) never overrides a price paid. For an item with no price yet it sets the AI's shelf-price estimate (`applyEstimate`, `costIsEstimate = true`).
+- A receipt line that adds no stock (already counted, or used up) still prices the item when no paid average for what's on hand exists (`learnPrice`).
 
 ## 3.4 ExpiryEstimator (two-lot FIFO approximation)
 
@@ -85,7 +87,7 @@ onDeplete(ing):                      // after qtyOnHand decreases
 daysLeft(ing, today) = ing.expiresAt == null ? null : max(0, daysBetween(today, ing.expiresAt))
 useSoon = daysLeft != null && daysLeft <= 3
 ```
-Staples and items with `shelfLifeDays >= 180` get `daysLeft = null` (shelf-stable) in AI context.
+Items with `shelfLifeDays >= 180` get `daysLeft = null` (shelf-stable) in AI context.
 
 ## 3.5 NutritionEngine
 
@@ -97,13 +99,15 @@ nutrientsFor(ing, qtyBase):
   return ing.per100 * (basis / 100)                    // kcal, protein, carbs, fat, fiber
 
 recipePerPortion(recipe, stock):
-  Σ over ingredients with role stock|staple (ingredient resolvable):  nutrientsFor(ing, toBase(ri.qtyPerPortion, ri.unit, ing))
+  Σ over ingredients with role stock (ingredient resolvable):  nutrientsFor(ing, toBase(ri.qtyPerPortion, ri.unit, ing))
   + Σ over role missing:  ri.estNutritionPerPortion      // model estimate, flagged as such in UI
 
 recipeCostPerPortion(recipe, stock):
-  Σ stock|staple:  toBase(ri.qtyPerPortion) * ing.avgCostPerUnitMinor   // staples with no purchase history cost 0
-  + Σ missing:     ri.estCostMinor
+  Σ stock:    toBase(ri.qtyPerPortion) * ing.avgCostPerUnitMinor   // salt and oil included
+  + Σ missing: ri.estCostMinor
 ```
+There are no staples: every ingredient is a pantry item that was scanned (or bought by hand), so its cost and macros count. An item with no price yet counts as 0, and the recipe screen names it ("No price yet for …"), along with items priced from a pantry photo's estimate.
+
 Snapshots are written to `Recipe.perPortion` / `costPerPortionMinor` at generation, and **again at cook time** into `CookSession` (prices move, and history must not change retroactively).
 
 **Atwater sanity check** (used by `ReceiptValidator` on AI nutrition profiles):
@@ -119,7 +123,7 @@ check(recipe, portions, stock):
      have = ing?.qtyOnHand ?? 0
      perIngredientMax = floor(have / toBase(ri.qtyPerPortion))   // pc: floor to 0.5 granularity, then floor overall
      if have < need: shortfalls.add(ri, need - have)
-  maxPortionsNow = min(perIngredientMax)            // staples ignored; 0 if any role missing
+  maxPortionsNow = min(perIngredientMax)            // seasonings count too; 0 if any role missing
   ready = shortfalls.isEmpty && no role missing
   readinessScore = Σ min(have/need, 1) / count      // for "almost ready" sorting
 ```
@@ -140,7 +144,7 @@ plan(recipe, portions, stock) → CookPlan:
      deltas.add(StockDelta(ing.id, requested, deducted, shortfall))
   perPortion      = NutritionEngine.recipePerPortion(recipe, stock)     // BEFORE deduction
   costPerPortion  = NutritionEngine.recipeCostPerPortion(recipe, stock) // WAC at this moment
-  // role staple: not deducted (TrackingMode.staple). role missing: cannot be cooked → blocked in UI
+  // salt, oil and spices are deducted like everything else. role missing: cannot be cooked → blocked in UI
 ```
 
 `CookRecipe` writes all of this in **one `writeTxn`**:
@@ -282,7 +286,6 @@ resolve(line) — first hit wins:
              (normalized Levenshtein on keys + token-set ratio on names)
              → propose merge (amber "Same as Chicken breast?"), don't auto-merge
   4. new:    create Ingredient from line.newIngredient profile
-             (trackingMode = staple if suggestStaple and the user's staples list agrees)
 
 onCommit: add normalize(rawText) to ingredient.aliases (dedupe, keep the newest 20)
 ```
@@ -291,7 +294,7 @@ The same matcher remaps unknown keys in Prompt B/C outputs (by `key`, then by `n
 ## 3.14 Quick Check candidate selection
 
 ```
-candidates = ingredients where trackingMode == exact and qtyOnHand > 0 and (
+candidates = ingredients where qtyOnHand > 0 and (
       lastVerifiedAt == null                                    // shortfall or never verified
    || now − lastVerifiedAt > (isPerishable ? 7 d : 21 d)       // perishable: shelfLifeDays ≤ 14
    || (expiresAt != null && expiresAt < now))
@@ -308,9 +311,35 @@ take 10
 | CostingEngine | first purchase, purchase onto existing stock, purchase after stock was 0, a zero-quantity guard |
 | ExpiryEstimator | older lot consumed, purchase onto non-empty stock keeps the earlier date |
 | NutritionEngine | ml item uses per-100 ml, pc item uses grams, missing item estimate added |
-| FeasibilityChecker | exact fit, shortfall, pc half-units, staple ignored, missing → 0 portions |
+| FeasibilityChecker | exact fit, shortfall, pc half-units, seasonings counted, missing → 0 portions |
 | DepletionEngine | shortfall clamps at 0 and flags, undo restores exactly, snapshot taken before deduction |
 | DashboardAggregator | cold start (< 7 days), 0.2 pace floor, completed-days average excludes today, spent vs eaten separation |
 | VibeScorer | weight renormalization with missing goals, each template chosen correctly |
 | QuickTextParser | comma decimals, amount first or last, learned keyword beats built-in |
 | IngredientMatcher | alias beats AI key, fuzzy proposes but doesn't auto-merge, normalization strips weights |
+
+## 3.16 Scan checks: the receipt's date, pantry questions, duplicates
+
+Pure Dart in `ReceiptValidator` and `ScanService`, no AI. They decide what a scan does to the pantry, and when to ask first.
+
+**Date (R6).** A receipt is filed on its printed date. That date becomes `Transaction.occurredAt`, so the spend lands in the week and month it was paid, and it's the purchase date `ExpiryEstimator` counts freshness from.
+```
+printed date missing           → photo date, flag date_missing   (review)
+printed date > photo + 1 day   → photo date, flag date_adjusted  (review: misread)
+printed date > 365 days back   → kept,       flag date_old       (review: misread year?)
+otherwise                      → kept, however old
+```
+The review screen shows "Bought Sat 26 Sep (6 days ago)" and lets you change the date (`ScanService.setPurchaseDate`). That reruns the pantry questions and the duplicate check, and fetches the ECB rate for the new day when the rate was automatic.
+
+**Pantry questions (R9).** Each grocery line has a `StockEffect`: `add` (receipt default), `replace` (pantry-photo default, because the photo counts what's there) or `none` (only the money is filed). A line asks (`stockCheck`) when that default may be wrong:
+```
+pantry photo, item already on hand (qtyOnHand > 0)    → onHand:  "Same one" (replace) or "Extra" (add)
+receipt, item counted after the purchase              → counted: "Already counted" (none) or "Add" (add)
+   (lastCountedAt > purchasedAt: a pantry photo, Quick Check or hand adjustment since)
+receipt, daysBetween(purchasedAt, photo) > shelfLife  → usedUp:  "Used up" (none) or "Still have it" (add)
+```
+Any question holds the scan for review, and the review screen offers "All the same / All extra" when a pantry photo has several. `lastCountedAt` is only set by looking (pantry photo at its capture time, Quick Check, hand adjustments), never by a purchase. Two lines for the same item on one pantry photo add up.
+
+**Duplicate receipts (R10).** `sameReceipt`: same calendar day, same total (printed total or line sum), and the same store when both name one ("Migros" matches "Migros Zürich"). `ScanService` checks the transactions of that day (compared in the receipt's own currency, including the printed total of the scan they came from) and the receipts waiting in the Inbox. A match sets `duplicateOfTxId` or `duplicateOfJobId` and holds the scan for review, with **Discard this one** and **It's a different one**.
+
+**Shelf price (pantry photos).** Prompt A names the exact product and the usual price of one pack, from the model's own knowledge (no web search). Dart turns that into a unit cost (`packagePriceMinor / packageQty`) and applies it only where no price was paid (§3.3). The pantry list marks such values with "~".

@@ -17,11 +17,13 @@ class CostingEngine {
     final qtyBefore = ing.qtyOnHand;
     if (lineTotalMinor > 0) {
       final unitCost = lineTotalMinor / qtyAdded;
-      if (qtyBefore <= 0 || ing.avgCostPerUnitMinor <= 0) {
+      // A price paid replaces an estimate instead of averaging with it.
+      if (qtyBefore <= 0 || ing.avgCostPerUnitMinor <= 0 || ing.costIsEstimate) {
         ing.avgCostPerUnitMinor = unitCost;
       } else {
         ing.avgCostPerUnitMinor = (qtyBefore * ing.avgCostPerUnitMinor + qtyAdded * unitCost) / (qtyBefore + qtyAdded);
       }
+      ing.costIsEstimate = false;
     }
     ing.qtyOnHand = qtyBefore + qtyAdded;
     ing.lastPurchasedAt = at;
@@ -29,6 +31,25 @@ class CostingEngine {
     ing.lastVerifiedAt = at;
     ing.updatedAt = at;
     ExpiryEstimator.onPurchase(ing, qtyBefore: qtyBefore, at: at);
+  }
+
+  /// A receipt line that adds no stock (already counted, or used up) still says what the item
+  /// costs. It becomes the price unless a paid average for what's on hand is already known.
+  static void learnPrice(Ingredient ing, {required double qty, required int lineTotalMinor}) {
+    if (qty <= 0 || lineTotalMinor <= 0) return;
+    if (ing.qtyOnHand > 0 && ing.avgCostPerUnitMinor > 0 && !ing.costIsEstimate) return;
+    ing
+      ..avgCostPerUnitMinor = lineTotalMinor / qty
+      ..costIsEstimate = false;
+  }
+
+  /// A shelf-price estimate from a pantry photo. Used only while no price paid is known.
+  static void applyEstimate(Ingredient ing, double unitCostMinor) {
+    if (unitCostMinor <= 0) return;
+    if (ing.avgCostPerUnitMinor > 0 && !ing.costIsEstimate) return;
+    ing
+      ..avgCostPerUnitMinor = unitCostMinor
+      ..costIsEstimate = true;
   }
 }
 
@@ -57,7 +78,7 @@ class ExpiryEstimator {
     }
   }
 
-  static bool isShelfStable(Ingredient ing) => ing.isStaple || ing.shelfLifeDays >= shelfStableDays;
+  static bool isShelfStable(Ingredient ing) => ing.shelfLifeDays >= shelfStableDays;
 
   /// Days until the item spoils; null when shelf-stable or unknown.
   static int? daysLeft(Ingredient ing, DateTime now) {

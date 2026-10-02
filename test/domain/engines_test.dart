@@ -40,6 +40,41 @@ void main() {
       expect(i.qtyOnHand, 200);
       expect(i.avgCostPerUnitMinor, closeTo(0.2, 1e-9));
     });
+    test('a price paid replaces a shop-price estimate instead of averaging with it', () {
+      final i = ingredient('pasta', qty: 500, cost: 0.5, costIsEstimate: true);
+      CostingEngine.applyPurchase(i, qtyAdded: 500, lineTotalMinor: 199, at: t0);
+      expect(i.avgCostPerUnitMinor, closeTo(0.398, 1e-9));
+      expect(i.costIsEstimate, isFalse);
+      expect(i.qtyOnHand, 1000);
+    });
+    test('learnPrice: a receipt that adds no stock still prices an item with no paid price', () {
+      final none = ingredient('salt');
+      CostingEngine.learnPrice(none, qty: 500, lineTotalMinor: 49);
+      expect(none.avgCostPerUnitMinor, closeTo(0.098, 1e-9));
+      final guessed = ingredient('salt', qty: 400, cost: 0.2, costIsEstimate: true);
+      CostingEngine.learnPrice(guessed, qty: 500, lineTotalMinor: 49);
+      expect(guessed.avgCostPerUnitMinor, closeTo(0.098, 1e-9));
+      expect(guessed.costIsEstimate, isFalse);
+      final paid = ingredient('salt', qty: 400, cost: 0.1);
+      CostingEngine.learnPrice(paid, qty: 500, lineTotalMinor: 49);
+      expect(paid.avgCostPerUnitMinor, 0.1, reason: 'a paid average for what is on hand stays');
+      final empty = ingredient('salt', cost: 0.1);
+      CostingEngine.learnPrice(empty, qty: 500, lineTotalMinor: 49);
+      expect(empty.avgCostPerUnitMinor, closeTo(0.098, 1e-9), reason: 'nothing on hand: the latest price');
+      expect(empty.qtyOnHand, 0);
+    });
+    test('applyEstimate only fills in where no price was paid', () {
+      final none = ingredient('pasta', qty: 350);
+      CostingEngine.applyEstimate(none, 0.398);
+      expect(none.avgCostPerUnitMinor, 0.398);
+      expect(none.costIsEstimate, isTrue);
+      CostingEngine.applyEstimate(none, 0.4);
+      expect(none.avgCostPerUnitMinor, 0.4, reason: 'a newer estimate replaces an older one');
+      final paid = ingredient('pasta', qty: 350, cost: 0.3);
+      CostingEngine.applyEstimate(paid, 0.4);
+      expect(paid.avgCostPerUnitMinor, 0.3);
+      expect(paid.costIsEstimate, isFalse);
+    });
   });
 
   group('ExpiryEstimator', () {
@@ -185,17 +220,26 @@ void main() {
     final chicken = ingredient('chicken', qty: 650);
     final rice = ingredient('rice', qty: 1000);
     final egg = ingredient('egg', qty: 3, unit: BaseUnit.pc, gpp: 55);
-    final oil = ingredient('oil', staple: true);
+    final oil = ingredient('oil', qty: 30, unit: BaseUnit.ml);
     final stock = StockIndex([chicken, rice, egg, oil]);
 
     test('exact fit and max portions', () {
       final f = FeasibilityChecker.check(
-        [ri('chicken', 180), ri('rice', 100), ri('oil', 7, role: IngredientRole.staple)],
+        [ri('chicken', 180), ri('rice', 100), ri('oil', 7, unit: BaseUnit.ml)],
         3,
         stock,
       );
       expect(f.ready, isTrue);
       expect(f.maxPortionsNow, 3);
+    });
+    test('seasonings count like anything else: short on oil, no salt scanned', () {
+      final f = FeasibilityChecker.check([ri('chicken', 100), ri('oil', 7, unit: BaseUnit.ml)], 5, stock);
+      expect(f.ready, isFalse);
+      expect(f.shortfalls.single.item.key, 'oil');
+      expect(f.maxPortionsNow, 4);
+      final g = FeasibilityChecker.check([ri('chicken', 100), ri('salt', 2)], 1, stock);
+      expect(g.missing, ['salt']);
+      expect(g.maxPortionsNow, 0);
     });
     test('shortfall', () {
       final f = FeasibilityChecker.check([ri('chicken', 180)], 4, stock);
@@ -238,19 +282,16 @@ void main() {
       expect(chicken.qtyOnHand, 300);
       expect(rice.qtyOnHand, 1000);
     });
-    test('staples are never deducted and duplicate rows merge', () {
-      final oil = ingredient('oil', qty: 500, unit: BaseUnit.ml, staple: true);
-      final onion = ingredient('onion', qty: 400);
+    test('oil is deducted and costed like any item; duplicate rows merge', () {
+      final oil = ingredient('oil', qty: 500, unit: BaseUnit.ml, cost: 0.9);
+      final onion = ingredient('onion', qty: 400, cost: 0.25);
       final stock = StockIndex([oil, onion]);
-      final plan = DepletionEngine.plan(
-        [ri('oil', 10, unit: BaseUnit.ml, role: IngredientRole.staple), ri('onion', 50), ri('onion', 30)],
-        2,
-        stock,
-      );
-      expect(plan.deltas.length, 1);
-      expect(plan.deltas.single.requested, 160);
+      final plan = DepletionEngine.plan([ri('oil', 10, unit: BaseUnit.ml), ri('onion', 50), ri('onion', 30)], 2, stock);
+      expect(plan.deltas.length, 2);
+      expect(plan.deltas.firstWhere((d) => d.key == 'onion').requested, 160);
+      expect(plan.costPerPortionMinor, 9 + 20);
       DepletionEngine.apply(plan, stock, t0);
-      expect(oil.qtyOnHand, 500);
+      expect(oil.qtyOnHand, 480);
       expect(onion.qtyOnHand, 240);
     });
   });

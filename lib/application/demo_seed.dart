@@ -38,7 +38,6 @@ class DemoSeed {
       double? gpp,
       int shelf = 7,
       int age = 1,
-      bool staple = false,
     }) => Ingredient()
       ..key = key
       ..name = name
@@ -50,10 +49,9 @@ class DemoSeed {
       ..per100 = Nutrition(kcal: n[0], proteinG: n[1], carbsG: n[2], fatG: n[3], fiberG: n.length > 4 ? n[4] : 0)
       ..nutritionSource = DataSource.aiEstimate
       ..shelfLifeDays = shelf
-      ..trackingMode = staple ? TrackingMode.staple : TrackingMode.exact
       ..lastPurchasedAt = t.subtract(Duration(days: age))
       ..lastPurchaseQty = qty
-      ..expiresAt = staple ? null : t.subtract(Duration(days: age)).add(Duration(days: shelf))
+      ..expiresAt = t.subtract(Duration(days: age)).add(Duration(days: shelf))
       ..lastVerifiedAt = age > 20 ? null : t.subtract(Duration(days: age))
       ..aliases = [];
 
@@ -207,31 +205,31 @@ class DemoSeed {
         0.9,
         [814, 0, 0, 92],
         unit: BaseUnit.ml,
-        staple: true,
-        shelf: 365,
+        shelf: 540,
+        age: 16,
       ),
-      ing('salt', 'Salt', IngredientCategory.spicesCondiments, 0, 0, [0, 0, 0, 0], staple: true, shelf: 365),
+      ing('salt', 'Salt', IngredientCategory.spicesCondiments, 450, 0.098, [0, 0, 0, 0], shelf: 1825, age: 18),
       ing(
         'black_pepper',
         'Black pepper',
         IngredientCategory.spicesCondiments,
-        0,
-        0,
+        40,
+        3.98,
         [251, 10, 64, 3],
-        staple: true,
-        shelf: 365,
+        shelf: 730,
+        age: 18,
       ),
       ing(
         'garlic_powder',
         'Garlic powder',
         IngredientCategory.spicesCondiments,
-        0,
-        0,
+        55,
+        2.48,
         [331, 17, 73, 0.7],
-        staple: true,
-        shelf: 365,
+        shelf: 730,
+        age: 18,
       ),
-      ing('cumin', 'Cumin', IngredientCategory.spicesCondiments, 0, 0, [375, 18, 44, 22], staple: true, shelf: 365),
+      ing('cumin', 'Cumin', IngredientCategory.spicesCondiments, 35, 3.2, [375, 18, 44, 22], shelf: 730, age: 18),
     ];
 
     RecipeIngredient ri(
@@ -267,9 +265,9 @@ class DemoSeed {
           ri('chicken_breast', 'Chicken breast', 180),
           ri('white_rice', 'White rice', 100),
           ri('spinach', 'Spinach', 70),
-          ri('olive_oil', 'Olive oil', 7, unit: BaseUnit.ml, role: IngredientRole.staple),
-          ri('garlic_powder', 'Garlic powder', 1, role: IngredientRole.staple),
-          ri('salt', 'Salt', 2, role: IngredientRole.staple),
+          ri('olive_oil', 'Olive oil', 7, unit: BaseUnit.ml),
+          ri('garlic_powder', 'Garlic powder', 1),
+          ri('salt', 'Salt', 2),
         ]
         ..steps = [
           'Cube the chicken and rinse the rice.',
@@ -296,8 +294,8 @@ class DemoSeed {
           ri('canned_chickpeas', 'Chickpeas', 100),
           ri('canned_tomatoes', 'Chopped tomatoes', 120),
           ri('onion', 'Onion', 60),
-          ri('cumin', 'Cumin', 2, role: IngredientRole.staple),
-          ri('olive_oil', 'Olive oil', 5, unit: BaseUnit.ml, role: IngredientRole.staple),
+          ri('cumin', 'Cumin', 2),
+          ri('olive_oil', 'Olive oil', 5, unit: BaseUnit.ml),
         ]
         ..steps = [
           'Soften the onion in the oil with cumin.',
@@ -326,7 +324,7 @@ class DemoSeed {
           ri('egg', 'Egg', 1.5, unit: BaseUnit.pc),
           ri('greek_yogurt', 'Greek-style yogurt', 40)..substitutesFor = 'egg yolks',
           ri('grana_padano', 'Grana Padano', 15)..substitutesFor = 'pecorino romano',
-          ri('black_pepper', 'Black pepper', 1, role: IngredientRole.staple),
+          ri('black_pepper', 'Black pepper', 1),
         ]
         ..steps = [
           'Whisk eggs, yogurt, cheese and pepper.',
@@ -348,7 +346,7 @@ class DemoSeed {
             ..estCostMinor = 350
             ..estNutritionPerPortion = Nutrition(kcal: 310, proteinG: 30, fatG: 20),
           ri('frozen_peas', 'Frozen peas', 80),
-          ri('olive_oil', 'Olive oil', 5, unit: BaseUnit.ml, role: IngredientRole.staple),
+          ri('olive_oil', 'Olive oil', 5, unit: BaseUnit.ml),
         ]
         ..steps = ['Roast salmon and peas at 200 °C for 18 min.'],
     ];
@@ -592,6 +590,42 @@ class DemoSeed {
               ..name = 'Kitchen roll'
               ..category = SpendCategory.household
               ..totalMinor = 249,
+          ],
+      );
+
+      // A photo of the cupboard: one item is already in the pantry, one is new.
+      final pasta = stock.byKey['dry_pasta']!;
+      await isar.scanJobs.put(
+        ScanJob()
+          ..status = ScanStatus.needsReview
+          ..kind = ScanKind.pantry
+          ..userHint = 'pantry'
+          ..capturedAt = t.subtract(const Duration(minutes: 20))
+          ..lines = [
+            DraftLine()
+              ..name = 'Spaghetti'
+              ..ingredientKey = pasta.key
+              ..matchedIngredientId = pasta.id
+              ..qty = 500
+              ..qtySource = QtySource.estimated
+              ..product = 'Barilla Spaghetti n.5, 500 g'
+              ..packageQty = 500
+              ..packagePriceMinor = 199
+              ..stockCheck = StockCheck.onHand,
+            DraftLine()
+              ..name = 'Peanut butter'
+              ..ingredientKey = 'peanut_butter'
+              ..isNewIngredient = true
+              ..qty = 300
+              ..qtySource = QtySource.estimated
+              ..product = 'Ültje crunchy peanut butter, 350 g'
+              ..packageQty = 350
+              ..packagePriceMinor = 349
+              ..profile = (NewIngredientProfile()
+                ..name = 'Peanut butter'
+                ..category = IngredientCategory.legumesNuts
+                ..per100 = Nutrition(kcal: 610, proteinG: 25, carbsG: 14, fatG: 50, fiberG: 6)
+                ..shelfLifeDays = 180),
           ],
       );
     });

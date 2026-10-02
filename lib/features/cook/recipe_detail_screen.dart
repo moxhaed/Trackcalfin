@@ -116,6 +116,11 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                 style: context.text.labelSmall?.copyWith(color: context.scheme.onSurfaceVariant),
               ),
             ),
+          for (final note in _costNotes(r, stock))
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(note, style: context.text.labelSmall?.copyWith(color: context.scheme.onSurfaceVariant)),
+            ),
           const SizedBox(height: 12),
           SectionCard(
             title: 'Ingredients · $portions ${portions == 1 ? 'portion' : 'portions'}',
@@ -206,6 +211,21 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   }
 }
 
+/// Why the cost may be off: pantry items with no price count as free, and photo prices are estimates.
+List<String> _costNotes(Recipe r, StockIndex stock) {
+  final used = {
+    for (final ri in r.ingredients)
+      if (ri.role == IngredientRole.stock) ?stock.resolve(ri),
+  };
+  String names(Iterable<Ingredient> xs) => xs.map((i) => i.name).join(', ');
+  final free = used.where((i) => i.avgCostPerUnitMinor <= 0);
+  final guessed = used.where((i) => i.avgCostPerUnitMinor > 0 && i.costIsEstimate);
+  return [
+    if (free.isNotEmpty) 'No price yet for ${names(free)}: counted as free until a receipt has it.',
+    if (guessed.isNotEmpty) 'Shop price estimates for ${names(guessed)}, from a pantry photo.',
+  ];
+}
+
 class _Verdict extends StatelessWidget {
   const _Verdict({required this.recipe, required this.feasibility});
   final Recipe recipe;
@@ -265,7 +285,6 @@ class _IngredientRow extends ConsumerWidget {
     final total = ri.qtyPerPortion * portions;
     final short = feasibility.shortfalls.where((s) => s.item == ri).firstOrNull;
     final (IconData icon, Color color, String status) = switch (ri.role) {
-      IngredientRole.staple => (Icons.inventory_2_outlined, context.scheme.onSurfaceVariant, 'staple'),
       IngredientRole.missing => (Icons.shopping_cart_outlined, c.warning, 'to buy'),
       IngredientRole.stock when ing == null => (Icons.help_outline, c.warning, 'not in pantry'),
       IngredientRole.stock when short != null => (
@@ -282,7 +301,7 @@ class _IngredientRow extends ConsumerWidget {
       title: Text([ri.name, if ((ri.prepNote ?? '').isNotEmpty) ri.prepNote].join(', ')),
       subtitle: Text([status, if ((ri.substitutesFor ?? '').isNotEmpty) 'instead of ${ri.substitutesFor}'].join(' · ')),
       trailing: Text(UnitConverter.format(total, ri.unit), style: context.text.titleSmall),
-      onLongPress: ing == null || ing.isStaple
+      onLongPress: ing == null
           ? null
           : () => showModalBottomSheet<void>(
               context: context,

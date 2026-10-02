@@ -43,7 +43,6 @@ class AskService {
     final ingredients = await isar.ingredients.where().findAll();
     final stock = StockIndex(ingredients);
     final matcher = IngredientMatcher(ingredients);
-    final staples = ingredients.where((i) => i.isStaple).map((i) => i.key).toSet();
     final ctx = ContextBuilders.spontaneous(profile: profile, ingredients: ingredients, now: now(), request: text);
     RecipeValidation? validation;
     final prompt = await ai.prompts.load(PromptRepository.spontaneous);
@@ -64,7 +63,6 @@ class AskService {
           parsed.value!.recipe!,
           stock: stock,
           matcher: matcher,
-          stapleKeys: staples,
           profile: profile,
           allowMissing: true,
           origin: RecipeOrigin.spontaneous,

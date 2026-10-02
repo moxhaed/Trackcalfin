@@ -26,15 +26,20 @@ class Ingredient {
   @Enumerated(EnumType.name)
   BaseUnit baseUnit = BaseUnit.g;
 
-  /// staple = always assumed available, never deducted (salt, oil, spices).
-  @Enumerated(EnumType.name)
-  TrackingMode trackingMode = TrackingMode.exact;
+  /// "staple" for items that were assumed always available before schema 3. Only
+  /// Migrations reads it, to turn them into regular items.
+  @Name('trackingMode')
+  String? legacyTrackingMode;
 
   /// On-hand quantity in [baseUnit]. Invariant: >= 0.
   double qtyOnHand = 0;
 
   /// Weighted average cost, minor units per base unit (0.998 = 9.98/kg).
   double avgCostPerUnitMinor = 0;
+
+  /// [avgCostPerUnitMinor] is an AI shelf-price estimate from a pantry photo, not a price
+  /// paid. The next real price replaces it instead of averaging with it.
+  bool costIsEstimate = false;
 
   /// Required when [baseUnit] is [BaseUnit.pc].
   double? gramsPerPiece;
@@ -66,14 +71,15 @@ class Ingredient {
   /// null = needs verification (shortfall detected or never checked).
   DateTime? lastVerifiedAt;
 
-  DateTime updatedAt = DateTime.now();
+  /// When the quantity was last counted by looking: a pantry photo, Quick Check or a hand
+  /// adjustment. Purchases don't set it. A receipt from before this may be part of the count.
+  DateTime? lastCountedAt;
 
-  @ignore
-  bool get isStaple => trackingMode == TrackingMode.staple;
+  DateTime updatedAt = DateTime.now();
 
   @ignore
   bool get needsNutrition => nutritionSource == DataSource.none;
 
   @ignore
-  bool get isLow => !isStaple && qtyOnHand > 0 && lowStockThreshold > 0 && qtyOnHand <= lowStockThreshold;
+  bool get isLow => qtyOnHand > 0 && lowStockThreshold > 0 && qtyOnHand <= lowStockThreshold;
 }

@@ -111,9 +111,7 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
               ..name = row.ingredient?.name ?? row.name.trim()
               ..qtyPerPortion = double.parse(row.qty.replaceAll(',', '.'))
               ..unit = row.unit
-              ..role = row.ingredient == null
-                  ? IngredientRole.missing
-                  : (row.ingredient!.isStaple ? IngredientRole.staple : IngredientRole.stock),
+              ..role = row.ingredient == null ? IngredientRole.missing : IngredientRole.stock,
       ];
     if (r.status == RecipeStatus.suggested) r.status = RecipeStatus.saved;
     final id = await ref.read(recipeServiceProvider).save(r);

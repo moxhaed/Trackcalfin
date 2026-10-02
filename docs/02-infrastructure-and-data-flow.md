@@ -118,9 +118,9 @@ test/
 
 | # | Trigger | Prompt | Input | Output → where | Thinking level | Offline / failure fallback | Expected frequency |
 |---|---|---|---|---|---|---|---|
-| A | User captures a receipt or pantry photo (⊕, quick action, share sheet, onboarding) | [`receipt_extraction.v2`](../assets/prompts/receipt_extraction.v2.md) | 1–3 images + locale + `known_ingredients` (key, name, unit) | Extraction JSON → `ScanJob.lines` (draft) → `Transaction` + `Ingredient` on commit | **low** (extraction that Dart verifies) | `ScanJob` stays `queued`. Retried on reconnect and app resume. | 2–5 per week |
-| B | Evening before (primary), WorkManager morning window (fallback), app open with no pick (last resort), *Swap* button | [`daily_recipe.v1`](../assets/prompts/daily_recipe.v1.md) | Compact inventory + staples + targets + profile + recent titles | Recipe JSON → `Recipe(origin: dailyAuto, suggestedForDateKey)` | **medium** | Best "ready" saved recipe, picked by `FeasibilityChecker` + expiry score | 1 per day + ≤ 2 swaps |
-| C | User types or speaks a request on the Cook tab | [`spontaneous_recipe.v1`](../assets/prompts/spontaneous_recipe.v1.md) | Request text + parsed portions + inventory + staples + profile | Feasibility + recipe JSON → `Recipe(origin: spontaneous)` | **medium** | Message "Needs a connection" + local title search over saved recipes | On demand, ~0–2 per day |
+| A | User captures a receipt or pantry photo (⊕, quick action, share sheet, onboarding) | [`receipt_extraction.v3`](../assets/prompts/receipt_extraction.v3.md) | 1–3 images + locale + `known_ingredients` (key, name, unit) | Extraction JSON → `ScanJob.lines` (draft) → `Transaction` + `Ingredient` on commit | **low** (extraction that Dart verifies) | `ScanJob` stays `queued`. Retried on reconnect and app resume. | 2–5 per week |
+| B | Evening before (primary), WorkManager morning window (fallback), app open with no pick (last resort), *Swap* button | [`daily_recipe.v2`](../assets/prompts/daily_recipe.v2.md) | Compact inventory (salt and oil included) + targets + profile + recent titles | Recipe JSON → `Recipe(origin: dailyAuto, suggestedForDateKey)` | **medium** | Best "ready" saved recipe, picked by `FeasibilityChecker` + expiry score | 1 per day + ≤ 2 swaps |
+| C | User types or speaks a request on the Cook tab | [`spontaneous_recipe.v2`](../assets/prompts/spontaneous_recipe.v2.md) | Request text + parsed portions + inventory + profile | Feasibility + recipe JSON → `Recipe(origin: spontaneous)` | **medium** | Message "Needs a connection" + local title search over saved recipes | On demand, ~0–2 per day |
 
 ### Never AI (pure Dart / Isar)
 
@@ -155,9 +155,11 @@ sequenceDiagram
   end
   DB-->>UI: watchers refresh Dashboard and Pantry
 ```
-`CommitScan` in one transaction: allocate basket-level adjustments proportionally → write `Transaction` → create `Ingredient`s from `new_ingredient` profiles → `CostingEngine.applyPurchase` for each grocery line → append normalized raw text to `Ingredient.aliases` → mark `ScanJob.committed`.
+`CommitScan` in one transaction: allocate basket-level adjustments proportionally → write `Transaction` (on the receipt's printed date) → create `Ingredient`s from `new_ingredient` profiles → `CostingEngine.applyPurchase` for each grocery line the user keeps in the pantry, or only `learnPrice` for a line that is already counted or used up → append normalized raw text to `Ingredient.aliases` → re-cost the recipes that use those items → mark `ScanJob.committed`.
 
-Pantry-photo scans (`stock_mode: set`) take the same pipeline but commit through `ApplyPantrySnapshot`. The user sees a diff (current vs detected), and the detected quantities replace `qtyOnHand` and set `lastVerifiedAt`. No `Transaction` is written.
+Before that, the validator checks the receipt against what the app already knows ([03 §3.16](03-algorithms.md#316-scan-checks-the-receipts-date-pantry-questions-duplicates)): an old date keeps perishables that have spoiled since out of the pantry, a pantry count made after the purchase may already include an item, and a receipt matching one already filed is flagged. Each of these holds the scan for review instead of auto-committing.
+
+Pantry-photo scans (`stock_mode: set`) take the same pipeline but commit through `ApplyPantrySnapshot`. The user sees a diff (current vs detected). For an item already on hand, the review asks "Same one or extra?": the same one means the detected quantity replaces `qtyOnHand`, extra means it is added. Either way `lastVerifiedAt` and `lastCountedAt` are set to the photo's time. The model also names the exact product and its usual shop price, which prices items that have no price paid yet (marked as an estimate). No `Transaction` is written.
 
 ### Flow 2: Daily pick ("plan tonight, notify tomorrow")
 

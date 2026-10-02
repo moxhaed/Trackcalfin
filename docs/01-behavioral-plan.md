@@ -50,7 +50,7 @@ Motivation is volatile, so we design for the **low-motivation day**. The lever w
 2. **R2 · The last tap commits.** No "Save" buttons on hot paths. The chip, the stepper release or the notification action *is* the save.
 3. **R3 · Defaults from history.** Portions come from the last cook of that recipe, category from the merchant or keyword memory, chip order from the time of day.
 4. **R4 · AI is asynchronous.** The user never waits on a spinner to finish a log. Scans go into a queue and results come back through the *Inbox* badge or a notification.
-5. **R5 · Review by exception.** High-confidence data commits on its own. Only amber items (low confidence, totals mismatch, possible duplicate ingredient) ask for attention.
+5. **R5 · Review by exception.** High-confidence data commits on its own. Only amber items (low confidence, totals mismatch, possible duplicate ingredient, a receipt that may already be filed, an item that may already be counted or used up) ask for attention.
 6. **R6 · One suggestion, not ten.** The daily pick is a single recipe with a *Swap* button (max 2 swaps a day).
 7. **R7 · Correct in context.** Any ingredient row, anywhere, supports long-press → *I'm out / Adjust*. Fixing data is part of using the app, not a chore.
 8. **R8 · Entry points outside the app.** Quick actions on the app icon, the share sheet (e-receipts), notification action buttons, and later a home-screen widget.
@@ -182,10 +182,9 @@ Three tabs plus a **global capture button (⊕)** docked in the center of the bo
 
 1. **API key**: paste once, stored in secure storage.
 2. **Goals**: three sliders with sensible defaults (monthly food budget, kcal, protein) and optional per-category limits.
-3. **Staples**: a pre-ticked checklist (salt, pepper, oil, sugar, flour, common spices). Untick what you don't keep. These are never quantity-tracked.
-4. **Pantry sweep**: photos of fridge, freezer and cupboard → Prompt A in pantry mode → one review → 20–40 items seeded. Endowed progress: "Your pantry knows 34 items."
-5. **Rhythm**: daily-pick time, meal reminder times, default portions.
-6. **Instant value**: today's pick is generated right away, so the first session ends with a costed, macro-counted recipe built from your own food.
+3. **Kitchen sweep**: photos of fridge, freezer, cupboard, and spices and oils → Prompt A in pantry mode → one review → 20–40 items seeded, each with the exact product and its usual shop price. Recent receipts can be scanned too: they're filed on their printed dates, and an item that shows up on both a receipt and a photo is asked about ("Same one or extra?", "Already counted?") instead of being counted twice. Endowed progress: "Your pantry knows 34 items." There is no staples list: nothing is assumed to be in the kitchen, so salt and oil are counted, deducted and costed like everything else.
+4. **Rhythm**: daily-pick time, meal reminder times, default portions.
+5. **Instant value**: today's pick is generated right away, so the first session ends with a costed, macro-counted recipe built from your own food.
 
 ## 1.10 Anti-patterns we explicitly avoid
 

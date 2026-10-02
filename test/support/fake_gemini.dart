@@ -51,10 +51,13 @@ class FakeGemini {
   });
 }
 
-/// The example JSON line embedded in a prompt file.
-String promptExample(String file) {
+/// The example JSON lines embedded in a prompt file, in order.
+List<String> promptExamples(String file) {
   final s = File('assets/prompts/$file').readAsStringSync();
-  return s.split('\n').firstWhere((l) => l.startsWith('{"schema_version"'));
+  return s.split('\n').where((l) => l.startsWith('{"schema_version"')).toList();
 }
+
+/// The first example JSON line embedded in a prompt file.
+String promptExample(String file) => promptExamples(file).first;
 
 Future<String> loadPromptAsset(String path) => File(path).readAsString();

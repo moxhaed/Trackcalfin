@@ -114,7 +114,6 @@ class DailyPickService {
     final ingredients = await isar.ingredients.where().findAll();
     final stock = StockIndex(ingredients);
     final matcher = IngredientMatcher(ingredients);
-    final staples = ingredients.where((i) => i.isStaple).map((i) => i.key).toSet();
     final t = now();
     final ctx = ContextBuilders.daily(
       profile: profile,
@@ -143,7 +142,6 @@ class DailyPickService {
           parsed.value!.recipe!,
           stock: stock,
           matcher: matcher,
-          stapleKeys: staples,
           profile: profile,
           allowMissing: false,
           origin: RecipeOrigin.dailyAuto,

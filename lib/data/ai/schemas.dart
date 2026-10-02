@@ -58,6 +58,15 @@ class AiSchemas {
             },
             'qty_source': _enum(['printed', 'inferred', 'estimated', 'unknown']),
             'confidence': _enum(['high', 'medium', 'low']),
+            'product': _nullable('string'),
+            'shelf_price': {
+              'type': ['object', 'null'],
+              'properties': {
+                'package_qty': {'type': 'number'},
+                'price_minor': {'type': 'integer'},
+              },
+              'required': ['package_qty', 'price_minor'],
+            },
             'new_ingredient': {
               'type': ['object', 'null'],
               'properties': {
@@ -78,9 +87,8 @@ class AiSchemas {
                   'required': ['kcal', 'protein_g', 'carbs_g', 'fat_g', 'fiber_g'],
                 },
                 'shelf_life_days': {'type': 'integer'},
-                'suggest_staple': {'type': 'boolean'},
               },
-              'required': ['name', 'ingredient_category', 'unit', 'per_100', 'shelf_life_days', 'suggest_staple'],
+              'required': ['name', 'ingredient_category', 'unit', 'per_100', 'shelf_life_days'],
             },
           },
           'required': [
@@ -95,6 +103,8 @@ class AiSchemas {
             'unit',
             'qty_source',
             'confidence',
+            'product',
+            'shelf_price',
             'new_ingredient',
           ],
         },
@@ -212,7 +222,7 @@ class AiSchemas {
             'name': {'type': 'string'},
             'qty_per_portion': {'type': 'number'},
             'unit': _enum(_units),
-            'role': _enum(allowMissing ? ['stock', 'staple', 'missing'] : ['stock', 'staple']),
+            'role': _enum(allowMissing ? ['stock', 'missing'] : ['stock']),
             'prep_note': _nullable('string'),
             'substitutes_for': _nullable('string'),
             'missing_est': {

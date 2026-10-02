@@ -37,7 +37,7 @@ class DailyFallback {
       var allGrams = 0.0;
       for (final ri in r.ingredients) {
         final ing = stock.resolve(ri);
-        if (ing == null || ing.isStaple) continue;
+        if (ing == null) continue;
         final g = UnitConverter.toBase(ri.qtyPerPortion, ri.unit, ing) ?? 0;
         allGrams += g;
         if (ExpiryEstimator.useSoon(ing, now)) soonGrams += g;

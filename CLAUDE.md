@@ -22,4 +22,6 @@ Flutter app (Android/iOS; Linux desktop for local UI checks) with a local Isar d
 - One use case = one Isar write transaction (`lib/application`).
 - `lib/domain` has no I/O and never touches an `Isar` instance.
 - Cooking deducts stock and creates a `CookSession` (the fridge). Intake is logged when a portion is eaten (`DailyLog`).
+- Nothing is assumed to be in the kitchen: there are no staples. Every recipe ingredient is a pantry item (counted, deducted and costed, salt and oil included) or `missing`.
+- A receipt is filed on its printed date. Checks that need what the app knows (an old date, an item counted since, a duplicate receipt) are pure Dart in `ReceiptValidator`/`ScanService` and hold the scan for review (docs/03 §3.16).
 - Undo instead of confirm: hot paths commit on the last tap and show `showUndo`.

@@ -33,65 +33,75 @@ const ScanJobSchema = CollectionSchema(
       name: r'currency',
       type: IsarType.string,
     ),
-    r'flags': PropertySchema(id: 4, name: r'flags', type: IsarType.stringList),
-    r'fxDate': PropertySchema(id: 5, name: r'fxDate', type: IsarType.dateTime),
-    r'fxRate': PropertySchema(id: 6, name: r'fxRate', type: IsarType.double),
+    r'duplicateOfJobId': PropertySchema(
+      id: 4,
+      name: r'duplicateOfJobId',
+      type: IsarType.long,
+    ),
+    r'duplicateOfTxId': PropertySchema(
+      id: 5,
+      name: r'duplicateOfTxId',
+      type: IsarType.long,
+    ),
+    r'flags': PropertySchema(id: 6, name: r'flags', type: IsarType.stringList),
+    r'fxDate': PropertySchema(id: 7, name: r'fxDate', type: IsarType.dateTime),
+    r'fxRate': PropertySchema(id: 8, name: r'fxRate', type: IsarType.double),
     r'fxSource': PropertySchema(
-      id: 7,
+      id: 9,
       name: r'fxSource',
       type: IsarType.string,
     ),
     r'imagePaths': PropertySchema(
-      id: 8,
+      id: 10,
       name: r'imagePaths',
       type: IsarType.stringList,
     ),
     r'kind': PropertySchema(
-      id: 9,
+      id: 11,
       name: r'kind',
       type: IsarType.string,
       enumMap: _ScanJobkindEnumValueMap,
     ),
     r'lastError': PropertySchema(
-      id: 10,
+      id: 12,
       name: r'lastError',
       type: IsarType.string,
     ),
     r'lines': PropertySchema(
-      id: 11,
+      id: 13,
       name: r'lines',
       type: IsarType.objectList,
 
       target: r'DraftLine',
     ),
     r'merchant': PropertySchema(
-      id: 12,
+      id: 14,
       name: r'merchant',
       type: IsarType.string,
     ),
     r'purchasedAt': PropertySchema(
-      id: 13,
+      id: 15,
       name: r'purchasedAt',
       type: IsarType.dateTime,
     ),
     r'receiptTotalMinor': PropertySchema(
-      id: 14,
+      id: 16,
       name: r'receiptTotalMinor',
       type: IsarType.long,
     ),
     r'status': PropertySchema(
-      id: 15,
+      id: 17,
       name: r'status',
       type: IsarType.string,
       enumMap: _ScanJobstatusEnumValueMap,
     ),
     r'transactionId': PropertySchema(
-      id: 16,
+      id: 18,
       name: r'transactionId',
       type: IsarType.long,
     ),
     r'userHint': PropertySchema(
-      id: 17,
+      id: 19,
       name: r'userHint',
       type: IsarType.string,
     ),
@@ -203,25 +213,27 @@ void _scanJobSerialize(
   writer.writeLong(offsets[1], object.attempts);
   writer.writeDateTime(offsets[2], object.capturedAt);
   writer.writeString(offsets[3], object.currency);
-  writer.writeStringList(offsets[4], object.flags);
-  writer.writeDateTime(offsets[5], object.fxDate);
-  writer.writeDouble(offsets[6], object.fxRate);
-  writer.writeString(offsets[7], object.fxSource);
-  writer.writeStringList(offsets[8], object.imagePaths);
-  writer.writeString(offsets[9], object.kind.name);
-  writer.writeString(offsets[10], object.lastError);
+  writer.writeLong(offsets[4], object.duplicateOfJobId);
+  writer.writeLong(offsets[5], object.duplicateOfTxId);
+  writer.writeStringList(offsets[6], object.flags);
+  writer.writeDateTime(offsets[7], object.fxDate);
+  writer.writeDouble(offsets[8], object.fxRate);
+  writer.writeString(offsets[9], object.fxSource);
+  writer.writeStringList(offsets[10], object.imagePaths);
+  writer.writeString(offsets[11], object.kind.name);
+  writer.writeString(offsets[12], object.lastError);
   writer.writeObjectList<DraftLine>(
-    offsets[11],
+    offsets[13],
     allOffsets,
     DraftLineSchema.serialize,
     object.lines,
   );
-  writer.writeString(offsets[12], object.merchant);
-  writer.writeDateTime(offsets[13], object.purchasedAt);
-  writer.writeLong(offsets[14], object.receiptTotalMinor);
-  writer.writeString(offsets[15], object.status.name);
-  writer.writeLong(offsets[16], object.transactionId);
-  writer.writeString(offsets[17], object.userHint);
+  writer.writeString(offsets[14], object.merchant);
+  writer.writeDateTime(offsets[15], object.purchasedAt);
+  writer.writeLong(offsets[16], object.receiptTotalMinor);
+  writer.writeString(offsets[17], object.status.name);
+  writer.writeLong(offsets[18], object.transactionId);
+  writer.writeString(offsets[19], object.userHint);
 }
 
 ScanJob _scanJobDeserialize(
@@ -235,32 +247,34 @@ ScanJob _scanJobDeserialize(
   object.attempts = reader.readLong(offsets[1]);
   object.capturedAt = reader.readDateTime(offsets[2]);
   object.currency = reader.readStringOrNull(offsets[3]);
-  object.flags = reader.readStringList(offsets[4]) ?? [];
-  object.fxDate = reader.readDateTimeOrNull(offsets[5]);
-  object.fxRate = reader.readDoubleOrNull(offsets[6]);
-  object.fxSource = reader.readStringOrNull(offsets[7]);
+  object.duplicateOfJobId = reader.readLongOrNull(offsets[4]);
+  object.duplicateOfTxId = reader.readLongOrNull(offsets[5]);
+  object.flags = reader.readStringList(offsets[6]) ?? [];
+  object.fxDate = reader.readDateTimeOrNull(offsets[7]);
+  object.fxRate = reader.readDoubleOrNull(offsets[8]);
+  object.fxSource = reader.readStringOrNull(offsets[9]);
   object.id = id;
-  object.imagePaths = reader.readStringList(offsets[8]) ?? [];
+  object.imagePaths = reader.readStringList(offsets[10]) ?? [];
   object.kind =
-      _ScanJobkindValueEnumMap[reader.readStringOrNull(offsets[9])] ??
+      _ScanJobkindValueEnumMap[reader.readStringOrNull(offsets[11])] ??
       ScanKind.unknown;
-  object.lastError = reader.readStringOrNull(offsets[10]);
+  object.lastError = reader.readStringOrNull(offsets[12]);
   object.lines =
       reader.readObjectList<DraftLine>(
-        offsets[11],
+        offsets[13],
         DraftLineSchema.deserialize,
         allOffsets,
         DraftLine(),
       ) ??
       [];
-  object.merchant = reader.readStringOrNull(offsets[12]);
-  object.purchasedAt = reader.readDateTimeOrNull(offsets[13]);
-  object.receiptTotalMinor = reader.readLongOrNull(offsets[14]);
+  object.merchant = reader.readStringOrNull(offsets[14]);
+  object.purchasedAt = reader.readDateTimeOrNull(offsets[15]);
+  object.receiptTotalMinor = reader.readLongOrNull(offsets[16]);
   object.status =
-      _ScanJobstatusValueEnumMap[reader.readStringOrNull(offsets[15])] ??
+      _ScanJobstatusValueEnumMap[reader.readStringOrNull(offsets[17])] ??
       ScanStatus.queued;
-  object.transactionId = reader.readLongOrNull(offsets[16]);
-  object.userHint = reader.readStringOrNull(offsets[17]);
+  object.transactionId = reader.readLongOrNull(offsets[18]);
+  object.userHint = reader.readStringOrNull(offsets[19]);
   return object;
 }
 
@@ -280,22 +294,26 @@ P _scanJobDeserializeProp<P>(
     case 3:
       return (reader.readStringOrNull(offset)) as P;
     case 4:
-      return (reader.readStringList(offset) ?? []) as P;
+      return (reader.readLongOrNull(offset)) as P;
     case 5:
-      return (reader.readDateTimeOrNull(offset)) as P;
+      return (reader.readLongOrNull(offset)) as P;
     case 6:
-      return (reader.readDoubleOrNull(offset)) as P;
-    case 7:
-      return (reader.readStringOrNull(offset)) as P;
-    case 8:
       return (reader.readStringList(offset) ?? []) as P;
+    case 7:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 8:
+      return (reader.readDoubleOrNull(offset)) as P;
     case 9:
+      return (reader.readStringOrNull(offset)) as P;
+    case 10:
+      return (reader.readStringList(offset) ?? []) as P;
+    case 11:
       return (_ScanJobkindValueEnumMap[reader.readStringOrNull(offset)] ??
               ScanKind.unknown)
           as P;
-    case 10:
+    case 12:
       return (reader.readStringOrNull(offset)) as P;
-    case 11:
+    case 13:
       return (reader.readObjectList<DraftLine>(
                 offset,
                 DraftLineSchema.deserialize,
@@ -304,19 +322,19 @@ P _scanJobDeserializeProp<P>(
               ) ??
               [])
           as P;
-    case 12:
-      return (reader.readStringOrNull(offset)) as P;
-    case 13:
-      return (reader.readDateTimeOrNull(offset)) as P;
     case 14:
-      return (reader.readLongOrNull(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 15:
-      return (_ScanJobstatusValueEnumMap[reader.readStringOrNull(offset)] ??
-              ScanStatus.queued)
-          as P;
+      return (reader.readDateTimeOrNull(offset)) as P;
     case 16:
       return (reader.readLongOrNull(offset)) as P;
     case 17:
+      return (_ScanJobstatusValueEnumMap[reader.readStringOrNull(offset)] ??
+              ScanStatus.queued)
+          as P;
+    case 18:
+      return (reader.readLongOrNull(offset)) as P;
+    case 19:
       return (reader.readStringOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -849,6 +867,154 @@ extension ScanJobQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.greaterThan(property: r'currency', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  duplicateOfJobIdIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'duplicateOfJobId'),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  duplicateOfJobIdIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'duplicateOfJobId'),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition> duplicateOfJobIdEqualTo(
+    int? value,
+  ) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'duplicateOfJobId', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  duplicateOfJobIdGreaterThan(int? value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'duplicateOfJobId',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  duplicateOfJobIdLessThan(int? value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'duplicateOfJobId',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition> duplicateOfJobIdBetween(
+    int? lower,
+    int? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'duplicateOfJobId',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  duplicateOfTxIdIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'duplicateOfTxId'),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  duplicateOfTxIdIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'duplicateOfTxId'),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition> duplicateOfTxIdEqualTo(
+    int? value,
+  ) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'duplicateOfTxId', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  duplicateOfTxIdGreaterThan(int? value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'duplicateOfTxId',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition> duplicateOfTxIdLessThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'duplicateOfTxId',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition> duplicateOfTxIdBetween(
+    int? lower,
+    int? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'duplicateOfTxId',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
       );
     });
   }
@@ -2750,6 +2916,30 @@ extension ScanJobQuerySortBy on QueryBuilder<ScanJob, ScanJob, QSortBy> {
     });
   }
 
+  QueryBuilder<ScanJob, ScanJob, QAfterSortBy> sortByDuplicateOfJobId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'duplicateOfJobId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterSortBy> sortByDuplicateOfJobIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'duplicateOfJobId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterSortBy> sortByDuplicateOfTxId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'duplicateOfTxId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterSortBy> sortByDuplicateOfTxIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'duplicateOfTxId', Sort.desc);
+    });
+  }
+
   QueryBuilder<ScanJob, ScanJob, QAfterSortBy> sortByFxDate() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'fxDate', Sort.asc);
@@ -2933,6 +3123,30 @@ extension ScanJobQuerySortThenBy
     });
   }
 
+  QueryBuilder<ScanJob, ScanJob, QAfterSortBy> thenByDuplicateOfJobId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'duplicateOfJobId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterSortBy> thenByDuplicateOfJobIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'duplicateOfJobId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterSortBy> thenByDuplicateOfTxId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'duplicateOfTxId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterSortBy> thenByDuplicateOfTxIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'duplicateOfTxId', Sort.desc);
+    });
+  }
+
   QueryBuilder<ScanJob, ScanJob, QAfterSortBy> thenByFxDate() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'fxDate', Sort.asc);
@@ -3106,6 +3320,18 @@ extension ScanJobQueryWhereDistinct
     });
   }
 
+  QueryBuilder<ScanJob, ScanJob, QDistinct> distinctByDuplicateOfJobId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'duplicateOfJobId');
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QDistinct> distinctByDuplicateOfTxId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'duplicateOfTxId');
+    });
+  }
+
   QueryBuilder<ScanJob, ScanJob, QDistinct> distinctByFlags() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'flags');
@@ -3226,6 +3452,18 @@ extension ScanJobQueryProperty
   QueryBuilder<ScanJob, String?, QQueryOperations> currencyProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'currency');
+    });
+  }
+
+  QueryBuilder<ScanJob, int?, QQueryOperations> duplicateOfJobIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'duplicateOfJobId');
+    });
+  }
+
+  QueryBuilder<ScanJob, int?, QQueryOperations> duplicateOfTxIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'duplicateOfTxId');
     });
   }
 
@@ -3365,28 +3603,51 @@ const DraftLineSchema = Schema(
       type: IsarType.long,
     ),
     r'name': PropertySchema(id: 8, name: r'name', type: IsarType.string),
-    r'profile': PropertySchema(
+    r'packagePriceMinor': PropertySchema(
       id: 9,
+      name: r'packagePriceMinor',
+      type: IsarType.long,
+    ),
+    r'packageQty': PropertySchema(
+      id: 10,
+      name: r'packageQty',
+      type: IsarType.double,
+    ),
+    r'product': PropertySchema(id: 11, name: r'product', type: IsarType.string),
+    r'profile': PropertySchema(
+      id: 12,
       name: r'profile',
       type: IsarType.object,
 
       target: r'NewIngredientProfile',
     ),
-    r'qty': PropertySchema(id: 10, name: r'qty', type: IsarType.double),
+    r'qty': PropertySchema(id: 13, name: r'qty', type: IsarType.double),
     r'qtySource': PropertySchema(
-      id: 11,
+      id: 14,
       name: r'qtySource',
       type: IsarType.string,
       enumMap: _DraftLineqtySourceEnumValueMap,
     ),
-    r'rawText': PropertySchema(id: 12, name: r'rawText', type: IsarType.string),
+    r'rawText': PropertySchema(id: 15, name: r'rawText', type: IsarType.string),
+    r'stock': PropertySchema(
+      id: 16,
+      name: r'stock',
+      type: IsarType.string,
+      enumMap: _DraftLinestockEnumValueMap,
+    ),
+    r'stockCheck': PropertySchema(
+      id: 17,
+      name: r'stockCheck',
+      type: IsarType.string,
+      enumMap: _DraftLinestockCheckEnumValueMap,
+    ),
     r'totalMinor': PropertySchema(
-      id: 13,
+      id: 18,
       name: r'totalMinor',
       type: IsarType.long,
     ),
     r'unit': PropertySchema(
-      id: 14,
+      id: 19,
       name: r'unit',
       type: IsarType.string,
       enumMap: _DraftLineunitEnumValueMap,
@@ -3416,6 +3677,12 @@ int _draftLineEstimateSize(
   bytesCount += 3 + object.lineType.name.length * 3;
   bytesCount += 3 + object.name.length * 3;
   {
+    final value = object.product;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
     final value = object.profile;
     if (value != null) {
       bytesCount +=
@@ -3429,6 +3696,18 @@ int _draftLineEstimateSize(
   }
   bytesCount += 3 + object.qtySource.name.length * 3;
   bytesCount += 3 + object.rawText.length * 3;
+  {
+    final value = object.stock;
+    if (value != null) {
+      bytesCount += 3 + value.name.length * 3;
+    }
+  }
+  {
+    final value = object.stockCheck;
+    if (value != null) {
+      bytesCount += 3 + value.name.length * 3;
+    }
+  }
   bytesCount += 3 + object.unit.name.length * 3;
   return bytesCount;
 }
@@ -3448,17 +3727,22 @@ void _draftLineSerialize(
   writer.writeLong(offsets[6], object.matchedIngredientId);
   writer.writeLong(offsets[7], object.mergeCandidateId);
   writer.writeString(offsets[8], object.name);
+  writer.writeLong(offsets[9], object.packagePriceMinor);
+  writer.writeDouble(offsets[10], object.packageQty);
+  writer.writeString(offsets[11], object.product);
   writer.writeObject<NewIngredientProfile>(
-    offsets[9],
+    offsets[12],
     allOffsets,
     NewIngredientProfileSchema.serialize,
     object.profile,
   );
-  writer.writeDouble(offsets[10], object.qty);
-  writer.writeString(offsets[11], object.qtySource.name);
-  writer.writeString(offsets[12], object.rawText);
-  writer.writeLong(offsets[13], object.totalMinor);
-  writer.writeString(offsets[14], object.unit.name);
+  writer.writeDouble(offsets[13], object.qty);
+  writer.writeString(offsets[14], object.qtySource.name);
+  writer.writeString(offsets[15], object.rawText);
+  writer.writeString(offsets[16], object.stock?.name);
+  writer.writeString(offsets[17], object.stockCheck?.name);
+  writer.writeLong(offsets[18], object.totalMinor);
+  writer.writeString(offsets[19], object.unit.name);
 }
 
 DraftLine _draftLineDeserialize(
@@ -3483,19 +3767,26 @@ DraftLine _draftLineDeserialize(
   object.matchedIngredientId = reader.readLongOrNull(offsets[6]);
   object.mergeCandidateId = reader.readLongOrNull(offsets[7]);
   object.name = reader.readString(offsets[8]);
+  object.packagePriceMinor = reader.readLongOrNull(offsets[9]);
+  object.packageQty = reader.readDoubleOrNull(offsets[10]);
+  object.product = reader.readStringOrNull(offsets[11]);
   object.profile = reader.readObjectOrNull<NewIngredientProfile>(
-    offsets[9],
+    offsets[12],
     NewIngredientProfileSchema.deserialize,
     allOffsets,
   );
-  object.qty = reader.readDoubleOrNull(offsets[10]);
+  object.qty = reader.readDoubleOrNull(offsets[13]);
   object.qtySource =
-      _DraftLineqtySourceValueEnumMap[reader.readStringOrNull(offsets[11])] ??
+      _DraftLineqtySourceValueEnumMap[reader.readStringOrNull(offsets[14])] ??
       QtySource.printed;
-  object.rawText = reader.readString(offsets[12]);
-  object.totalMinor = reader.readLong(offsets[13]);
+  object.rawText = reader.readString(offsets[15]);
+  object.stock =
+      _DraftLinestockValueEnumMap[reader.readStringOrNull(offsets[16])];
+  object.stockCheck =
+      _DraftLinestockCheckValueEnumMap[reader.readStringOrNull(offsets[17])];
+  object.totalMinor = reader.readLong(offsets[18]);
   object.unit =
-      _DraftLineunitValueEnumMap[reader.readStringOrNull(offsets[14])] ??
+      _DraftLineunitValueEnumMap[reader.readStringOrNull(offsets[19])] ??
       BaseUnit.g;
   return object;
 }
@@ -3534,25 +3825,37 @@ P _draftLineDeserializeProp<P>(
     case 8:
       return (reader.readString(offset)) as P;
     case 9:
+      return (reader.readLongOrNull(offset)) as P;
+    case 10:
+      return (reader.readDoubleOrNull(offset)) as P;
+    case 11:
+      return (reader.readStringOrNull(offset)) as P;
+    case 12:
       return (reader.readObjectOrNull<NewIngredientProfile>(
             offset,
             NewIngredientProfileSchema.deserialize,
             allOffsets,
           ))
           as P;
-    case 10:
+    case 13:
       return (reader.readDoubleOrNull(offset)) as P;
-    case 11:
+    case 14:
       return (_DraftLineqtySourceValueEnumMap[reader.readStringOrNull(
                 offset,
               )] ??
               QtySource.printed)
           as P;
-    case 12:
+    case 15:
       return (reader.readString(offset)) as P;
-    case 13:
+    case 16:
+      return (_DraftLinestockValueEnumMap[reader.readStringOrNull(offset)])
+          as P;
+    case 17:
+      return (_DraftLinestockCheckValueEnumMap[reader.readStringOrNull(offset)])
+          as P;
+    case 18:
       return (reader.readLong(offset)) as P;
-    case 14:
+    case 19:
       return (_DraftLineunitValueEnumMap[reader.readStringOrNull(offset)] ??
               BaseUnit.g)
           as P;
@@ -3610,6 +3913,26 @@ const _DraftLineqtySourceValueEnumMap = {
   r'inferred': QtySource.inferred,
   r'estimated': QtySource.estimated,
   r'unknown': QtySource.unknown,
+};
+const _DraftLinestockEnumValueMap = {
+  r'add': r'add',
+  r'replace': r'replace',
+  r'none': r'none',
+};
+const _DraftLinestockValueEnumMap = {
+  r'add': StockEffect.add,
+  r'replace': StockEffect.replace,
+  r'none': StockEffect.none,
+};
+const _DraftLinestockCheckEnumValueMap = {
+  r'onHand': r'onHand',
+  r'counted': r'counted',
+  r'usedUp': r'usedUp',
+};
+const _DraftLinestockCheckValueEnumMap = {
+  r'onHand': StockCheck.onHand,
+  r'counted': StockCheck.counted,
+  r'usedUp': StockCheck.usedUp,
 };
 const _DraftLineunitEnumValueMap = {r'g': r'g', r'ml': r'ml', r'pc': r'pc'};
 const _DraftLineunitValueEnumMap = {
@@ -4531,6 +4854,334 @@ extension DraftLineQueryFilter
     });
   }
 
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  packagePriceMinorIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'packagePriceMinor'),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  packagePriceMinorIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'packagePriceMinor'),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  packagePriceMinorEqualTo(int? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'packagePriceMinor', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  packagePriceMinorGreaterThan(int? value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'packagePriceMinor',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  packagePriceMinorLessThan(int? value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'packagePriceMinor',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  packagePriceMinorBetween(
+    int? lower,
+    int? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'packagePriceMinor',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> packageQtyIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'packageQty'),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  packageQtyIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'packageQty'),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> packageQtyEqualTo(
+    double? value, {
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'packageQty',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  packageQtyGreaterThan(
+    double? value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'packageQty',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> packageQtyLessThan(
+    double? value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'packageQty',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> packageQtyBetween(
+    double? lower,
+    double? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'packageQty',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> productIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'product'),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> productIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'product'),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> productEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'product',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> productGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'product',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> productLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'product',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> productBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'product',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> productStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'product',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> productEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'product',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> productContains(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'product',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> productMatches(
+    String pattern, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'product',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> productIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'product', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  productIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'product', value: ''),
+      );
+    });
+  }
+
   QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> profileIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
@@ -4932,6 +5583,332 @@ extension DraftLineQueryFilter
     });
   }
 
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> stockIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'stock'),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> stockIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'stock'),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> stockEqualTo(
+    StockEffect? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'stock',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> stockGreaterThan(
+    StockEffect? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'stock',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> stockLessThan(
+    StockEffect? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'stock',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> stockBetween(
+    StockEffect? lower,
+    StockEffect? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'stock',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> stockStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'stock',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> stockEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'stock',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> stockContains(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'stock',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> stockMatches(
+    String pattern, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'stock',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> stockIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'stock', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> stockIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'stock', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> stockCheckIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'stockCheck'),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  stockCheckIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'stockCheck'),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> stockCheckEqualTo(
+    StockCheck? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'stockCheck',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  stockCheckGreaterThan(
+    StockCheck? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'stockCheck',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> stockCheckLessThan(
+    StockCheck? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'stockCheck',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> stockCheckBetween(
+    StockCheck? lower,
+    StockCheck? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'stockCheck',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  stockCheckStartsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'stockCheck',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> stockCheckEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'stockCheck',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> stockCheckContains(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'stockCheck',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> stockCheckMatches(
+    String pattern, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'stockCheck',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  stockCheckIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'stockCheck', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  stockCheckIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'stockCheck', value: ''),
+      );
+    });
+  }
+
   QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> totalMinorEqualTo(
     int value,
   ) {
@@ -5183,13 +6160,8 @@ const NewIngredientProfileSchema = Schema(
       name: r'shelfLifeDays',
       type: IsarType.long,
     ),
-    r'suggestStaple': PropertySchema(
-      id: 6,
-      name: r'suggestStaple',
-      type: IsarType.bool,
-    ),
     r'unit': PropertySchema(
-      id: 7,
+      id: 6,
       name: r'unit',
       type: IsarType.string,
       enumMap: _NewIngredientProfileunitEnumValueMap,
@@ -5238,8 +6210,7 @@ void _newIngredientProfileSerialize(
     object.per100,
   );
   writer.writeLong(offsets[5], object.shelfLifeDays);
-  writer.writeBool(offsets[6], object.suggestStaple);
-  writer.writeString(offsets[7], object.unit.name);
+  writer.writeString(offsets[6], object.unit.name);
 }
 
 NewIngredientProfile _newIngredientProfileDeserialize(
@@ -5265,10 +6236,9 @@ NewIngredientProfile _newIngredientProfileDeserialize(
       ) ??
       Nutrition();
   object.shelfLifeDays = reader.readLong(offsets[5]);
-  object.suggestStaple = reader.readBool(offsets[6]);
   object.unit =
       _NewIngredientProfileunitValueEnumMap[reader.readStringOrNull(
-        offsets[7],
+        offsets[6],
       )] ??
       BaseUnit.g;
   return object;
@@ -5304,8 +6274,6 @@ P _newIngredientProfileDeserializeProp<P>(
     case 5:
       return (reader.readLong(offset)) as P;
     case 6:
-      return (reader.readBool(offset)) as P;
-    case 7:
       return (_NewIngredientProfileunitValueEnumMap[reader.readStringOrNull(
                 offset,
               )] ??
@@ -6027,19 +6995,6 @@ extension NewIngredientProfileQueryFilter
           upper: upper,
           includeUpper: includeUpper,
         ),
-      );
-    });
-  }
-
-  QueryBuilder<
-    NewIngredientProfile,
-    NewIngredientProfile,
-    QAfterFilterCondition
-  >
-  suggestStapleEqualTo(bool value) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(property: r'suggestStaple', value: value),
       );
     });
   }

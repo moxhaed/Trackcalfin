@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:isar_community/isar.dart';
 
 import '../data/isar/collections/schemas.dart';
+import 'migrations.dart';
 
 /// Full JSON export/import of the database (AiCallLog excluded).
 class BackupService {
@@ -47,6 +48,8 @@ class BackupService {
       await isar.userProfiles.importJson(list('userProfiles'));
       await isar.metricEvents.importJson(list('metricEvents'));
     });
+    // A backup from an older version gets the same upgrades as a database on disk.
+    await Migrations.run(isar);
     for (final k in ['ingredients', 'transactions', 'recipes', 'dailyLogs', 'cookSessions']) {
       counts[k] = list(k).length;
     }

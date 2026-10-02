@@ -6,8 +6,6 @@ library;
 
 enum BaseUnit { g, ml, pc }
 
-enum TrackingMode { exact, staple }
-
 enum IngredientCategory {
   produce,
   meatFish,
@@ -41,7 +39,9 @@ enum RecipeOrigin { dailyAuto, spontaneous, manual }
 
 enum RecipeStatus { suggested, saved, dismissed, archived }
 
-enum IngredientRole { stock, staple, missing }
+/// Every recipe ingredient comes from the pantry (stock) or has to be bought (missing).
+/// Nothing is assumed to be in the kitchen without being scanned.
+enum IngredientRole { stock, missing }
 
 enum CookStatus { active, finished, discarded, undone }
 
@@ -50,6 +50,30 @@ enum MealSource { cookedNow, fridge, quickAdd }
 enum ScanStatus { queued, processing, needsReview, committed, failed, discarded }
 
 enum ScanKind { unknown, receipt, pantry, unreadable }
+
+/// What filing a scan line does to the pantry. The money is filed either way.
+enum StockEffect {
+  /// The quantity is added to what's on hand: a purchase, or an extra one on a pantry photo.
+  add,
+
+  /// The quantity becomes what's on hand: a pantry photo counts what is there.
+  replace,
+
+  /// The pantry stays as it is: the item was already counted, or is used up.
+  none,
+}
+
+/// Why a scan line asks whether its quantity belongs in the pantry.
+enum StockCheck {
+  /// Pantry photo: the item is already on hand. The same one, or another?
+  onHand,
+
+  /// Receipt: the item was counted after this purchase, so the count may already include it.
+  counted,
+
+  /// Receipt: bought longer ago than it keeps, so it's probably used up.
+  usedUp,
+}
 
 enum AiTask { receipt, dailyRecipe, spontaneousRecipe, nutritionEstimate, nutritionLabel }
 

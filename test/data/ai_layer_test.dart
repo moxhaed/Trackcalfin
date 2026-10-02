@@ -8,6 +8,7 @@ import 'package:trackcalfin/data/ai/dto/nutrition_dto.dart';
 import 'package:trackcalfin/data/ai/dto/receipt_dto.dart';
 import 'package:trackcalfin/data/ai/dto/recipe_dto.dart';
 import 'package:trackcalfin/data/ai/gemini_client.dart';
+import 'package:trackcalfin/data/ai/schemas.dart';
 import 'package:trackcalfin/data/isar/collections/user_profile.dart';
 
 import '../domain/fixtures.dart';
@@ -17,20 +18,31 @@ void main() {
   setUp(() => GeminiClient.compatLevel = 0);
 
   group('Prompt examples parse with the app DTOs', () {
-    test('Prompt A example', () {
-      final r = ReceiptExtraction.parse(jsonDecode(promptExample('receipt_extraction.v2.md')));
+    test('Prompt A examples: a receipt and a pantry photo', () {
+      final examples = promptExamples('receipt_extraction.v3.md');
+      expect(examples.length, 2);
+      final r = ReceiptExtraction.parse(jsonDecode(examples[0]));
       expect(r.ok, isTrue, reason: r.errors.join('\n'));
       expect(r.value!.items.length, 4);
       expect(r.value!.items[1].newIngredient!.category, IngredientCategory.dairyEggs);
+      expect(r.value!.items[1].product, 'Milbona Greek-style yogurt 10%, 500 g');
+      expect(r.value!.items.every((i) => i.shelfPrice == null), isTrue);
       expect(r.value!.purchasedAt, DateTime(2026, 9, 27, 18, 42));
+      final pantry = ReceiptExtraction.parse(jsonDecode(examples[1]));
+      expect(pantry.ok, isTrue, reason: pantry.errors.join('\n'));
+      expect(pantry.value!.imageType, ScanKind.pantry);
+      expect(pantry.value!.items[0].shelfPrice!.packageQty, 500);
+      expect(pantry.value!.items[0].shelfPrice!.priceMinor, 199);
+      expect(pantry.value!.items[1].newIngredient!.unit, BaseUnit.ml);
     });
     test('Prompt B example', () {
-      final r = DailyRecipeOutput.parse(jsonDecode(promptExample('daily_recipe.v1.md')));
+      final r = DailyRecipeOutput.parse(jsonDecode(promptExample('daily_recipe.v2.md')));
       expect(r.ok, isTrue, reason: r.errors.join('\n'));
       expect(r.value!.recipe!.ingredients.length, 6);
+      expect(r.value!.recipe!.ingredients.every((i) => i.role == IngredientRole.stock), isTrue);
     });
     test('Prompt C example', () {
-      final r = SpontaneousOutput.parse(jsonDecode(promptExample('spontaneous_recipe.v1.md')));
+      final r = SpontaneousOutput.parse(jsonDecode(promptExample('spontaneous_recipe.v2.md')));
       expect(r.ok, isTrue, reason: r.errors.join('\n'));
       expect(r.value!.recipe!.ingredients.where((i) => i.substitutesFor != null).length, 3);
     });
@@ -53,16 +65,35 @@ void main() {
 
   group('DTO strictness', () {
     test('decimal money, unknown enum and missing profile are path-qualified errors', () {
-      final json = jsonDecode(promptExample('receipt_extraction.v2.md')) as Map<String, dynamic>;
+      final json = jsonDecode(promptExample('receipt_extraction.v3.md')) as Map<String, dynamic>;
       final items = json['items'] as List;
       (items[0] as Map)['total_minor'] = 4.99;
       (items[2] as Map)['spend_category'] = 'toiletries';
       (items[1] as Map)['new_ingredient'] = null;
+      (items[3] as Map)['shelf_price'] = {'package_qty': 500, 'price_minor': 0};
       final r = ReceiptExtraction.parse(json);
       expect(r.ok, isFalse);
       expect(r.errors, contains(r'$.items[0].total_minor must be an integer'));
       expect(r.errors.any((e) => e.contains(r"$.items[2].spend_category 'toiletries'")), isTrue);
       expect(r.errors, contains(r'$.items[1].new_ingredient is required when is_new_ingredient is true'));
+      expect(r.errors, contains(r'$.items[3].shelf_price.price_minor must be > 0'));
+    });
+    test('a recipe ingredient is stock or missing: "staple" no longer exists', () {
+      final json = jsonDecode(promptExample('daily_recipe.v2.md')) as Map<String, dynamic>;
+      ((json['recipe'] as Map)['ingredients'] as List)[5]['role'] = 'staple';
+      final r = DailyRecipeOutput.parse(json);
+      expect(r.ok, isFalse);
+      expect(r.errors.single, contains("'staple' is not one of stock, missing"));
+    });
+    test('schemas mirror the prompts', () {
+      final item = (AiSchemas.receipt['properties']['items'] as Map)['items'] as Map;
+      expect(item['required'], containsAll(['product', 'shelf_price']));
+      expect((item['properties']['new_ingredient'] as Map)['properties'], isNot(contains('suggest_staple')));
+      List<dynamic> roles(Map<String, dynamic> schema) =>
+          ((schema['properties']['recipe']['properties']['ingredients'] as Map)['items']
+              as Map)['properties']['role']['enum'];
+      expect(roles(AiSchemas.daily), ['stock']);
+      expect(roles(AiSchemas.spontaneous), ['stock', 'missing']);
     });
     test('nutrition estimates must cover every requested key with sane values', () {
       final json = jsonDecode(promptExample('nutrition_estimate.v1.md')) as Map<String, dynamic>;
@@ -88,7 +119,7 @@ void main() {
       expect(LabelReading.parse(json).ok, isTrue);
     });
     test('daily recipe may not contain missing items', () {
-      final json = jsonDecode(promptExample('daily_recipe.v1.md')) as Map<String, dynamic>;
+      final json = jsonDecode(promptExample('daily_recipe.v2.md')) as Map<String, dynamic>;
       ((json['recipe'] as Map)['ingredients'] as List)[0]['role'] = 'missing';
       final r = DailyRecipeOutput.parse(json);
       expect(r.ok, isFalse);
@@ -278,15 +309,15 @@ void main() {
 
   group('AiRunner', () {
     test('one repair retry sends the errors back and succeeds', () async {
-      final bad = jsonDecode(promptExample('daily_recipe.v1.md')) as Map<String, dynamic>;
+      final bad = jsonDecode(promptExample('daily_recipe.v2.md')) as Map<String, dynamic>;
       bad['status'] = 'great';
       final fake = FakeGemini()
         ..replyJson(bad)
-        ..reply(promptExample('daily_recipe.v1.md'));
+        ..reply(promptExample('daily_recipe.v2.md'));
       final runner = AiRunner(null, GeminiClient(httpClient: fake.client, apiKey: () async => 'k', model: 'm'));
       final out = await runner.run(
         task: AiTask.dailyRecipe,
-        promptVersion: 'daily_recipe.v1',
+        promptVersion: 'daily_recipe.v2',
         request: GeminiRequest(systemPrompt: 's', turns: const [Turn.user('{}')]),
         parse: DailyRecipeOutput.parse,
       );
@@ -316,7 +347,7 @@ void main() {
     test('AiRunner uses fallback model when primary fails', () async {
       final fake = FakeGemini()
         ..status(404, 'primary unavailable')
-        ..reply(promptExample('daily_recipe.v1.md'));
+        ..reply(promptExample('daily_recipe.v2.md'));
       final client = GeminiClient(
         httpClient: fake.client,
         apiKey: () async => 'k',
@@ -326,7 +357,7 @@ void main() {
       final runner = AiRunner(null, client);
       final out = await runner.run(
         task: AiTask.dailyRecipe,
-        promptVersion: 'daily_recipe.v1',
+        promptVersion: 'daily_recipe.v2',
         request: GeminiRequest(systemPrompt: 's', turns: const [Turn.user('{}')]),
         parse: DailyRecipeOutput.parse,
       );
@@ -346,19 +377,20 @@ void main() {
       ingredient('pasta', qty: 500, shelf: 365, cost: 0.3),
       ingredient('spinach', qty: 210, shelf: 5, expiresAt: DateTime(2026, 9, 29, 20), cost: 0.8, kcal: 23),
       ingredient('egg', qty: 6, unit: BaseUnit.pc, gpp: 55),
-      ingredient('salt', staple: true),
+      ingredient('salt', qty: 450, shelf: 1825, cost: 0.098),
+      ingredient('pepper'),
       ingredient('crumbs', qty: 2),
     ];
 
-    test('inventory is sorted by days_left, excludes staples and trace amounts', () {
+    test('inventory is sorted by days_left; seasonings are in it, used-up items and traces are not', () {
       final inv = ContextBuilders.inventory(items, now);
-      expect(inv.map((e) => e['key']), ['spinach', 'egg', 'pasta']);
+      expect(inv.map((e) => e['key']), ['spinach', 'egg', 'pasta', 'salt']);
       expect(inv.first['days_left'], 1);
       expect(inv[1]['g_per_pc'], 55);
       expect(inv.last['days_left'], isNull);
     });
 
-    test('daily envelope has targets per portion and staples', () {
+    test('daily envelope has targets per portion and no staples', () {
       final ctx = ContextBuilders.daily(
         profile: p,
         ingredients: items,
@@ -369,7 +401,8 @@ void main() {
       expect(ctx['today'], '2026-09-29');
       expect(ctx['weekday'], 'Tuesday');
       expect(ctx['targets_per_portion'], {'kcal': 700, 'protein_g': 45, 'max_cost_minor': 300});
-      expect(ctx['staples'], ['salt']);
+      expect(ctx.containsKey('staples'), isFalse);
+      expect((ctx['inventory'] as List).map((e) => e['key']), contains('salt'));
       expect(ctx['profile']['allergies'], ['peanut']);
     });
 

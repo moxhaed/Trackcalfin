@@ -8,10 +8,12 @@ import '../../app/providers.dart';
 import '../../app/theme.dart';
 import '../../application/scan_service.dart';
 import '../../core/currency.dart';
+import '../../core/day_clock.dart';
 import '../../core/enums.dart';
 import '../../core/money.dart';
 import '../../data/isar/collections/schemas.dart';
 import '../../domain/units.dart';
+import '../../domain/validation/receipt_validator.dart';
 import '../common/category_style.dart';
 import '../common/format.dart';
 import '../common/widgets.dart';
@@ -28,6 +30,9 @@ class ReviewScreen extends ConsumerStatefulWidget {
 
 class _ReviewScreenState extends ConsumerState<ReviewScreen> {
   ScanJob? _job;
+
+  /// What this receipt may be a copy of; null when nothing is (or it was since discarded).
+  String? _duplicate;
   bool _showAll = false;
   bool _saving = false;
   bool _fxBusy = false;
@@ -35,7 +40,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
   @override
   void initState() {
     super.initState();
-    ref.read(isarProvider).scanJobs.get(widget.jobId).then((j) => setState(() => _job = j));
+    _reload();
   }
 
   Future<void> _persist() async {
@@ -48,7 +53,33 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
 
   Future<void> _reload() async {
     final j = await ref.read(isarProvider).scanJobs.get(widget.jobId);
-    if (mounted && j != null) setState(() => _job = j);
+    if (j == null) return;
+    final duplicate = j.maybeDuplicate ? await _describeDuplicate(j) : null;
+    if (mounted) {
+      setState(() {
+        _job = j;
+        _duplicate = duplicate;
+      });
+    }
+  }
+
+  Future<String?> _describeDuplicate(ScanJob job) async {
+    final isar = ref.read(isarProvider);
+    var txId = job.duplicateOfTxId;
+    if (job.duplicateOfJobId != null) {
+      final other = await isar.scanJobs.get(job.duplicateOfJobId!);
+      if (other?.status == ScanStatus.needsReview) {
+        return 'This looks like the same receipt as another scan waiting in your Inbox.';
+      }
+      txId = other?.status == ScanStatus.committed ? other!.transactionId : null;
+    }
+    final tx = txId == null ? null : await isar.transactions.get(txId);
+    if (tx == null) return null;
+    final amount = tx.originalCurrency == null
+        ? ref.read(moneyProvider).format(tx.totalMinor)
+        : moneyFor(tx.originalCurrency!).format(tx.originalTotalMinor ?? 0);
+    final what = [?tx.merchant, dateLabel(tx.occurredAt, DateTime.now()), amount].join(' · ');
+    return 'This looks like a receipt you already filed: $what.';
   }
 
   Future<void> _commit() async {
@@ -57,7 +88,11 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
     setState(() => _saving = true);
     await _persist();
     final money = ref.read(moneyProvider);
-    final stocked = job.lines.where((l) => l.include && l.ingredientKey != null && (l.qty ?? 0) > 0).length;
+    final stocked = job.lines
+        .where(
+          (l) => l.include && l.ingredientKey != null && (l.qty ?? 0) > 0 && l.effectFor(job.kind) != StockEffect.none,
+        )
+        .length;
     int? txId;
     try {
       txId = await ref.read(scanServiceProvider).commit(job.id);
@@ -78,6 +113,33 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
           ? 'Pantry updated · $stocked items verified'
           : '${job.merchant ?? 'Receipt'} ${money.format(tx?.totalMinor ?? _sum)}$original · $stocked items stocked',
     );
+  }
+
+  Future<void> _discard() async {
+    final nav = Navigator.of(context);
+    await ref.read(scanServiceProvider).discard(widget.jobId);
+    nav.pop();
+  }
+
+  /// The receipt's date, set by hand; the time of day is kept.
+  Future<void> _pickDate() async {
+    final job = _job!;
+    final now = DateTime.now();
+    final first = DateTime(now.year - 2);
+    final current = job.purchasedAt ?? job.capturedAt;
+    final picked = await showDatePicker(
+      context: context,
+      // A misread year can be out of range; start the picker on the nearest allowed day.
+      initialDate: current.isAfter(now) ? now : (current.isBefore(first) ? first : current),
+      firstDate: first,
+      lastDate: now,
+      helpText: 'Date on the receipt',
+    );
+    if (picked == null) return;
+    await _persist();
+    final date = DateTime(picked.year, picked.month, picked.day, current.hour, current.minute);
+    await ref.read(scanServiceProvider).setPurchaseDate(job.id, date);
+    await _reload();
   }
 
   Future<void> _setRate() async {
@@ -148,17 +210,126 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
       (job.lines[i].needsAttention ? attention : fine).add(i);
     }
     final sum = job.lines.where((l) => l.include).fold(0, (a, l) => a + l.totalMinor);
+    final now = DateTime.now();
+    final date = pantry ? null : job.purchasedAt;
+    final age = date == null ? 0 : DayClock.daysBetween(date, now);
+    final dateNote = date == null
+        ? null
+        : job.flags.contains('date_missing')
+        ? "No date was readable, so it's filed on the day of the photo, ${dateLabel(date, now)}."
+        : job.flags.contains('date_adjusted')
+        ? 'The printed date looked wrong, so the photo date (${dateLabel(date, now)}) is used.'
+        : job.flags.contains('date_old')
+        ? 'The printed date is ${dateLabel(date, now)}, over a year ago. Is that right?'
+        : null;
+    final usedUp = job.lines
+        .where((l) => l.include && l.stockCheck == StockCheck.usedUp && l.effectFor(job.kind) == StockEffect.none)
+        .length;
+    final onHand = [
+      for (final l in job.lines)
+        if (l.include && l.stockCheck == StockCheck.onHand) l,
+    ];
+
+    Widget line(int i) => _LineEditor(
+      line: job.lines[i],
+      job: job,
+      ingredients: ingredients,
+      receiptMoney: receiptMoney,
+      toHome: toHome,
+      homeMoney: money,
+      onChanged: () => setState(() {}),
+    );
+
     return Scaffold(
       appBar: AppBar(title: Text(pantry ? 'Pantry photo' : (job.merchant ?? 'Receipt'))),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
         children: [
           if (!pantry)
-            Text(
-              '${job.purchasedAt != null ? shortDate(job.purchasedAt!) : ''} · ${job.lines.length} lines',
-              style: context.text.bodyMedium?.copyWith(color: context.scheme.onSurfaceVariant),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    [
+                      if (date != null) 'Bought ${dateLabel(date, now)}${age > 0 ? ' (${daysAgoLabel(age)})' : ''}',
+                      '${job.lines.length} lines',
+                    ].join(' · '),
+                    style: context.text.bodyMedium?.copyWith(color: context.scheme.onSurfaceVariant),
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: _pickDate,
+                  icon: const Icon(Icons.edit_calendar_outlined, size: 18),
+                  label: const Text('Date'),
+                ),
+              ],
             ),
           const SizedBox(height: 8),
+          if (job.maybeDuplicate && _duplicate != null)
+            _Banner(
+              icon: Icons.copy_all_outlined,
+              color: context.colors.serious,
+              text: _duplicate!,
+              actions: [
+                TextButton(onPressed: _discard, child: const Text('Discard this one')),
+                TextButton(
+                  onPressed: () => setState(
+                    () => job
+                      ..duplicateOfTxId = null
+                      ..duplicateOfJobId = null,
+                  ),
+                  child: const Text("It's a different one"),
+                ),
+              ],
+            ),
+          if (dateNote != null)
+            _Banner(
+              icon: Icons.event_busy_outlined,
+              color: context.colors.warning,
+              text: dateNote,
+              actions: [
+                TextButton(onPressed: _pickDate, child: const Text('Change date')),
+                TextButton(
+                  onPressed: () => setState(
+                    () => job.flags = job.flags.where((f) => !ReceiptValidator.dateFlags.contains(f)).toList(),
+                  ),
+                  child: const Text("It's right"),
+                ),
+              ],
+            )
+          else if (date != null && age >= 2)
+            _Banner(
+              icon: Icons.history,
+              color: context.scheme.primary,
+              text:
+                  'Bought ${daysAgoLabel(age)}, so it is filed on ${dateLabel(date, now)} and freshness counts from then.'
+                  '${usedUp == 0 ? '' : ' $usedUp ${usedUp == 1 ? "item doesn't" : "items don't"} keep that long: '
+                            'only the money is filed for ${usedUp == 1 ? 'it' : 'them'}.'}',
+            ),
+          if (pantry && onHand.length > 1)
+            _Banner(
+              icon: Icons.content_copy_outlined,
+              color: context.colors.warning,
+              text: '${onHand.length} items are already in your pantry. Does the photo show the same ones, or extra?',
+              actions: [
+                TextButton(
+                  onPressed: () => setState(() {
+                    for (final l in onHand) {
+                      l.stock = StockEffect.replace;
+                    }
+                  }),
+                  child: const Text('All the same'),
+                ),
+                TextButton(
+                  onPressed: () => setState(() {
+                    for (final l in onHand) {
+                      l.stock = StockEffect.add;
+                    }
+                  }),
+                  child: const Text('All extra'),
+                ),
+              ],
+            ),
           if (job.flags.contains('total_mismatch') && job.receiptTotalMinor != null)
             _Banner(
               icon: Icons.calculate_outlined,
@@ -194,25 +365,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                 ),
               ],
             ),
-          if (job.flags.contains('date_adjusted'))
-            _Banner(
-              icon: Icons.event_busy_outlined,
-              color: context.colors.warning,
-              text: 'The printed date looked wrong, so the photo date is used.',
-            ),
-          if (attention.isNotEmpty) ...[
-            _Label('Check ${attention.length}'),
-            for (final i in attention)
-              _LineEditor(
-                line: job.lines[i],
-                pantry: pantry,
-                ingredients: ingredients,
-                receiptMoney: receiptMoney,
-                toHome: toHome,
-                homeMoney: money,
-                onChanged: () => setState(() {}),
-              ),
-          ],
+          if (attention.isNotEmpty) ...[_Label('Check ${attention.length}'), for (final i in attention) line(i)],
           _Label(pantry ? '${fine.length} items detected' : '${fine.length} look good'),
           if (!_showAll && fine.isNotEmpty)
             Card(
@@ -224,16 +377,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
               ),
             )
           else
-            for (final i in fine)
-              _LineEditor(
-                line: job.lines[i],
-                pantry: pantry,
-                ingredients: ingredients,
-                receiptMoney: receiptMoney,
-                toHome: toHome,
-                homeMoney: money,
-                onChanged: () => setState(() {}),
-              ),
+            for (final i in fine) line(i),
         ],
       ),
       bottomNavigationBar: SafeArea(
@@ -241,14 +385,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
           child: Row(
             children: [
-              TextButton(
-                onPressed: () async {
-                  final nav = Navigator.of(context);
-                  await ref.read(scanServiceProvider).discard(job.id);
-                  nav.pop();
-                },
-                child: const Text('Discard'),
-              ),
+              TextButton(onPressed: _discard, child: const Text('Discard')),
               const Spacer(),
               if (!pantry)
                 Column(
@@ -323,7 +460,7 @@ class _Banner extends StatelessWidget {
 class _LineEditor extends ConsumerStatefulWidget {
   const _LineEditor({
     required this.line,
-    required this.pantry,
+    required this.job,
     required this.ingredients,
     required this.onChanged,
     required this.receiptMoney,
@@ -331,7 +468,9 @@ class _LineEditor extends ConsumerStatefulWidget {
     this.toHome,
   });
   final DraftLine line;
-  final bool pantry;
+
+  /// The scan the line belongs to: its kind and dates drive the pantry question.
+  final ScanJob job;
   final Map<int, Ingredient> ingredients;
   final VoidCallback onChanged;
 
@@ -349,15 +488,54 @@ class _LineEditor extends ConsumerStatefulWidget {
 class _LineEditorState extends ConsumerState<_LineEditor> {
   late final _amount = TextEditingController(text: widget.receiptMoney.toInput(widget.line.totalMinor));
   late final _qty = TextEditingController(text: widget.line.qty == null ? '' : _fmt(widget.line.qty!));
+  late final _packPrice = TextEditingController(
+    text: widget.line.packagePriceMinor == null ? '' : widget.homeMoney.toInput(widget.line.packagePriceMinor!),
+  );
   bool _open = false;
 
   static String _fmt(double v) => v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
+
+  bool get _pantry => widget.job.kind == ScanKind.pantry;
 
   @override
   void dispose() {
     _amount.dispose();
     _qty.dispose();
+    _packPrice.dispose();
     super.dispose();
+  }
+
+  /// "Same as …? Yes": the line becomes that item, in its unit, and asks the pantry question anew.
+  void _merge(DraftLine l, Ingredient merge) {
+    setState(() {
+      if (l.unit != merge.baseUnit) {
+        // Convert into the existing item's unit; unknown if impossible.
+        if (l.qty != null) {
+          final converted = UnitConverter.toBase(l.qty!, l.unit, merge);
+          l.qty = converted;
+          if (converted == null) l.qtySource = QtySource.unknown;
+          _qty.text = converted == null ? '' : _fmt(converted);
+        }
+        if (l.packageQty != null) {
+          l.packageQty = UnitConverter.toBase(l.packageQty!, l.unit, merge);
+          if (l.packageQty == null) l.packagePriceMinor = null;
+        }
+      }
+      l.matchedIngredientId = merge.id;
+      l.ingredientKey = merge.key;
+      l.isNewIngredient = false;
+      l.mergeCandidateId = null;
+      l.profile = null;
+      l.unit = merge.baseUnit;
+      ReceiptValidator.checkStock(
+        l,
+        kind: widget.job.kind,
+        existing: merge,
+        purchasedAt: widget.job.purchasedAt,
+        capturedAt: widget.job.capturedAt,
+      );
+    });
+    widget.onChanged();
   }
 
   @override
@@ -367,6 +545,8 @@ class _LineEditorState extends ConsumerState<_LineEditor> {
     final merge = l.mergeCandidateId == null ? null : widget.ingredients[l.mergeCandidateId];
     final current = l.matchedIngredientId == null ? null : widget.ingredients[l.matchedIngredientId];
     final open = _open || l.needsAttention;
+    final product = l.product != null && l.product!.toLowerCase() != l.name.toLowerCase() ? l.product : null;
+    final outOfPantry = !_pantry && l.ingredientKey != null && l.effectFor(widget.job.kind) == StockEffect.none;
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: Padding(
@@ -392,13 +572,22 @@ class _LineEditorState extends ConsumerState<_LineEditor> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(l.name, style: context.text.titleSmall),
+                        if (product != null)
+                          Text(
+                            product,
+                            style: context.text.bodySmall?.copyWith(color: context.scheme.onSurfaceVariant),
+                          ),
                         Text(
                           [
                             if (l.qty != null) '${l.qtySource == QtySource.inferred ? '~' : ''}${qty(l.qty!, l.unit)}',
                             if (l.isNewIngredient && l.ingredientKey != null) 'new item',
                             if (l.ingredientKey == null && l.category != SpendCategory.groceries) l.category.label,
                             if (l.confidence == Confidence.low) 'hard to read',
-                            if (widget.pantry && current != null) 'was ${qty(current.qtyOnHand, current.baseUnit)}',
+                            if (_pantry && current != null && l.stockCheck == null)
+                              'was ${qty(current.qtyOnHand, current.baseUnit)}',
+                            if (_pantry && l.packagePriceMinor != null)
+                              '~${widget.homeMoney.format(l.packagePriceMinor!)} a pack',
+                            if (outOfPantry) 'not added to the pantry',
                           ].join(' · '),
                           style: context.text.bodySmall,
                         ),
@@ -406,7 +595,7 @@ class _LineEditorState extends ConsumerState<_LineEditor> {
                     ),
                   ),
                 ),
-                if (!widget.pantry)
+                if (!_pantry)
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
@@ -430,27 +619,7 @@ class _LineEditorState extends ConsumerState<_LineEditor> {
                     Icon(Icons.merge_type, size: 18, color: c.warning),
                     const SizedBox(width: 6),
                     Expanded(child: Text('Same as "${merge.name}"?', style: context.text.bodyMedium)),
-                    TextButton(
-                      onPressed: () {
-                        setState(() {
-                          if (l.qty != null && l.unit != merge.baseUnit) {
-                            // Convert into the existing item's unit; unknown if impossible.
-                            final converted = UnitConverter.toBase(l.qty!, l.unit, merge);
-                            l.qty = converted;
-                            if (converted == null) l.qtySource = QtySource.unknown;
-                            _qty.text = converted == null ? '' : _fmt(converted);
-                          }
-                          l.matchedIngredientId = merge.id;
-                          l.ingredientKey = merge.key;
-                          l.isNewIngredient = false;
-                          l.mergeCandidateId = null;
-                          l.profile = null;
-                          l.unit = merge.baseUnit;
-                        });
-                        widget.onChanged();
-                      },
-                      child: const Text('Yes'),
-                    ),
+                    TextButton(onPressed: () => _merge(l, merge), child: const Text('Yes')),
                     TextButton(
                       onPressed: () {
                         setState(() => l.mergeCandidateId = null);
@@ -461,6 +630,16 @@ class _LineEditorState extends ConsumerState<_LineEditor> {
                   ],
                 ),
               ),
+            if (l.stockCheck != null && l.include)
+              _StockQuestion(
+                line: l,
+                job: widget.job,
+                existing: current,
+                onChanged: (effect) {
+                  setState(() => l.stock = effect);
+                  widget.onChanged();
+                },
+              ),
             if (open)
               Padding(
                 padding: const EdgeInsets.only(left: 12, top: 8),
@@ -468,7 +647,7 @@ class _LineEditorState extends ConsumerState<_LineEditor> {
                   children: [
                     Row(
                       children: [
-                        if (!widget.pantry)
+                        if (!_pantry)
                           Expanded(
                             child: TextField(
                               controller: _amount,
@@ -485,7 +664,7 @@ class _LineEditorState extends ConsumerState<_LineEditor> {
                               },
                             ),
                           ),
-                        if (!widget.pantry) const SizedBox(width: 8),
+                        if (!_pantry) const SizedBox(width: 8),
                         if (l.ingredientKey != null)
                           Expanded(
                             child: TextField(
@@ -505,9 +684,28 @@ class _LineEditorState extends ConsumerState<_LineEditor> {
                               },
                             ),
                           ),
+                        if (_pantry && l.packageQty != null) ...[
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextField(
+                              controller: _packPrice,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              decoration: InputDecoration(
+                                labelText: 'Price for ${qty(l.packageQty!, l.unit)}',
+                                prefixText: '${widget.homeMoney.symbol} ',
+                                isDense: true,
+                              ),
+                              onChanged: (v) {
+                                final p = widget.homeMoney.parse(v);
+                                l.packagePriceMinor = p != null && p > 0 ? p : null;
+                                widget.onChanged();
+                              },
+                            ),
+                          ),
+                        ],
                       ],
                     ),
-                    if (!widget.pantry) ...[
+                    if (!_pantry) ...[
                       const SizedBox(height: 8),
                       SizedBox(
                         height: 36,
@@ -523,7 +721,13 @@ class _LineEditorState extends ConsumerState<_LineEditor> {
                                   onSelected: (_) {
                                     setState(() {
                                       l.category = cat;
-                                      if (cat != SpendCategory.groceries) l.ingredientKey = null;
+                                      if (cat != SpendCategory.groceries) {
+                                        // Not food: nothing goes to the pantry, so nothing to ask.
+                                        l
+                                          ..ingredientKey = null
+                                          ..stockCheck = null
+                                          ..stock = null;
+                                      }
                                     });
                                     widget.onChanged();
                                   },
@@ -549,6 +753,81 @@ class _LineEditorState extends ConsumerState<_LineEditor> {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Asks whether a line's quantity belongs in the pantry, with the result of each answer.
+class _StockQuestion extends StatelessWidget {
+  const _StockQuestion({required this.line, required this.job, required this.existing, required this.onChanged});
+  final DraftLine line;
+  final ScanJob job;
+
+  /// The pantry item the line maps to, if it already exists.
+  final Ingredient? existing;
+  final ValueChanged<StockEffect> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = line;
+    final now = DateTime.now();
+    String amount(double v) => qty(v, l.unit);
+    final have = existing?.qtyOnHand ?? 0;
+    final q = l.qty;
+    final counted = existing?.lastCountedAt;
+    final bought = job.purchasedAt;
+    final keeps = existing?.shelfLifeDays ?? l.profile?.shelfLifeDays;
+    String when(DateTime d) {
+      final label = dayLabel(d, now);
+      return label == 'Today' || label == 'Yesterday' ? label.toLowerCase() : 'on $label';
+    }
+
+    final (IconData icon, String text, List<(String, StockEffect)> options) = switch (l.stockCheck!) {
+      StockCheck.onHand => (
+        Icons.content_copy_outlined,
+        'Already in your pantry: ${amount(have)}.',
+        [
+          ('Same one${q == null ? '' : ' · ${amount(q)}'}', StockEffect.replace),
+          ('Extra${q == null ? '' : ' · ${amount(have + q)} in all'}', StockEffect.add),
+        ],
+      ),
+      StockCheck.counted => (
+        Icons.fact_check_outlined,
+        'You counted it ${counted == null ? 'recently' : when(counted)}, after this purchase, and the pantry '
+            'has ${amount(have)}. Is this already part of it?',
+        [('Already counted', StockEffect.none), ('Add${q == null ? '' : ' ${amount(q)}'}', StockEffect.add)],
+      ),
+      StockCheck.usedUp => (
+        Icons.hourglass_bottom,
+        'Bought ${bought == null ? 'a while' : daysAgoLabel(DayClock.daysBetween(bought, now))}'
+            '${keeps == null ? '' : ', and it keeps about $keeps ${keeps == 1 ? 'day' : 'days'}'}. Probably used up?',
+        [('Used up', StockEffect.none), ('Still have it', StockEffect.add)],
+      ),
+    };
+    final selected = l.effectFor(job.kind);
+    return Padding(
+      padding: const EdgeInsets.only(left: 12, top: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, size: 18, color: context.colors.warning),
+              const SizedBox(width: 6),
+              Expanded(child: Text(text, style: context.text.bodyMedium)),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Wrap(
+            spacing: 6,
+            children: [
+              for (final (label, effect) in options)
+                ChoiceChip(label: Text(label), selected: selected == effect, onSelected: (_) => onChanged(effect)),
+            ],
+          ),
+        ],
       ),
     );
   }

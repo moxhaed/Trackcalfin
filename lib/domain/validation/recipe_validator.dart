@@ -42,7 +42,6 @@ class RecipeValidator {
     RecipeDto dto, {
     required StockIndex stock,
     required IngredientMatcher matcher,
-    required Set<String> stapleKeys,
     required UserProfile profile,
     required bool allowMissing,
     required RecipeOrigin origin,
@@ -76,7 +75,7 @@ class RecipeValidator {
 
       if (d.role == IngredientRole.missing) {
         if (!allowMissing) {
-          hard.add('$path must use only inventory or staples in this task');
+          hard.add('$path must use only inventory items in this task');
           continue;
         }
         ri
@@ -87,38 +86,8 @@ class RecipeValidator {
         continue;
       }
 
+      // V3: every stock key is a pantry item. Nothing else is assumed, not even salt or oil.
       final key = d.key ?? '';
-      if (d.role == IngredientRole.staple) {
-        if (stapleKeys.contains(key)) {
-          ri.key = key;
-          ri.ingredientId = stock.byKey[key]?.id;
-          items.add(ri);
-          continue;
-        }
-        // V4: not a staple -> maybe it's in stock
-        final m = matcher.resolve(key: key, name: d.name);
-        if (m.ingredient != null) {
-          ri
-            ..key = m.ingredient!.key
-            ..ingredientId = m.ingredient!.id
-            ..role = m.ingredient!.isStaple ? IngredientRole.staple : IngredientRole.stock;
-          flags.add('staple_remapped:$key');
-          items.add(ri);
-        } else if (d.qtyPerPortion < 5 && d.unit != BaseUnit.pc) {
-          flags.add('staple_dropped:$key');
-        } else if (allowMissing) {
-          ri
-            ..role = IngredientRole.missing
-            ..key = '';
-          items.add(ri);
-          flags.add('converted_to_missing:$key');
-        } else {
-          hard.add("$path key '$key' is not in staples or inventory");
-        }
-        continue;
-      }
-
-      // Stock role (V3)
       var ing = stock.byKey[key];
       if (ing == null) {
         final m = matcher.resolve(key: key, name: d.name);
@@ -135,14 +104,13 @@ class RecipeValidator {
           items.add(ri);
           flags.add('converted_to_missing:$key');
         } else {
-          hard.add("$path key '$key' is not in inventory; use only keys from inventory or staples");
+          hard.add("$path key '$key' is not in inventory; use only keys from inventory");
         }
         continue;
       }
       ri
         ..key = ing.key
         ..ingredientId = ing.id;
-      if (ing.isStaple) ri.role = IngredientRole.staple;
       // V5: units
       if (UnitConverter.toBase(d.qtyPerPortion, d.unit, ing) == null) {
         flags.add('unit_mismatch:${ing.key}');

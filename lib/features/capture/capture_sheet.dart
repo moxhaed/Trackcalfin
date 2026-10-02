@@ -40,7 +40,7 @@ class CaptureSheet extends StatelessWidget {
         'Screenshots',
         () => go(() => startScan(outer, outerRef, hint: 'receipt', camera: false)),
       ),
-      (Icons.kitchen_outlined, 'Pantry', 'Stocktake photo', () => go(() => startScan(outer, outerRef, hint: 'pantry'))),
+      (Icons.kitchen_outlined, 'Pantry', 'Food you have', () => go(() => startScan(outer, outerRef, hint: 'pantry'))),
       (Icons.payments_outlined, 'Expense', 'Non-food too', () => go(() => showExpenseSheet(outer))),
       (Icons.soup_kitchen_outlined, 'I cooked', 'Deducts stock', () => go(() => showCookedSheet(outer))),
       (Icons.restaurant_outlined, 'I ate', 'Fridge or other', () => go(() => showAteSheet(outer))),

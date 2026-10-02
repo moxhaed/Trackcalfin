@@ -1,4 +1,3 @@
-import '../core/enums.dart';
 import '../data/isar/collections/ingredient.dart';
 
 /// Picks the pantry items most likely to be wrong.
@@ -10,7 +9,7 @@ class QuickCheck {
   static bool isPerishable(Ingredient i) => i.shelfLifeDays <= 14;
 
   static bool isSuspect(Ingredient i, DateTime now) {
-    if (i.trackingMode != TrackingMode.exact || i.qtyOnHand <= 0) return false;
+    if (i.qtyOnHand <= 0) return false;
     if (i.lastVerifiedAt == null) return true;
     final age = now.difference(i.lastVerifiedAt!).inDays;
     if (age > (isPerishable(i) ? 7 : 21)) return true;

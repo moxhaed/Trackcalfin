@@ -39,7 +39,7 @@ class DepletionEngine {
     for (final ri in items) {
       if (ri.role != IngredientRole.stock) continue;
       final ing = stock.resolve(ri);
-      if (ing == null || ing.isStaple) continue;
+      if (ing == null) continue;
       final perPortion = UnitConverter.toBase(ri.qtyPerPortion, ri.unit, ing);
       if (perPortion == null) continue;
       final requested = perPortion * portions;

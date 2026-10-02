@@ -53,7 +53,6 @@ class FeasibilityChecker {
     final ratios = <double>[];
 
     for (final ri in items) {
-      if (ri.role == IngredientRole.staple) continue;
       if (ri.role == IngredientRole.missing) {
         missing.add(ri.name);
         ratios.add(0);
@@ -68,7 +67,6 @@ class FeasibilityChecker {
         maxPortions = 0;
         continue;
       }
-      if (ing.isStaple) continue;
       final perPortion = UnitConverter.toBase(ri.qtyPerPortion, ri.unit, ing);
       if (perPortion == null || perPortion <= 0) continue;
       final need = perPortion * portions;

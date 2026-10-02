@@ -9,6 +9,7 @@ import '../../app/providers.dart';
 import '../../app/theme.dart';
 import '../../application/nutrition_service.dart';
 import '../../core/enums.dart';
+import '../../core/money.dart';
 import '../../data/isar/collections/schemas.dart';
 import '../../domain/units.dart';
 import '../../platform/photo_capture.dart';
@@ -59,7 +60,6 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
   late final _low = TextEditingController(text: _ing.lowStockThreshold > 0 ? _fmt(_ing.lowStockThreshold) : '');
   late BaseUnit _unit = _ing.baseUnit;
   late IngredientCategory _category = _ing.category;
-  late bool _staple = _ing.isStaple;
 
   bool _macroEditing = false;
 
@@ -217,7 +217,6 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
       ..name = _name.text.trim()
       ..baseUnit = _unit
       ..category = _category
-      ..trackingMode = _staple ? TrackingMode.staple : TrackingMode.exact
       ..gramsPerPiece = _unit == BaseUnit.pc ? (_num(_gpp) ?? 50) : null
       ..shelfLifeDays = int.tryParse(_shelf.text) ?? 7
       ..lowStockThreshold = _num(_low) ?? 0;
@@ -286,7 +285,7 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
                     ),
                 ],
               ),
-              if (existing && !_ing.isStaple && review == null) ...[
+              if (existing && review == null) ...[
                 const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -331,11 +330,7 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  [
-                    if (_ing.avgCostPerUnitMinor > 0)
-                      'Avg cost ${money.format((_ing.avgCostPerUnitMinor * (_ing.baseUnit == BaseUnit.pc ? 1 : 1000)).round())}'
-                          ' per ${_ing.baseUnit == BaseUnit.pc ? 'piece' : (_ing.baseUnit == BaseUnit.g ? 'kg' : 'l')}',
-                  ].join('\n'),
+                  _costLine(money),
                   textAlign: TextAlign.center,
                   style: context.text.bodySmall?.copyWith(color: context.scheme.onSurfaceVariant),
                 ),
@@ -428,13 +423,6 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
                     ),
                   ],
                 ),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Staple'),
-                  subtitle: const Text('Always assumed available, never deducted (salt, oil, spices)'),
-                  value: _staple,
-                  onChanged: (v) => setState(() => _staple = v),
-                ),
                 const SizedBox(height: 8),
                 Row(
                   children: [
@@ -463,6 +451,20 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
         ),
       ),
     );
+  }
+
+  /// What one kg, litre or piece costs, and whether that is a price paid or an estimate.
+  String _costLine(MoneyFormat money) {
+    if (_ing.avgCostPerUnitMinor <= 0) {
+      return _ing.qtyOnHand > 0 ? 'No price yet. Recipes count it as free until a receipt has it.' : '';
+    }
+    final per = switch (_ing.baseUnit) {
+      BaseUnit.pc => 'piece',
+      BaseUnit.g => 'kg',
+      BaseUnit.ml => 'l',
+    };
+    final price = money.format((_ing.avgCostPerUnitMinor * (_ing.baseUnit == BaseUnit.pc ? 1 : 1000)).round());
+    return _ing.costIsEstimate ? 'About $price per $per (shop price estimate)' : 'Avg cost $price per $per';
   }
 
   Widget _macroFields() => Row(

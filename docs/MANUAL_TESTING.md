@@ -1,6 +1,6 @@
 # Manual test plan: first run on a real phone
 
-The automated tests (111 of them) cover the math, the database, the AI pipeline against a fake Gemini, and the main screens. What they **can't** cover is anything that needs a real phone: the camera, the real Gemini API, notifications, the share sheet, voice input and background work. This checklist is for that.
+The automated tests (159 of them) cover the math, the database, the AI pipeline against a fake Gemini, and the main screens. What they **can't** cover is anything that needs a real phone: the camera, the real Gemini API, notifications, the share sheet, voice input and background work. This checklist is for that.
 
 **Time:** about 60–90 minutes. You don't have to do it all at once. Sections 1–4 are the important ones.
 **Tick boxes as you go.** GitHub renders them as checkboxes when you edit the file.
@@ -29,10 +29,9 @@ When something goes wrong, note the **test ID** (e.g. `R3`), what you expected, 
 ## 1 · Onboarding and API key
 
 - [ ] **O1 · Goals.** Enter your real food budget, calories and protein. *Expect:* **Next** moves on.
-- [ ] **O2 · Staples.** Untick one or two, then tap **Next**.
-- [ ] **O3 · API key.** Paste your key. *Expect:* **Next** moves on.
-- [ ] **O4 · Pantry sweep.** Tap **Fridge** and take a photo. *Expect:* you're back in onboarding with "1 photo queued".
-- [ ] **O5 · Finish.** Set your daily pick time and tap **Start**.
+- [ ] **O2 · API key.** Paste your key. *Expect:* **Next** moves on. There is no staples page any more.
+- [ ] **O3 · Kitchen sweep.** Tap **Fridge** and take a photo, then **Spices & oils**. *Expect:* you're back in onboarding with "2 photos queued". The page also offers **A receipt**.
+- [ ] **O4 · Finish.** Set your daily pick time and tap **Start**.
   *Expect:* a notification permission prompt appears (allow it), then the Cook tab opens.
 - [ ] **K1 · Test connection.** Go to **Settings → AI → Test connection**. *Expect:* "Gemini is reachable".
 - [ ] **K2 · Bad key message.** Change the key to `abc`, test again, then put the real key back.
@@ -59,6 +58,25 @@ When something goes wrong, note the **test ID** (e.g. `R3`), what you expected, 
   *Expect:* the snackbar says its pantry items were taken back out. Tap **Undo**: both the receipt and the pantry quantities come back.
 - [ ] **R10 · Nutrition sanity.** Open a newly created pantry item.
   *Expect:* its kcal and protein per 100 g look plausible.
+
+## 2b · Receipt dates, duplicates and pantry photos (new)
+
+- [ ] **P1 · Old receipt.** Scan a receipt that is a week or more old.
+  *Expect:* it waits in the Inbox. The review says "Bought Wed 23 Sep (9 days ago)" and explains that it's filed on that day. Fresh things that don't keep that long (meat, bread, herbs) show "Probably used up?" with **Used up** selected. After **Looks good**, the Ledger shows it on the printed date, and the Dashboard counts it in that week. Used-up items aren't added to the pantry, and the rest show days left counted from the purchase date.
+- [ ] **P2 · Change the date.** In a receipt's review, tap **Date** and pick another day.
+  *Expect:* the header changes, and the "used up" questions follow the new date.
+- [ ] **P3 · Same receipt twice.** Scan a receipt you already filed.
+  *Expect:* the Inbox card says "already filed?" and the review says "This looks like a receipt you already filed: …". **Discard this one** removes it, and the Ledger still has one copy.
+- [ ] **P4 · Same one or extra?** Photograph something that's already in the pantry (⊕ → **Pantry**).
+  *Expect:* "Already in your pantry: 500 g" with **Same one** and **Extra · 1 kg in all**. Pick **Extra** and tap **Update pantry**: the quantity adds up. With several such items, **All the same / All extra** sets them at once.
+- [ ] **P5 · Product and price.** In the same kind of review, look at an item.
+  *Expect:* the exact product with brand and pack size ("Barilla Spaghetti n.5, 500 g") and "~€1.99 a pack". After **Update pantry**, a new item's value shows with "~" in the pantry, and its sheet says "About €3.98 per kg (shop price estimate)". A later receipt for it changes that to "Avg cost …".
+- [ ] **P6 · Receipt after a photo.** Photograph a few groceries, then scan a receipt from before the photo that has one of them.
+  *Expect:* "You counted it today, after this purchase… Is this already part of it?" with **Already counted** selected. Filing it adds the money but not the item a second time.
+- [ ] **P7 · Salt and oil count.** Open a recipe that uses salt or oil you haven't scanned.
+  *Expect:* the row says it's not in the pantry (or "have 0 g"), and today's pick doesn't use it. After you scan it, the recipe's cost includes it. If a pantry item has no price yet, the recipe says so under the cost.
+- [ ] **U1 · Upgrade from an install with staples.** Open the pantry on a phone that ran the previous version.
+  *Expect:* your old staples (salt, oil, spices) are regular items. The ones you never bought are under **Out of stock**. The ones that showed stock appear in **Quick check**, because their amounts were never deducted.
 
 ## 3 · Foreign-currency receipts (new)
 
@@ -98,7 +116,7 @@ When something goes wrong, note the **test ID** (e.g. `R3`), what you expected, 
 
 ## 4b · Macros on pantry items (new)
 
-- [ ] **M1 · Staples get macros.** On an install that finished onboarding before this update, open **Buy → Pantry** once with a key set.
+- [ ] **M1 · Oil and flour get macros.** Scan or add **Olive oil** and **Flour**, then open **Buy → Pantry** with a key set.
   *Expect:* within a few seconds, tapping **Olive oil** shows about 800 kcal per 100 ml and **Flour** about 350 kcal per 100 g, both marked "AI estimate". If the "items have no macros" card shows, tap **Fill with AI**.
 - [ ] **M2 · Recipes count them.** Open a saved recipe that uses oil or flour.
   *Expect:* its kcal went up compared with before the update (10 ml oil adds about 80 kcal per portion).
@@ -192,7 +210,7 @@ When something goes wrong, note the **test ID** (e.g. `R3`), what you expected, 
 
 ```
 Device: (e.g. Pixel 8, Android 16)
-Passed: A1–A3, O1–O5, R1, R2, ...
+Passed: A1–A3, O1–O4, R1, R2, ...
 Failed:
 - R4: two photos of one receipt counted "Milk" twice. Screenshot attached.
 - F2: typed €25.10, total showed €25.09.

@@ -42,8 +42,7 @@ class ContextBuilders {
     };
   }
 
-  static bool _inInventory(Ingredient i) =>
-      i.trackingMode == TrackingMode.exact && i.qtyOnHand >= (i.baseUnit == BaseUnit.pc ? 1 : 5);
+  static bool _inInventory(Ingredient i) => i.qtyOnHand >= (i.baseUnit == BaseUnit.pc ? 1 : 5);
 
   static Map<String, dynamic> inventoryItem(Ingredient i, DateTime now) => {
     'key': i.key,
@@ -71,9 +70,6 @@ class ContextBuilders {
       });
     return [for (final i in items.take(250)) inventoryItem(i, now)];
   }
-
-  static List<String> staples(List<Ingredient> all) =>
-      all.where((i) => i.trackingMode == TrackingMode.staple).map((i) => i.key).toList()..sort();
 
   static Map<String, dynamic> targets(UserProfile p) {
     final meals = math.max(1, p.mealsPerDay);
@@ -111,7 +107,6 @@ class ContextBuilders {
     'targets_per_portion': targets(profile),
     'profile': profileBlock(profile),
     'inventory': inventory(ingredients, now),
-    'staples': staples(ingredients),
     'recent_recipes': recentTitles.take(20).toList(),
     'rejected_today': rejectedToday,
   };
@@ -132,7 +127,6 @@ class ContextBuilders {
     'targets_per_portion': targets(profile),
     'profile': profileBlock(profile),
     'inventory': inventory(ingredients, now),
-    'staples': staples(ingredients),
   };
 
   static Map<String, dynamic> nutritionEstimate({required UserProfile profile, required List<Ingredient> items}) => {

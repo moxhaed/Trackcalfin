@@ -189,7 +189,7 @@ class DailyRecipeOutput {
         recipe = RecipeDto.read(j, r, r'$.recipe');
         for (final (i, ing) in (recipe?.ingredients ?? const <RecipeIngredientDto>[]).indexed) {
           if (ing.role == IngredientRole.missing) {
-            j.error('\$.recipe.ingredients[$i].role', 'must be "stock" or "staple" in the daily recipe');
+            j.error('\$.recipe.ingredients[$i].role', 'must be "stock" in the daily recipe');
           }
         }
       }

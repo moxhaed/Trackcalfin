@@ -126,7 +126,7 @@ void main() {
     expect(find.text('I cooked'), findsOneWidget);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
-  testWidgets('pantry macros: unknown banner, confirm and edit a staple', (tester) async {
+  testWidgets('pantry macros: unknown banner, confirm and edit an item', (tester) async {
     await pumpApp(tester, initial: '/buy');
     final salt = (await isar.ingredients.getByKey('salt'))!..nutritionSource = DataSource.none;
     await isar.writeTxn(() => isar.ingredients.put(salt));
@@ -158,6 +158,68 @@ void main() {
     expect(cumin.per100.kcal, 380);
     expect(cumin.per100.proteinG, 18, reason: 'untouched fields keep their values');
     expect(cumin.nutritionSource, DataSource.user);
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  testWidgets('pantry photo review asks "same one or extra?" and prices what it found', (tester) async {
+    await pumpApp(tester, initial: '/inbox');
+    await tester.tap(find.textContaining('Pantry photo ·'));
+    await settle(tester);
+    expect(find.text('Barilla Spaghetti n.5, 500 g'), findsOneWidget);
+    expect(find.textContaining('Already in your pantry: 900 g'), findsOneWidget);
+    await tester.tap(find.textContaining('Extra ·'));
+    await settle(tester);
+    await tester.tap(find.text('Update pantry'));
+    await settle(tester);
+    final pasta = (await isar.ingredients.getByKey('dry_pasta'))!;
+    expect(pasta.qtyOnHand, 1400);
+    expect(pasta.avgCostPerUnitMinor, 0.18, reason: 'a price paid is kept over an estimate');
+    final peanut = (await isar.ingredients.getByKey('peanut_butter'))!;
+    expect(peanut.qtyOnHand, 300);
+    expect(peanut.avgCostPerUnitMinor, closeTo(349 / 350, 1e-9));
+    expect(peanut.costIsEstimate, isTrue);
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  testWidgets('an old receipt shows its date and a possible duplicate', (tester) async {
+    await DemoSeed.run(isar);
+    final filed = (await isar.transactions.where().findFirst())!;
+    final bought = DateTime.now().subtract(const Duration(days: 9));
+    await isar.writeTxn(
+      () => isar.scanJobs.put(
+        ScanJob()
+          ..status = ScanStatus.needsReview
+          ..kind = ScanKind.receipt
+          ..merchant = 'Penny'
+          ..purchasedAt = bought
+          ..receiptTotalMinor = 249
+          ..currency = 'EUR'
+          ..duplicateOfTxId = filed.id
+          ..lines = [
+            DraftLine()
+              ..rawText = 'KUECHENROLLE 2,49'
+              ..name = 'Kitchen roll'
+              ..category = SpendCategory.household
+              ..totalMinor = 249,
+          ],
+      ),
+    );
+    await pumpApp(tester, initial: '/inbox');
+    expect(find.textContaining('already filed?'), findsOneWidget);
+    await tester.tap(find.textContaining('Penny'));
+    await settle(tester);
+    expect(find.textContaining('9 days ago'), findsWidgets);
+    expect(find.textContaining('looks like a receipt you already filed'), findsOneWidget);
+    await tester.tap(find.text("It's a different one"));
+    await settle(tester);
+    expect(find.textContaining('looks like a receipt you already filed'), findsNothing);
+    await tester.tap(find.text('Date'));
+    await settle(tester);
+    expect(find.text('Date on the receipt'), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await settle(tester);
+    await tester.tap(find.text('Looks good'));
+    await settle(tester);
+    final tx = await isar.transactions.filter().merchantEqualTo('Penny').findFirst();
+    expect(tx!.occurredAt, bought, reason: 'filed on the day it was bought');
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   testWidgets('settings and onboarding render', (tester) async {

@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:trackcalfin/core/enums.dart';
 import 'package:trackcalfin/data/ai/dto/receipt_dto.dart';
 import 'package:trackcalfin/data/ai/dto/recipe_dto.dart';
+import 'package:trackcalfin/data/isar/collections/ingredient.dart';
+import 'package:trackcalfin/data/isar/collections/scan_job.dart';
 import 'package:trackcalfin/data/isar/collections/user_profile.dart';
 import 'package:trackcalfin/domain/ingredient_matcher.dart';
 import 'package:trackcalfin/domain/stock_index.dart';
@@ -33,26 +35,146 @@ void main() {
   group('ReceiptValidator', () {
     final capturedAt = DateTime(2026, 9, 27, 19);
 
-    ReceiptExtraction example([void Function(Map<String, dynamic>)? edit]) {
-      final json = jsonDecode(promptExample('receipt_extraction.v2.md')) as Map<String, dynamic>;
+    ReceiptExtraction example([void Function(Map<String, dynamic>)? edit, int index = 0]) {
+      final json = jsonDecode(promptExamples('receipt_extraction.v3.md')[index]) as Map<String, dynamic>;
       edit?.call(json);
       return ReceiptExtraction.parse(json).value!;
     }
 
+    ScanDraft validate(ReceiptExtraction x, List<Ingredient> pantry, {DateTime? at}) => ReceiptValidator.validate(
+      x,
+      matcher: IngredientMatcher(pantry),
+      homeCurrency: 'EUR',
+      capturedAt: at ?? capturedAt,
+    );
+
     test('clean receipt with known chicken is auto-commit eligible', () {
       final chicken = ingredient('chicken_breast');
-      final d = ReceiptValidator.validate(
-        example(),
-        matcher: IngredientMatcher([chicken]),
-        homeCurrency: 'EUR',
-        capturedAt: capturedAt,
-      );
+      final d = validate(example(), [chicken]);
       expect(d.flags, isEmpty);
+      expect(d.purchasedAt, DateTime(2026, 9, 27, 18, 42));
       expect(d.lines[0].matchedIngredientId, chicken.id);
+      expect(d.lines[0].product, 'Store-brand chicken breast fillet, 500 g');
+      expect(d.lines[0].stockCheck, isNull);
       expect(d.lines[1].isNewIngredient, isTrue);
       expect(d.lines[1].profile!.per100.kcal, 124);
       expect(d.lines[2].ingredientKey, isNull);
+      expect(d.lines.every((l) => l.effectFor(ScanKind.receipt) == StockEffect.add), isTrue);
       expect(d.autoCommitEligible, isTrue);
+    });
+
+    test('an old receipt keeps its printed date; what keeps less long than that is probably used up', () {
+      final chicken = ingredient('chicken_breast', shelf: 2);
+      final d = validate(example(), [chicken], at: DateTime(2026, 10, 2, 9));
+      expect(d.purchasedAt, DateTime(2026, 9, 27, 18, 42), reason: 'five days ago, as printed');
+      expect(d.flags, isEmpty);
+      expect(d.clean, isTrue);
+      expect(d.lines[0].stockCheck, StockCheck.usedUp);
+      expect(d.lines[0].effectFor(ScanKind.receipt), StockEffect.none);
+      expect(d.lines[1].stockCheck, isNull, reason: 'the yogurt keeps 14 days');
+      expect(d.autoCommitEligible, isFalse);
+    });
+
+    test('dates: none printed or in the future means the photo date; over a year back is kept', () {
+      final pantry = [ingredient('chicken_breast')];
+      final missing = validate(example((j) => j['purchased_at'] = null), pantry);
+      expect(missing.purchasedAt, capturedAt);
+      expect(missing.flags, ['date_missing']);
+      expect(missing.clean, isFalse);
+      final future = validate(example((j) => j['purchased_at'] = '2026-10-04'), pantry);
+      expect(future.purchasedAt, capturedAt);
+      expect(future.flags, ['date_adjusted']);
+      final old = validate(example((j) => j['purchased_at'] = '2025-03-03'), pantry);
+      expect(old.purchasedAt, DateTime(2025, 3, 3, 18, 42));
+      expect(old.flags, ['date_old']);
+      expect(old.autoCommitEligible, isFalse);
+    });
+
+    test('an item counted after the purchase asks whether the count already has it', () {
+      final countedAfter = ingredient('chicken_breast', qty: 500, counted: DateTime(2026, 9, 27, 18, 55));
+      final d = validate(example(), [countedAfter]);
+      expect(d.lines[0].stockCheck, StockCheck.counted);
+      expect(d.lines[0].effectFor(ScanKind.receipt), StockEffect.none);
+      expect(d.clean, isTrue);
+      expect(d.autoCommitEligible, isFalse);
+      final countedBefore = ingredient('chicken_breast', qty: 500, counted: DateTime(2026, 9, 27, 9));
+      expect(validate(example(), [countedBefore]).lines[0].stockCheck, isNull);
+    });
+
+    test('pantry photo: exact product, shelf price, and "already in your pantry?"', () {
+      final pasta = ingredient('dry_pasta', qty: 900);
+      final d = validate(example(null, 1), [pasta]);
+      expect(d.kind, ScanKind.pantry);
+      expect(d.purchasedAt, isNull);
+      final spaghetti = d.lines[0];
+      expect(spaghetti.product, 'Barilla Spaghetti n.5, 500 g');
+      expect(spaghetti.estUnitCostMinor, closeTo(199 / 500, 1e-9));
+      expect(spaghetti.stockCheck, StockCheck.onHand);
+      expect(spaghetti.effectFor(ScanKind.pantry), StockEffect.replace, reason: 'by default the photo counts it');
+      final oil = d.lines[1];
+      expect(oil.isNewIngredient, isTrue);
+      expect(oil.stockCheck, isNull);
+      expect(oil.packageQty, 750);
+      expect(oil.packagePriceMinor, 899);
+      final none = validate(example(null, 1), [ingredient('dry_pasta')]);
+      expect(none.lines[0].stockCheck, isNull, reason: 'nothing on hand to mix it up with');
+    });
+
+    test('a receipt line never takes a shelf price', () {
+      final d = validate(
+        example((j) => (j['items'] as List)[0]['shelf_price'] = {'package_qty': 500, 'price_minor': 450}),
+        [ingredient('chicken_breast')],
+      );
+      expect(d.lines[0].packagePriceMinor, isNull);
+    });
+
+    test('alignUnit converts the quantity and the pack size together', () {
+      final l = DraftLine()
+        ..qty = 6
+        ..unit = BaseUnit.pc
+        ..packageQty = 10
+        ..packagePriceMinor = 299;
+      ReceiptValidator.alignUnit(l, BaseUnit.g, 55);
+      expect(l.qty, 330);
+      expect(l.packageQty, 550);
+      expect(l.estUnitCostMinor, closeTo(299 / 550, 1e-9));
+      final m = DraftLine()
+        ..qty = 1
+        ..unit = BaseUnit.pc
+        ..packageQty = 1
+        ..packagePriceMinor = 99;
+      ReceiptValidator.alignUnit(m, BaseUnit.ml, null);
+      expect(m.qty, isNull);
+      expect(m.qtySource, QtySource.unknown);
+      expect(m.packagePriceMinor, isNull);
+    });
+
+    test('sameReceipt: same day, total and store; store names may differ in detail', () {
+      final day = DateTime(2026, 9, 26, 18, 42);
+      bool same(String? merchant, DateTime other, int total) => ReceiptValidator.sameReceipt(
+        merchant: 'Lidl',
+        day: day,
+        totalMinor: 822,
+        otherMerchant: merchant,
+        otherDay: other,
+        otherTotalMinor: total,
+      );
+      expect(same('LIDL', DateTime(2026, 9, 26, 9), 822), isTrue);
+      expect(same(null, day, 822), isTrue);
+      expect(same('Lidl', day, 823), isFalse);
+      expect(same('Lidl', DateTime(2026, 9, 27, 9), 822), isFalse);
+      expect(same('Rewe', day, 822), isFalse);
+      expect(
+        ReceiptValidator.sameReceipt(
+          merchant: 'Migros Zürich',
+          day: day,
+          totalMinor: 2310,
+          otherMerchant: 'Migros',
+          otherDay: day,
+          otherTotalMinor: 2310,
+        ),
+        isTrue,
+      );
     });
 
     test('total mismatch, foreign currency and fuzzy merge block auto-commit', () {
@@ -121,34 +243,48 @@ void main() {
       ingredient('chicken_breast', qty: 650, cost: 0.998, kcal: 110, protein: 23.1, fat: 1.9),
       ingredient('white_rice', qty: 1000, cost: 0.2, kcal: 360, protein: 7.1, carbs: 79, fat: 0.7),
       ingredient('spinach', qty: 210, cost: 0.796, kcal: 23, protein: 2.9, carbs: 3.6, fat: 0.4),
-      ingredient('olive_oil', unit: BaseUnit.ml, staple: true, kcal: 814, fat: 92),
-      ingredient('garlic_powder', staple: true, kcal: 331, protein: 17, carbs: 73),
-      ingredient('salt', staple: true),
+      ingredient('olive_oil', qty: 450, unit: BaseUnit.ml, cost: 0.9, kcal: 814, fat: 92),
+      ingredient('garlic_powder', qty: 55, cost: 2.48, kcal: 331, protein: 17, carbs: 73),
+      ingredient('salt', qty: 450, cost: 0.098),
     ];
     final idx = StockIndex(stock);
     final matcher = IngredientMatcher(stock);
-    final staples = {'olive_oil', 'garlic_powder', 'salt'};
 
     RecipeDto daily([void Function(Map<String, dynamic>)? edit]) {
-      final json = jsonDecode(promptExample('daily_recipe.v1.md')) as Map<String, dynamic>;
+      final json = jsonDecode(promptExample('daily_recipe.v2.md')) as Map<String, dynamic>;
       edit?.call(json['recipe'] as Map<String, dynamic>);
       return DailyRecipeOutput.parse(json).value!.recipe!;
     }
 
-    test('prompt B example validates; Dart numbers match the estimate', () {
+    test('prompt B example validates; Dart numbers match the estimate, seasonings costed', () {
       final v = RecipeValidator.validate(
         daily(),
         stock: idx,
         matcher: matcher,
-        stapleKeys: staples,
         profile: profile,
         allowMissing: false,
         origin: RecipeOrigin.dailyAuto,
       );
       expect(v.ok, isTrue, reason: v.hardErrors.join('\n'));
-      expect(v.recipe!.perPortion.kcal, closeTo(633, 25));
-      expect(v.recipe!.costPerPortionMinor, closeTo(255, 2));
+      expect(v.recipe!.perPortion.kcal, closeTo(634, 25));
+      // 179.6 chicken + 20 rice + 55.7 spinach + 6.3 oil + 2.5 garlic + 0.2 salt
+      expect(v.recipe!.costPerPortionMinor, 264);
+      expect(v.recipe!.ingredients.every((i) => i.role == IngredientRole.stock), isTrue);
       expect(v.flags.where((f) => f.startsWith('estimate_divergence')), isEmpty);
+    });
+
+    test('salt is stock like anything else: none on hand and the pick goes back for repair', () {
+      final noSalt = [for (final i in stock) i.key == 'salt' ? ingredient('salt') : i];
+      final v = RecipeValidator.validate(
+        daily(),
+        stock: StockIndex(noSalt),
+        matcher: IngredientMatcher(noSalt),
+        profile: profile,
+        allowMissing: false,
+        origin: RecipeOrigin.dailyAuto,
+      );
+      expect(v.ok, isFalse);
+      expect(v.hardErrors.single, contains("'Salt' needs 6 g for 3 portions but only 0 is available"));
     });
 
     test('allergen is a hard error for the repair loop', () {
@@ -157,7 +293,6 @@ void main() {
         daily(),
         stock: idx,
         matcher: matcher,
-        stapleKeys: staples,
         profile: allergic,
         allowMissing: false,
         origin: RecipeOrigin.dailyAuto,
@@ -174,7 +309,6 @@ void main() {
         }),
         stock: idx,
         matcher: matcher,
-        stapleKeys: staples,
         profile: profile,
         allowMissing: false,
         origin: RecipeOrigin.dailyAuto,
@@ -195,7 +329,6 @@ void main() {
         daily(edit),
         stock: idx,
         matcher: matcher,
-        stapleKeys: staples,
         profile: profile,
         allowMissing: false,
         origin: RecipeOrigin.dailyAuto,
@@ -206,7 +339,6 @@ void main() {
         kale,
         stock: idx,
         matcher: matcher,
-        stapleKeys: staples,
         profile: profile,
         allowMissing: true,
         origin: RecipeOrigin.spontaneous,

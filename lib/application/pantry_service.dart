@@ -1,6 +1,5 @@
 import 'package:isar_community/isar.dart';
 
-import '../core/enums.dart';
 import '../data/isar/collections/schemas.dart';
 import '../domain/costing.dart';
 import 'clock.dart';
@@ -42,8 +41,9 @@ class PantryService {
     return key;
   }
 
-  /// Creates or updates an ingredient. New ones get a unique key and count as verified.
-  /// Updates refresh the numbers of recipes that use it.
+  /// Creates or updates an ingredient. New ones get a unique key and count as verified
+  /// (and as counted, when they come with a quantity). Updates refresh the numbers of
+  /// recipes that use it.
   Future<int> upsert(Ingredient ing) async {
     final t = now();
     return isar.writeTxn(() async {
@@ -51,6 +51,7 @@ class PantryService {
       if (isNew) {
         ing.key = await uniqueKey(ing.key.isEmpty ? slugify(ing.name) : ing.key);
         ing.lastVerifiedAt ??= t;
+        if (ing.qtyOnHand > 0) ing.lastCountedAt ??= t;
         if (ing.qtyOnHand > 0 && ing.expiresAt == null && ing.shelfLifeDays > 0) {
           ing.lastPurchasedAt ??= t;
           ing.lastPurchaseQty = ing.qtyOnHand;
@@ -64,7 +65,7 @@ class PantryService {
     });
   }
 
-  /// Sets the on-hand quantity (Quick Check, adjust, pantry photo). Counts as verified.
+  /// Sets the on-hand quantity (Quick Check, adjust). Counts as verified and counted.
   Future<void> setQuantity(int id, double qty) async {
     final t = now();
     await isar.writeTxn(() async {
@@ -79,28 +80,25 @@ class PantryService {
         ing.lastPurchasedAt ??= t;
         ing.lastPurchaseQty = ing.qtyOnHand;
       }
-      ing.lastVerifiedAt = t;
-      ing.updatedAt = t;
+      ing
+        ..lastVerifiedAt = t
+        ..lastCountedAt = t
+        ..updatedAt = t;
       await isar.ingredients.put(ing);
     });
   }
 
   Future<void> markOut(int id) => setQuantity(id, 0);
 
+  /// "Looks right" / "Still have it": the quantity was checked by looking.
   Future<void> verify(int id) async {
+    final t = now();
     await isar.writeTxn(() async {
       final ing = await isar.ingredients.get(id);
       if (ing == null) return;
-      ing.lastVerifiedAt = now();
-      await isar.ingredients.put(ing);
-    });
-  }
-
-  Future<void> setTracking(int id, TrackingMode mode) async {
-    await isar.writeTxn(() async {
-      final ing = await isar.ingredients.get(id);
-      if (ing == null) return;
-      ing.trackingMode = mode;
+      ing
+        ..lastVerifiedAt = t
+        ..lastCountedAt = t;
       await isar.ingredients.put(ing);
     });
   }
@@ -116,39 +114,4 @@ class PantryService {
   Future<void> restore(Ingredient ing) async {
     await isar.writeTxn(() => isar.ingredients.put(ing));
   }
-
-  /// Onboarding staples: creates missing staple ingredients by name. Their macros
-  /// start unknown; NutritionService.fillMissing asks the AI.
-  Future<void> ensureStaples(List<String> names) async {
-    await isar.writeTxn(() async {
-      for (final name in names) {
-        final key = slugify(name);
-        final existing = await isar.ingredients.getByKey(key);
-        if (existing != null) {
-          existing.trackingMode = TrackingMode.staple;
-          await isar.ingredients.put(existing);
-          continue;
-        }
-        await isar.ingredients.put(
-          Ingredient()
-            ..key = key
-            ..name = name
-            ..trackingMode = TrackingMode.staple
-            ..category = _stapleCategory(key)
-            ..baseUnit = _stapleUnit(key)
-            ..shelfLifeDays = 365
-            ..lastVerifiedAt = now(),
-        );
-      }
-    });
-  }
-
-  static IngredientCategory _stapleCategory(String key) {
-    if (key.contains('oil') || key.contains('butter')) return IngredientCategory.oilsFats;
-    if (key.contains('flour') || key.contains('rice') || key.contains('pasta')) return IngredientCategory.grainsPasta;
-    return IngredientCategory.spicesCondiments;
-  }
-
-  static BaseUnit _stapleUnit(String key) =>
-      key.contains('oil') || key.contains('vinegar') || key.contains('sauce') ? BaseUnit.ml : BaseUnit.g;
 }

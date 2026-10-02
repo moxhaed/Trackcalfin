@@ -52,27 +52,37 @@ void main() {
       ..nutritionSource = DataSource.aiEstimate,
   );
 
-  RecipeIngredient line(String key, double qty, BaseUnit unit, IngredientRole role) => RecipeIngredient()
+  RecipeIngredient line(String key, double qty, BaseUnit unit) => RecipeIngredient()
     ..key = key
     ..name = key
     ..qtyPerPortion = qty
-    ..unit = unit
-    ..role = role;
+    ..unit = unit;
 
-  test('onboarding staples get AI macros, ml per 100 ml, and saved recipes count them', () async {
-    await PantryService(isar).ensureStaples(['Olive oil', 'Flour', 'Salt', 'Stock cube']);
+  /// An item added by hand with empty nutrition fields.
+  Future<int> addUnknown(String key, String name, {BaseUnit unit = BaseUnit.g}) => PantryService(isar).upsert(
+    Ingredient()
+      ..key = key
+      ..name = name
+      ..baseUnit = unit,
+  );
+
+  test('items without macros get AI macros, ml per 100 ml, and saved recipes count them', () async {
+    await addUnknown('olive_oil', 'Olive oil', unit: BaseUnit.ml);
+    await addUnknown('flour', 'Flour');
+    await addUnknown('salt', 'Salt');
+    await addUnknown('stock_cube', 'Stock cube', unit: BaseUnit.pc);
     await addChicken();
     expect((await byKey('flour')).needsNutrition, isTrue);
     final recipeId = await RecipeService(isar).save(
       Recipe()
         ..title = 'Schnitzel'
         ..ingredients = [
-          line('chicken_breast', 150, BaseUnit.g, IngredientRole.stock),
-          line('flour', 20, BaseUnit.g, IngredientRole.staple),
-          line('olive_oil', 10, BaseUnit.ml, IngredientRole.staple),
+          line('chicken_breast', 150, BaseUnit.g),
+          line('flour', 20, BaseUnit.g),
+          line('olive_oil', 10, BaseUnit.ml),
         ],
     );
-    expect((await isar.recipes.get(recipeId))!.perPortion.kcal, closeTo(165, 0.01), reason: 'staples count 0');
+    expect((await isar.recipes.get(recipeId))!.perPortion.kcal, closeTo(165, 0.01), reason: 'unknown macros count 0');
 
     fake.reply(promptExample('nutrition_estimate.v1.md'));
     final r = await svc.fillMissing();
@@ -89,6 +99,7 @@ void main() {
     expect(oil.nutritionSource, DataSource.aiEstimate);
     expect(oil.nutritionConfirmedAt, isNull);
     expect((await byKey('salt')).needsNutrition, isFalse, reason: 'zeros from the AI are an answer');
+    expect((await byKey('stock_cube')).gramsPerPiece, 10);
 
     // 150 g chicken + 20 g flour + 10 ml oil.
     expect((await isar.recipes.get(recipeId))!.perPortion.kcal, closeTo(165 + 69.6 + 80.44, 0.01));
@@ -98,7 +109,7 @@ void main() {
   });
 
   test('without a key nothing is asked and items stay unknown', () async {
-    await PantryService(isar).ensureStaples(['Flour']);
+    await addUnknown('flour', 'Flour');
     final noKey = NutritionService(
       isar: isar,
       ai: AiGateway(isar: isar, secrets: MemorySecretStore(), prompts: PromptRepository(loadPromptAsset)),
@@ -109,7 +120,7 @@ void main() {
   });
 
   test('a label is read and converted but only saved once the user keeps it', () async {
-    await PantryService(isar).ensureStaples(['Flour']);
+    await addUnknown('flour', 'Flour');
     final flour = await byKey('flour');
     fake.reply(promptExample('nutrition_label.v1.md'));
     final draft = await svc.readLabel(flour.id, [photo]);

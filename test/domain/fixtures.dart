@@ -14,9 +14,10 @@ Ingredient ingredient(
   double fat = 0,
   double? gpp,
   int shelf = 7,
-  bool staple = false,
   DateTime? expiresAt,
   DateTime? verified,
+  DateTime? counted,
+  bool costIsEstimate = false,
 }) => Ingredient()
   ..id = _id++
   ..key = key
@@ -27,9 +28,10 @@ Ingredient ingredient(
   ..per100 = Nutrition(kcal: kcal, proteinG: protein, carbsG: carbs, fatG: fat)
   ..gramsPerPiece = gpp
   ..shelfLifeDays = shelf
-  ..trackingMode = staple ? TrackingMode.staple : TrackingMode.exact
   ..expiresAt = expiresAt
-  ..lastVerifiedAt = verified;
+  ..lastVerifiedAt = verified
+  ..lastCountedAt = counted
+  ..costIsEstimate = costIsEstimate;
 
 RecipeIngredient ri(String key, double qty, {BaseUnit unit = BaseUnit.g, IngredientRole role = IngredientRole.stock}) =>
     RecipeIngredient()

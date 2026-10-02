@@ -52,19 +52,32 @@ void main() {
   }
 
   group('ScanService', () {
-    ScanService service() => ScanService(isar: isar, images: ImageStore('${tmp.path}/store'), ai: ai, now: () => now);
+    ScanService service({DateTime? at}) =>
+        ScanService(isar: isar, images: ImageStore('${tmp.path}/store'), ai: ai, now: () => at ?? now);
+
+    Future<int> addChicken({double qty = 0, int shelf = 7, DateTime? counted}) => PantryService(isar).upsert(
+      Ingredient()
+        ..name = 'Chicken breast'
+        ..key = 'chicken_breast'
+        ..qtyOnHand = qty
+        ..shelfLifeDays = shelf
+        ..lastCountedAt = counted,
+    );
+
+    Map<String, dynamic> receipt([void Function(Map<String, dynamic>)? edit]) {
+      final json = jsonDecode(promptExample('receipt_extraction.v3.md')) as Map<String, dynamic>;
+      edit?.call(json);
+      return json;
+    }
 
     test('clean receipt auto-commits: ledger, stock, WAC, new ingredient, aliases', () async {
-      await PantryService(isar).upsert(
-        Ingredient()
-          ..name = 'Chicken breast'
-          ..key = 'chicken_breast',
-      );
-      fake.reply(promptExample('receipt_extraction.v2.md'));
+      await addChicken();
+      fake.reply(promptExample('receipt_extraction.v3.md'));
       final s = service();
       final id = await s.enqueue([await photo()], hint: 'receipt');
       final results = await s.processQueue();
       expect(results.single.autoCommitted, isTrue);
+      expect(results.single.clean, isTrue);
 
       final req = fake.requests.single;
       expect((req['contents'][0]['parts'] as List).length, 2, reason: 'context JSON + 1 image');
@@ -90,9 +103,7 @@ void main() {
     });
 
     test('messy receipt waits for review; commit is idempotent', () async {
-      final json = jsonDecode(promptExample('receipt_extraction.v2.md')) as Map<String, dynamic>;
-      json['receipt_total_minor'] = 999;
-      fake.replyJson(json);
+      fake.replyJson(receipt((j) => j['receipt_total_minor'] = 999));
       final s = service();
       final id = await s.enqueue([await photo()]);
       final r = (await s.processQueue()).single;
@@ -175,10 +186,173 @@ void main() {
       final r = (await s.processQueue()).single;
       expect(r.job.kind, ScanKind.pantry);
       expect(r.autoCommitted, isFalse);
+      expect(r.job.lines.single.stockCheck, StockCheck.onHand, reason: '2 eggs on hand: same ones or more?');
       await s.commit(id);
       final egg = (await isar.ingredients.getByKey('egg'))!;
-      expect(egg.qtyOnHand, 10);
+      expect(egg.qtyOnHand, 10, reason: 'by default the photo counts them');
+      expect(egg.lastCountedAt, now);
       expect(await isar.transactions.count(), 0);
+    });
+
+    test('pantry photo: "extra" adds to what is there and the shop price prices it', () async {
+      final pasta = await PantryService(isar).upsert(
+        Ingredient()
+          ..name = 'Spaghetti'
+          ..key = 'dry_pasta'
+          ..qtyOnHand = 900,
+      );
+      await RecipeService(isar).save(
+        Recipe()
+          ..title = 'Pasta'
+          ..ingredients = [
+            RecipeIngredient()
+              ..key = 'dry_pasta'
+              ..qtyPerPortion = 100,
+          ],
+      );
+      fake.reply(promptExamples('receipt_extraction.v3.md')[1]);
+      final s = service();
+      final id = await s.enqueue([await photo()], hint: 'pantry');
+      final job = (await s.processQueue()).single.job;
+      expect(job.lines[0].product, 'Barilla Spaghetti n.5, 500 g');
+      job.lines[0].stock = StockEffect.add;
+      await s.updateJob(job);
+      await s.commit(id);
+
+      final spaghetti = (await isar.ingredients.get(pasta))!;
+      expect(spaghetti.qtyOnHand, 900 + 350);
+      expect(spaghetti.avgCostPerUnitMinor, closeTo(199 / 500, 1e-9));
+      expect(spaghetti.costIsEstimate, isTrue);
+      final oil = (await isar.ingredients.getByKey('olive_oil'))!;
+      expect(oil.qtyOnHand, 600);
+      expect(oil.avgCostPerUnitMinor, closeTo(899 / 750, 1e-9));
+      expect(oil.lastCountedAt, now);
+      final recipe = (await isar.recipes.where().findFirst())!;
+      expect(recipe.costPerPortionMinor, 40, reason: 'recipes are re-costed with the new price');
+
+      // The next shop's receipt replaces the estimate with what was paid.
+      fake.replyJson(
+        receipt((j) {
+          j['purchased_at'] = '2026-09-28';
+          j['items'] = [
+            {
+              ...(j['items'] as List)[0] as Map,
+              'raw_text': 'SPAGHETTI 1,49',
+              'name': 'Spaghetti',
+              'ingredient_key': 'dry_pasta',
+              'total_minor': 149,
+              'product': 'Store-brand spaghetti, 500 g',
+            },
+          ];
+          j['receipt_total_minor'] = 149;
+        }),
+      );
+      final nextDay = service(at: DateTime(2026, 9, 28, 20));
+      await nextDay.enqueue([await photo()], hint: 'receipt');
+      expect((await nextDay.processQueue()).single.autoCommitted, isTrue);
+      final after = (await isar.ingredients.get(pasta))!;
+      expect(after.avgCostPerUnitMinor, closeTo(149 / 500, 1e-9));
+      expect(after.costIsEstimate, isFalse);
+    });
+
+    test('an old receipt files the money on its own day; what has spoiled since stays out of the pantry', () async {
+      final chicken = await addChicken(shelf: 2);
+      fake.reply(promptExample('receipt_extraction.v3.md'));
+      final s = service(at: DateTime(2026, 10, 2, 9));
+      final id = await s.enqueue([await photo()], hint: 'receipt');
+      final r = (await s.processQueue()).single;
+      expect(r.autoCommitted, isFalse, reason: 'the user confirms what is used up');
+      expect(r.clean, isTrue);
+      expect(r.job.purchasedAt, DateTime(2026, 9, 27, 18, 42));
+      expect(r.job.lines[0].stockCheck, StockCheck.usedUp);
+
+      final tx = (await isar.transactions.get((await s.commit(id))!))!;
+      expect(tx.occurredAt, DateTime(2026, 9, 27, 18, 42));
+      expect(tx.totalMinor, 822, reason: 'the money counts in full');
+      expect(tx.lines[0].ingredientId, isNull, reason: 'nothing was stocked from this line');
+      final c = (await isar.ingredients.get(chicken))!;
+      expect(c.qtyOnHand, 0);
+      expect(c.avgCostPerUnitMinor, closeTo(499 / 500, 1e-9), reason: 'the price is still learned');
+      final yogurt = (await isar.ingredients.getByKey('greek_yogurt'))!;
+      expect(yogurt.qtyOnHand, 500, reason: 'keeps 14 days');
+      expect(yogurt.expiresAt, DateTime(2026, 10, 11, 18, 42), reason: 'freshness counts from the receipt');
+    });
+
+    test('a receipt from before a pantry count asks first; "already counted" adds nothing', () async {
+      final chicken = await addChicken(qty: 400, counted: DateTime(2026, 9, 27, 18, 55));
+      fake.reply(promptExample('receipt_extraction.v3.md'));
+      final s = service();
+      final id = await s.enqueue([await photo()], hint: 'receipt');
+      final r = (await s.processQueue()).single;
+      expect(r.autoCommitted, isFalse);
+      expect(r.job.lines[0].stockCheck, StockCheck.counted);
+      await s.commit(id);
+      final c = (await isar.ingredients.get(chicken))!;
+      expect(c.qtyOnHand, 400);
+      expect(c.avgCostPerUnitMinor, closeTo(499 / 500, 1e-9));
+    });
+
+    test('the same receipt twice: filed or still in the Inbox, the second one is flagged', () async {
+      await addChicken();
+      final s = service();
+      fake.reply(promptExample('receipt_extraction.v3.md'));
+      await s.enqueue([await photo()], hint: 'receipt');
+      final first = (await s.processQueue()).single;
+      expect(first.autoCommitted, isTrue);
+
+      // The AI reads the copy slightly differently; same store, day and total.
+      fake.replyJson(receipt((j) => j['merchant'] = 'LIDL'));
+      await s.enqueue([await photo()], hint: 'receipt');
+      final copy = (await s.processQueue()).single;
+      expect(copy.autoCommitted, isFalse);
+      expect(copy.job.duplicateOfTxId, first.transactionId);
+      expect(await isar.transactions.count(), 1);
+
+      fake.replyJson(receipt((j) => j['merchant'] = 'Lidl Berlin'));
+      await s.enqueue([await photo()], hint: 'receipt');
+      final third = (await s.processQueue()).single;
+      expect(third.job.duplicateOfTxId, first.transactionId);
+
+      fake.replyJson(receipt((j) => j['receipt_total_minor'] = 821));
+      await s.enqueue([await photo()], hint: 'receipt');
+      final other = (await s.processQueue()).single;
+      expect(other.job.maybeDuplicate, isTrue, reason: 'the lines still add up to the same total');
+      expect(other.job.duplicateOfTxId, first.transactionId);
+    });
+
+    test('a scan matching one still waiting in the Inbox points at it', () async {
+      final s = service();
+      fake.replyJson(receipt((j) => j['purchased_at'] = '2026-09-25'));
+      final firstId = await s.enqueue([await photo()], hint: 'receipt');
+      expect((await s.processQueue()).single.autoCommitted, isTrue);
+      await isar.writeTxn(() async => isar.transactions.clear());
+      await isar.writeTxn(() async {
+        final j = (await isar.scanJobs.get(firstId))!;
+        await isar.scanJobs.put(
+          j
+            ..status = ScanStatus.needsReview
+            ..transactionId = null,
+        );
+      });
+      fake.replyJson(receipt((j) => j['purchased_at'] = '2026-09-25'));
+      await s.enqueue([await photo()], hint: 'receipt');
+      expect((await s.processQueue()).single.job.duplicateOfJobId, firstId);
+    });
+
+    test('changing the date in review re-asks the pantry questions and clears the date flag', () async {
+      await addChicken(shelf: 2);
+      fake.replyJson(receipt((j) => j['purchased_at'] = null));
+      final s = service();
+      final id = await s.enqueue([await photo()], hint: 'receipt');
+      final r = (await s.processQueue()).single;
+      expect(r.job.flags, contains('date_missing'));
+      expect(r.job.lines[0].stockCheck, isNull);
+      await s.setPurchaseDate(id, DateTime(2026, 9, 20, 18, 42));
+      final job = (await isar.scanJobs.get(id))!;
+      expect(job.purchasedAt, DateTime(2026, 9, 20, 18, 42));
+      expect(job.flags, isNot(contains('date_missing')));
+      expect(job.lines[0].stockCheck, StockCheck.usedUp);
+      expect(job.lines[1].stockCheck, isNull, reason: 'the yogurt keeps 14 days');
     });
   });
 
@@ -194,7 +368,6 @@ void main() {
         double carbs,
         double fat, {
         BaseUnit unit = BaseUnit.g,
-        bool staple = false,
         int shelf = 7,
       }) async {
         await p.upsert(
@@ -205,7 +378,6 @@ void main() {
             ..avgCostPerUnitMinor = cost
             ..baseUnit = unit
             ..shelfLifeDays = shelf
-            ..trackingMode = staple ? TrackingMode.staple : TrackingMode.exact
             ..per100 = Nutrition(kcal: kcal, proteinG: protein, carbsG: carbs, fatG: fat),
         );
       }
@@ -213,22 +385,24 @@ void main() {
       await add('chicken_breast', 650, 0.998, 110, 23.1, 0, 1.9, shelf: 2);
       await add('white_rice', 1000, 0.2, 360, 7.1, 79, 0.7, shelf: 365);
       await add('spinach', 210, 0.796, 23, 2.9, 3.6, 0.4, shelf: 1);
-      await add('olive_oil', 0, 0, 814, 0, 0, 92, unit: BaseUnit.ml, staple: true);
-      await add('garlic_powder', 0, 0, 331, 17, 73, 0.7, staple: true);
-      await add('salt', 0, 0, 0, 0, 0, 0, staple: true);
+      await add('olive_oil', 450, 0.9, 814, 0, 0, 92, unit: BaseUnit.ml, shelf: 540);
+      await add('garlic_powder', 55, 2.48, 331, 17, 73, 0.7, shelf: 730);
+      await add('salt', 450, 0.098, 0, 0, 0, 0, shelf: 1825);
     }
 
     test('generate stores a validated pick with Dart numbers; ensure reuses it', () async {
       await seedPantry();
-      fake.reply(promptExample('daily_recipe.v1.md'));
+      fake.reply(promptExample('daily_recipe.v2.md'));
       final svc = DailyPickService(isar: isar, ai: ai, now: () => now);
       final out = await svc.ensure();
       expect(out.fromAi, isTrue);
       final r = out.recipe!;
       expect(r.suggestedForDateKey, 20260927);
-      expect(r.costPerPortionMinor, closeTo(255, 2));
+      expect(r.costPerPortionMinor, 264, reason: 'oil, garlic powder and salt are costed too');
       final ctx = jsonDecode(fake.requests.single['contents'][0]['parts'][0]['text']);
       expect((ctx['inventory'] as List).first['key'], 'spinach');
+      expect((ctx['inventory'] as List).map((i) => i['key']), contains('olive_oil'));
+      expect(ctx.containsKey('staples'), isFalse);
       final again = await svc.ensure();
       expect(again.recipe!.id, r.id);
       expect(fake.requests.length, 1);
@@ -260,7 +434,7 @@ void main() {
       await seedPantry();
       final svc = DailyPickService(isar: isar, ai: ai, now: () => now);
       for (var i = 0; i < 3; i++) {
-        final json = jsonDecode(promptExample('daily_recipe.v1.md')) as Map<String, dynamic>;
+        final json = jsonDecode(promptExample('daily_recipe.v2.md')) as Map<String, dynamic>;
         (json['recipe'] as Map)['title'] = 'Pick $i';
         fake.replyJson(json);
       }
@@ -276,7 +450,7 @@ void main() {
 
     test('ask: Dart verdict overrides the model when stock is short', () async {
       await seedPantry();
-      final json = jsonDecode(promptExample('daily_recipe.v1.md'))['recipe'] as Map<String, dynamic>;
+      final json = jsonDecode(promptExample('daily_recipe.v2.md'))['recipe'] as Map<String, dynamic>;
       json['portions'] = 5; // needs 900 g chicken, only 650 g on hand
       fake.replyJson({
         'schema_version': 1,

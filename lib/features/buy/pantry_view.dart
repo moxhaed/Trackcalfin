@@ -46,13 +46,11 @@ class _PantryViewState extends ConsumerState<PantryView> {
     final now = DateTime.now();
     final q = _query.toLowerCase();
     final matches = all.where((i) => q.isEmpty || i.name.toLowerCase().contains(q) || i.key.contains(q)).toList();
-    final exact = matches.where((i) => !i.isStaple).toList();
-    final inStock = exact.where((i) => i.qtyOnHand > 0).toList();
+    final inStock = matches.where((i) => i.qtyOnHand > 0).toList();
     final soon = inStock.where((i) => ExpiryEstimator.useSoon(i, now)).toList()
       ..sort((a, b) => (ExpiryEstimator.daysLeft(a, now) ?? 99).compareTo(ExpiryEstimator.daysLeft(b, now) ?? 99));
     final low = inStock.where((i) => i.isLow).toList();
-    final empty = exact.where((i) => i.qtyOnHand <= 0).toList();
-    final staples = matches.where((i) => i.isStaple).toList();
+    final empty = matches.where((i) => i.qtyOnHand <= 0).toList();
     final unknownMacros = all.where((i) => i.needsNutrition).length;
     // Unknown first: they're the ones that count as 0 kcal.
     final toReview = all.where((i) => i.nutritionConfirmedAt == null).sorted((a, b) {
@@ -153,24 +151,6 @@ class _PantryViewState extends ConsumerState<PantryView> {
           if (_showEmpty)
             for (final ing in empty) _IngredientTile(ing: ing, now: now),
         ],
-        if (staples.isNotEmpty) ...[
-          const _Header('Staples · always assumed'),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final s in staples)
-                  ActionChip(
-                    avatar: s.needsNutrition ? Icon(Icons.help_outline, size: 16, color: context.colors.warning) : null,
-                    label: Text(s.name),
-                    onPressed: () => showIngredientSheet(context, ingredient: s),
-                  ),
-              ],
-            ),
-          ),
-        ],
         if (toReview.isNotEmpty && q.isEmpty)
           Padding(
             padding: const EdgeInsets.fromLTRB(8, 12, 8, 0),
@@ -247,7 +227,9 @@ class _IngredientTile extends ConsumerWidget {
         title: Text(ing.name),
         subtitle: Text(
           [
-            if (value > 0) money.compact(value),
+            // "~": priced from a pantry photo, not a receipt.
+            if (value > 0) '${ing.costIsEstimate ? '~' : ''}${money.compact(value)}',
+            if (ing.qtyOnHand > 0 && ing.avgCostPerUnitMinor <= 0) 'no price',
             if (d != null) '${daysLeftLabel(d)} left'.replaceAll('use today left', 'use today'),
             if (unverified) 'check',
             if (ing.needsNutrition) 'no macros',

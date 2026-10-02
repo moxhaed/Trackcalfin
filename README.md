@@ -22,7 +22,7 @@ A personal **micro-procurement, pantry and meal-prep tracker** built with Flutte
 | Tab | What you do | What the app does |
 |---|---|---|
 | **Dashboard** | Glance | Vibe Check score with one next-step insight, today's kcal/protein rings, weekly and monthly food spend with pace markers and a ×4.33 projection, other-spend limits, the week's calories, and a streak with a weekly freeze. All pure Dart. |
-| **Buy** | Snap a receipt or pantry photo, or log an expense in 3 taps | Gemini extracts lines, categories, quantities and new-ingredient nutrition. Clean receipts file themselves; messy ones wait in the Inbox for one "Looks good". Receipts in another currency are converted at the European Central Bank rate for the purchase day, or from the amount your card was charged. The stock list shows use-soon and running-low items. |
+| **Buy** | Snap a receipt or pantry photo, or log an expense in 3 taps | Gemini extracts lines, categories, quantities and new-ingredient nutrition, names the exact product, and gives pantry-photo items their usual shop price. Clean receipts file themselves; messy ones wait in the Inbox for one "Looks good". A receipt is filed on its printed date, so an old one counts toward the week it was paid and its spoiled items stay out of the pantry. A receipt you already filed, or an item already in the pantry, is asked about instead of counted twice. Receipts in another currency are converted at the European Central Bank rate for the purchase day, or from the amount your card was charged. The stock list shows use-soon and running-low items. |
 | **Cook** | Tap "I cooked this ×3", tap "Eat 1", or ask "carbonara for two" | Daily pick from your stock (planned the evening before), exact stock deduction, fridge portions, macros logged when you eat, and a Dart-checked feasibility verdict for requests. |
 | **⊕** | One button for every log | Scan, pantry photo, expense, cooked, ate. |
 
@@ -32,7 +32,7 @@ Principles: every log takes ≤ 3 seconds, the LLM proposes and Dart does the ma
 
 **Built and verified in this repo**
 - All 33 sprints from the [sprint plan](docs/06-sprint-plan.md) are implemented.
-- 111 automated tests pass: domain math, use cases against a real Isar database, the full AI pipeline against a scripted fake Gemini endpoint (including repair retries and allergen rejection), and widget smoke tests that drive the whole app. `flutter analyze` is clean.
+- 159 automated tests pass: domain math, use cases against a real Isar database, the full AI pipeline against a scripted fake Gemini endpoint (including repair retries and allergen rejection), and widget smoke tests that drive the whole app. `flutter analyze` is clean.
 - The Linux desktop build runs. The screenshots above come from it.
 
 **Not verified here (needs your machine)**
@@ -49,7 +49,7 @@ Principles: every log takes ≤ 3 seconds, the LLM proposes and Dart does the ma
 4. Get a Gemini API key from [Google AI Studio](https://aistudio.google.com/) and paste it during onboarding or in **Settings → AI**. Tap **Test connection**. The key lives in the Android Keystore or iOS Keychain, never in the database or backups.
 5. Optional sample data: `flutter run --dart-define=DEMO=true`. It only seeds an empty database.
 
-On first launch, onboarding asks for your goals and staples, optionally takes 3 pantry photos, and requests notification permission.
+On first launch, onboarding asks for your goals, optionally takes photos of your fridge, freezer, cupboard, spices and oils (and recent receipts), and requests notification permission. There is no staples list: recipes only use what the app has seen, salt and oil included, and every ingredient counts in a recipe's cost.
 
 **First time on a real phone?** Work through [docs/MANUAL_TESTING.md](docs/MANUAL_TESTING.md). It lists what the automated tests can't cover (camera, live Gemini, notifications, share sheet, voice) and has a report template for the next session.
 
@@ -57,7 +57,7 @@ On first launch, onboarding asks for your goals and staples, optionally takes 3 
 
 ```bash
 flutter analyze
-flutter test                      # 111 tests; Isar's native core is loaded from the Linux plugin in your pub cache
+flutter test                      # 159 tests; Isar's native core is loaded from the Linux plugin in your pub cache
 dart run build_runner build       # after changing anything in lib/data/isar/collections/
 flutter run -d linux --dart-define=DEMO=true   # quick UI iteration (needs libgtk-3-dev, libsecret-1-dev)
 ```
@@ -97,9 +97,9 @@ test/             domain, application (Isar), data (AI layer), widget
 
 | Prompt | File |
 |---|---|
-| A · Receipt & expense extraction (image → JSON) | [`assets/prompts/receipt_extraction.v2.md`](assets/prompts/receipt_extraction.v2.md) |
-| B · Daily stock-based recipe (inventory → recipe JSON) | [`assets/prompts/daily_recipe.v1.md`](assets/prompts/daily_recipe.v1.md) |
-| C · Spontaneous recipe calculator (request + inventory → feasibility JSON) | [`assets/prompts/spontaneous_recipe.v1.md`](assets/prompts/spontaneous_recipe.v1.md) |
+| A · Receipt & expense extraction (image → JSON) | [`assets/prompts/receipt_extraction.v3.md`](assets/prompts/receipt_extraction.v3.md) |
+| B · Daily stock-based recipe (inventory → recipe JSON) | [`assets/prompts/daily_recipe.v2.md`](assets/prompts/daily_recipe.v2.md) |
+| C · Spontaneous recipe calculator (request + inventory → feasibility JSON) | [`assets/prompts/spontaneous_recipe.v2.md`](assets/prompts/spontaneous_recipe.v2.md) |
 
 ## Known limitations
 

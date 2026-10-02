@@ -126,7 +126,10 @@ class _ScanRun {
   bool skipped = false;
   ScanJob? job;
   String? error;
-  bool autoFiled = false;
+
+  /// The model read it without a flag (ScanResult.clean). Eval receipts are usually old and
+  /// already in the backup, so whether the app files them on its own says nothing about a model.
+  bool clean = false;
   AiCallLog? log;
   int compatLevel = 0;
 }
@@ -267,9 +270,6 @@ class _Eval {
     final isar = await _freshDb();
     final tmp = await Directory.systemTemp.createTemp('trackcalfin_eval_');
     try {
-      // Auto-filing on means ScanResult.autoCommitted reports whether the scan was clean enough.
-      final p = (await isar.userProfiles.get(1))!..autoCommitCleanScans = true;
-      await isar.writeTxn(() => isar.userProfiles.put(p));
       final svc = ScanService(
         isar: isar,
         images: ImageStore(tmp.path, compressor: _shrinkLikeThePhone),
@@ -280,10 +280,11 @@ class _Eval {
       final job = (await isar.scanJobs.get(id))!;
       final run = _ScanRun()
         ..job = job
-        ..autoFiled = res?.autoCommitted ?? false
+        ..clean = res?.clean ?? false
         ..log = job.aiCallLogId == null ? null : await isar.aiCallLogs.get(job.aiCallLogId!)
         ..compatLevel = GeminiClient.compatLevel;
-      run.error = job.status == ScanStatus.needsReview || run.autoFiled ? null : (job.lastError ?? run.log?.error);
+      final read = job.status == ScanStatus.needsReview || job.status == ScanStatus.committed;
+      run.error = read ? null : (job.lastError ?? run.log?.error);
       _saveRaw(c.name, model, run.log);
       return (run, run.log?.error ?? job.lastError);
     } finally {
@@ -388,7 +389,7 @@ class _Eval {
                 _count(read(m).map((j) => !j.flags.contains('total_mismatch') && !j.flags.contains('total_missing'))),
           ),
         )
-        ..writeln(_row('Clean enough to file automatically', (m) => _count(sran(m).map((r) => r.autoFiled))))
+        ..writeln(_row('Read without a flag', (m) => _count(sran(m).map((r) => r.clean))))
         ..writeln(
           _row(
             'Low-confidence lines',
@@ -498,7 +499,7 @@ class _Eval {
               return '${j.lines.length} · ${fmt.format(sum)} / $total';
             }),
           )
-          ..writeln(_row('Files automatically', (m) => r(m).job == null ? '–' : _yes(r(m).autoFiled)))
+          ..writeln(_row('Read without a flag', (m) => r(m).job == null ? '–' : _yes(r(m).clean)))
           ..writeln(_row('Repair round', (m) => r(m).log == null ? '–' : _yes(r(m).log!.repaired)))
           ..writeln(_row('Flags', (m) => _flags(r(m).job?.flags ?? const [], r(m).compatLevel)))
           ..writeln(_row('Time', (m) => _secs(r(m).log)));

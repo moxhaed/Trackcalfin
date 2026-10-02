@@ -5376,12 +5376,10 @@ P _recipeIngredientDeserializeProp<P>(
 
 const _RecipeIngredientroleEnumValueMap = {
   r'stock': r'stock',
-  r'staple': r'staple',
   r'missing': r'missing',
 };
 const _RecipeIngredientroleValueEnumMap = {
   r'stock': IngredientRole.stock,
-  r'staple': IngredientRole.staple,
   r'missing': IngredientRole.missing,
 };
 const _RecipeIngredientunitEnumValueMap = {

@@ -39,79 +39,88 @@ const IngredientSchema = CollectionSchema(
       type: IsarType.string,
       enumMap: _IngredientcategoryEnumValueMap,
     ),
-    r'densityGPerMl': PropertySchema(
+    r'costIsEstimate': PropertySchema(
       id: 4,
+      name: r'costIsEstimate',
+      type: IsarType.bool,
+    ),
+    r'densityGPerMl': PropertySchema(
+      id: 5,
       name: r'densityGPerMl',
       type: IsarType.double,
     ),
     r'expiresAt': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'expiresAt',
       type: IsarType.dateTime,
     ),
     r'gramsPerPiece': PropertySchema(
-      id: 6,
+      id: 7,
       name: r'gramsPerPiece',
       type: IsarType.double,
     ),
-    r'key': PropertySchema(id: 7, name: r'key', type: IsarType.string),
+    r'key': PropertySchema(id: 8, name: r'key', type: IsarType.string),
+    r'lastCountedAt': PropertySchema(
+      id: 9,
+      name: r'lastCountedAt',
+      type: IsarType.dateTime,
+    ),
     r'lastPurchaseQty': PropertySchema(
-      id: 8,
+      id: 10,
       name: r'lastPurchaseQty',
       type: IsarType.double,
     ),
     r'lastPurchasedAt': PropertySchema(
-      id: 9,
+      id: 11,
       name: r'lastPurchasedAt',
       type: IsarType.dateTime,
     ),
     r'lastVerifiedAt': PropertySchema(
-      id: 10,
+      id: 12,
       name: r'lastVerifiedAt',
       type: IsarType.dateTime,
     ),
     r'lowStockThreshold': PropertySchema(
-      id: 11,
+      id: 13,
       name: r'lowStockThreshold',
       type: IsarType.double,
     ),
-    r'name': PropertySchema(id: 12, name: r'name', type: IsarType.string),
+    r'name': PropertySchema(id: 14, name: r'name', type: IsarType.string),
     r'nutritionConfirmedAt': PropertySchema(
-      id: 13,
+      id: 15,
       name: r'nutritionConfirmedAt',
       type: IsarType.dateTime,
     ),
     r'nutritionSource': PropertySchema(
-      id: 14,
+      id: 16,
       name: r'nutritionSource',
       type: IsarType.string,
       enumMap: _IngredientnutritionSourceEnumValueMap,
     ),
     r'per100': PropertySchema(
-      id: 15,
+      id: 17,
       name: r'per100',
       type: IsarType.object,
 
       target: r'Nutrition',
     ),
     r'qtyOnHand': PropertySchema(
-      id: 16,
+      id: 18,
       name: r'qtyOnHand',
       type: IsarType.double,
     ),
     r'shelfLifeDays': PropertySchema(
-      id: 17,
+      id: 19,
       name: r'shelfLifeDays',
       type: IsarType.long,
     ),
     r'trackingMode': PropertySchema(
-      id: 18,
+      id: 20,
       name: r'trackingMode',
       type: IsarType.string,
-      enumMap: _IngredienttrackingModeEnumValueMap,
     ),
     r'updatedAt': PropertySchema(
-      id: 19,
+      id: 21,
       name: r'updatedAt',
       type: IsarType.dateTime,
     ),
@@ -197,7 +206,12 @@ int _ingredientEstimateSize(
         allOffsets[Nutrition]!,
         allOffsets,
       );
-  bytesCount += 3 + object.trackingMode.name.length * 3;
+  {
+    final value = object.legacyTrackingMode;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   return bytesCount;
 }
 
@@ -211,27 +225,29 @@ void _ingredientSerialize(
   writer.writeDouble(offsets[1], object.avgCostPerUnitMinor);
   writer.writeString(offsets[2], object.baseUnit.name);
   writer.writeString(offsets[3], object.category.name);
-  writer.writeDouble(offsets[4], object.densityGPerMl);
-  writer.writeDateTime(offsets[5], object.expiresAt);
-  writer.writeDouble(offsets[6], object.gramsPerPiece);
-  writer.writeString(offsets[7], object.key);
-  writer.writeDouble(offsets[8], object.lastPurchaseQty);
-  writer.writeDateTime(offsets[9], object.lastPurchasedAt);
-  writer.writeDateTime(offsets[10], object.lastVerifiedAt);
-  writer.writeDouble(offsets[11], object.lowStockThreshold);
-  writer.writeString(offsets[12], object.name);
-  writer.writeDateTime(offsets[13], object.nutritionConfirmedAt);
-  writer.writeString(offsets[14], object.nutritionSource.name);
+  writer.writeBool(offsets[4], object.costIsEstimate);
+  writer.writeDouble(offsets[5], object.densityGPerMl);
+  writer.writeDateTime(offsets[6], object.expiresAt);
+  writer.writeDouble(offsets[7], object.gramsPerPiece);
+  writer.writeString(offsets[8], object.key);
+  writer.writeDateTime(offsets[9], object.lastCountedAt);
+  writer.writeDouble(offsets[10], object.lastPurchaseQty);
+  writer.writeDateTime(offsets[11], object.lastPurchasedAt);
+  writer.writeDateTime(offsets[12], object.lastVerifiedAt);
+  writer.writeDouble(offsets[13], object.lowStockThreshold);
+  writer.writeString(offsets[14], object.name);
+  writer.writeDateTime(offsets[15], object.nutritionConfirmedAt);
+  writer.writeString(offsets[16], object.nutritionSource.name);
   writer.writeObject<Nutrition>(
-    offsets[15],
+    offsets[17],
     allOffsets,
     NutritionSchema.serialize,
     object.per100,
   );
-  writer.writeDouble(offsets[16], object.qtyOnHand);
-  writer.writeLong(offsets[17], object.shelfLifeDays);
-  writer.writeString(offsets[18], object.trackingMode.name);
-  writer.writeDateTime(offsets[19], object.updatedAt);
+  writer.writeDouble(offsets[18], object.qtyOnHand);
+  writer.writeLong(offsets[19], object.shelfLifeDays);
+  writer.writeString(offsets[20], object.legacyTrackingMode);
+  writer.writeDateTime(offsets[21], object.updatedAt);
 }
 
 Ingredient _ingredientDeserialize(
@@ -249,37 +265,35 @@ Ingredient _ingredientDeserialize(
   object.category =
       _IngredientcategoryValueEnumMap[reader.readStringOrNull(offsets[3])] ??
       IngredientCategory.produce;
-  object.densityGPerMl = reader.readDoubleOrNull(offsets[4]);
-  object.expiresAt = reader.readDateTimeOrNull(offsets[5]);
-  object.gramsPerPiece = reader.readDoubleOrNull(offsets[6]);
+  object.costIsEstimate = reader.readBool(offsets[4]);
+  object.densityGPerMl = reader.readDoubleOrNull(offsets[5]);
+  object.expiresAt = reader.readDateTimeOrNull(offsets[6]);
+  object.gramsPerPiece = reader.readDoubleOrNull(offsets[7]);
   object.id = id;
-  object.key = reader.readString(offsets[7]);
-  object.lastPurchaseQty = reader.readDouble(offsets[8]);
-  object.lastPurchasedAt = reader.readDateTimeOrNull(offsets[9]);
-  object.lastVerifiedAt = reader.readDateTimeOrNull(offsets[10]);
-  object.lowStockThreshold = reader.readDouble(offsets[11]);
-  object.name = reader.readString(offsets[12]);
-  object.nutritionConfirmedAt = reader.readDateTimeOrNull(offsets[13]);
+  object.key = reader.readString(offsets[8]);
+  object.lastCountedAt = reader.readDateTimeOrNull(offsets[9]);
+  object.lastPurchaseQty = reader.readDouble(offsets[10]);
+  object.lastPurchasedAt = reader.readDateTimeOrNull(offsets[11]);
+  object.lastVerifiedAt = reader.readDateTimeOrNull(offsets[12]);
+  object.lowStockThreshold = reader.readDouble(offsets[13]);
+  object.name = reader.readString(offsets[14]);
+  object.nutritionConfirmedAt = reader.readDateTimeOrNull(offsets[15]);
   object.nutritionSource =
       _IngredientnutritionSourceValueEnumMap[reader.readStringOrNull(
-        offsets[14],
+        offsets[16],
       )] ??
       DataSource.none;
   object.per100 =
       reader.readObjectOrNull<Nutrition>(
-        offsets[15],
+        offsets[17],
         NutritionSchema.deserialize,
         allOffsets,
       ) ??
       Nutrition();
-  object.qtyOnHand = reader.readDouble(offsets[16]);
-  object.shelfLifeDays = reader.readLong(offsets[17]);
-  object.trackingMode =
-      _IngredienttrackingModeValueEnumMap[reader.readStringOrNull(
-        offsets[18],
-      )] ??
-      TrackingMode.exact;
-  object.updatedAt = reader.readDateTime(offsets[19]);
+  object.qtyOnHand = reader.readDouble(offsets[18]);
+  object.shelfLifeDays = reader.readLong(offsets[19]);
+  object.legacyTrackingMode = reader.readStringOrNull(offsets[20]);
+  object.updatedAt = reader.readDateTime(offsets[21]);
   return object;
 }
 
@@ -307,32 +321,36 @@ P _ingredientDeserializeProp<P>(
               IngredientCategory.produce)
           as P;
     case 4:
-      return (reader.readDoubleOrNull(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 5:
-      return (reader.readDateTimeOrNull(offset)) as P;
-    case 6:
       return (reader.readDoubleOrNull(offset)) as P;
+    case 6:
+      return (reader.readDateTimeOrNull(offset)) as P;
     case 7:
-      return (reader.readString(offset)) as P;
+      return (reader.readDoubleOrNull(offset)) as P;
     case 8:
-      return (reader.readDouble(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 9:
       return (reader.readDateTimeOrNull(offset)) as P;
     case 10:
-      return (reader.readDateTimeOrNull(offset)) as P;
-    case 11:
       return (reader.readDouble(offset)) as P;
-    case 12:
-      return (reader.readString(offset)) as P;
-    case 13:
+    case 11:
       return (reader.readDateTimeOrNull(offset)) as P;
+    case 12:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 13:
+      return (reader.readDouble(offset)) as P;
     case 14:
+      return (reader.readString(offset)) as P;
+    case 15:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 16:
       return (_IngredientnutritionSourceValueEnumMap[reader.readStringOrNull(
                 offset,
               )] ??
               DataSource.none)
           as P;
-    case 15:
+    case 17:
       return (reader.readObjectOrNull<Nutrition>(
                 offset,
                 NutritionSchema.deserialize,
@@ -340,17 +358,13 @@ P _ingredientDeserializeProp<P>(
               ) ??
               Nutrition())
           as P;
-    case 16:
-      return (reader.readDouble(offset)) as P;
-    case 17:
-      return (reader.readLong(offset)) as P;
     case 18:
-      return (_IngredienttrackingModeValueEnumMap[reader.readStringOrNull(
-                offset,
-              )] ??
-              TrackingMode.exact)
-          as P;
+      return (reader.readDouble(offset)) as P;
     case 19:
+      return (reader.readLong(offset)) as P;
+    case 20:
+      return (reader.readStringOrNull(offset)) as P;
+    case 21:
       return (reader.readDateTime(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -408,14 +422,6 @@ const _IngredientnutritionSourceValueEnumMap = {
   r'aiEstimate': DataSource.aiEstimate,
   r'user': DataSource.user,
   r'label': DataSource.label,
-};
-const _IngredienttrackingModeEnumValueMap = {
-  r'exact': r'exact',
-  r'staple': r'staple',
-};
-const _IngredienttrackingModeValueEnumMap = {
-  r'exact': TrackingMode.exact,
-  r'staple': TrackingMode.staple,
 };
 
 Id _ingredientGetId(Ingredient object) {
@@ -1373,6 +1379,15 @@ extension IngredientQueryFilter
   }
 
   QueryBuilder<Ingredient, Ingredient, QAfterFilterCondition>
+  costIsEstimateEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'costIsEstimate', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<Ingredient, Ingredient, QAfterFilterCondition>
   densityGPerMlIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
@@ -1834,6 +1849,79 @@ extension IngredientQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.greaterThan(property: r'key', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<Ingredient, Ingredient, QAfterFilterCondition>
+  lastCountedAtIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'lastCountedAt'),
+      );
+    });
+  }
+
+  QueryBuilder<Ingredient, Ingredient, QAfterFilterCondition>
+  lastCountedAtIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'lastCountedAt'),
+      );
+    });
+  }
+
+  QueryBuilder<Ingredient, Ingredient, QAfterFilterCondition>
+  lastCountedAtEqualTo(DateTime? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'lastCountedAt', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<Ingredient, Ingredient, QAfterFilterCondition>
+  lastCountedAtGreaterThan(DateTime? value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'lastCountedAt',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Ingredient, Ingredient, QAfterFilterCondition>
+  lastCountedAtLessThan(DateTime? value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'lastCountedAt',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Ingredient, Ingredient, QAfterFilterCondition>
+  lastCountedAtBetween(
+    DateTime? lower,
+    DateTime? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'lastCountedAt',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
       );
     });
   }
@@ -2628,7 +2716,25 @@ extension IngredientQueryFilter
   }
 
   QueryBuilder<Ingredient, Ingredient, QAfterFilterCondition>
-  trackingModeEqualTo(TrackingMode value, {bool caseSensitive = true}) {
+  legacyTrackingModeIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'trackingMode'),
+      );
+    });
+  }
+
+  QueryBuilder<Ingredient, Ingredient, QAfterFilterCondition>
+  legacyTrackingModeIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'trackingMode'),
+      );
+    });
+  }
+
+  QueryBuilder<Ingredient, Ingredient, QAfterFilterCondition>
+  legacyTrackingModeEqualTo(String? value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.equalTo(
@@ -2641,8 +2747,8 @@ extension IngredientQueryFilter
   }
 
   QueryBuilder<Ingredient, Ingredient, QAfterFilterCondition>
-  trackingModeGreaterThan(
-    TrackingMode value, {
+  legacyTrackingModeGreaterThan(
+    String? value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
@@ -2659,8 +2765,8 @@ extension IngredientQueryFilter
   }
 
   QueryBuilder<Ingredient, Ingredient, QAfterFilterCondition>
-  trackingModeLessThan(
-    TrackingMode value, {
+  legacyTrackingModeLessThan(
+    String? value, {
     bool include = false,
     bool caseSensitive = true,
   }) {
@@ -2677,9 +2783,9 @@ extension IngredientQueryFilter
   }
 
   QueryBuilder<Ingredient, Ingredient, QAfterFilterCondition>
-  trackingModeBetween(
-    TrackingMode lower,
-    TrackingMode upper, {
+  legacyTrackingModeBetween(
+    String? lower,
+    String? upper, {
     bool includeLower = true,
     bool includeUpper = true,
     bool caseSensitive = true,
@@ -2699,7 +2805,7 @@ extension IngredientQueryFilter
   }
 
   QueryBuilder<Ingredient, Ingredient, QAfterFilterCondition>
-  trackingModeStartsWith(String value, {bool caseSensitive = true}) {
+  legacyTrackingModeStartsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.startsWith(
@@ -2712,7 +2818,7 @@ extension IngredientQueryFilter
   }
 
   QueryBuilder<Ingredient, Ingredient, QAfterFilterCondition>
-  trackingModeEndsWith(String value, {bool caseSensitive = true}) {
+  legacyTrackingModeEndsWith(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.endsWith(
@@ -2725,7 +2831,7 @@ extension IngredientQueryFilter
   }
 
   QueryBuilder<Ingredient, Ingredient, QAfterFilterCondition>
-  trackingModeContains(String value, {bool caseSensitive = true}) {
+  legacyTrackingModeContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.contains(
@@ -2738,7 +2844,7 @@ extension IngredientQueryFilter
   }
 
   QueryBuilder<Ingredient, Ingredient, QAfterFilterCondition>
-  trackingModeMatches(String pattern, {bool caseSensitive = true}) {
+  legacyTrackingModeMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.matches(
@@ -2751,7 +2857,7 @@ extension IngredientQueryFilter
   }
 
   QueryBuilder<Ingredient, Ingredient, QAfterFilterCondition>
-  trackingModeIsEmpty() {
+  legacyTrackingModeIsEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.equalTo(property: r'trackingMode', value: ''),
@@ -2760,7 +2866,7 @@ extension IngredientQueryFilter
   }
 
   QueryBuilder<Ingredient, Ingredient, QAfterFilterCondition>
-  trackingModeIsNotEmpty() {
+  legacyTrackingModeIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.greaterThan(property: r'trackingMode', value: ''),
@@ -2880,6 +2986,19 @@ extension IngredientQuerySortBy
     });
   }
 
+  QueryBuilder<Ingredient, Ingredient, QAfterSortBy> sortByCostIsEstimate() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'costIsEstimate', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Ingredient, Ingredient, QAfterSortBy>
+  sortByCostIsEstimateDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'costIsEstimate', Sort.desc);
+    });
+  }
+
   QueryBuilder<Ingredient, Ingredient, QAfterSortBy> sortByDensityGPerMl() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'densityGPerMl', Sort.asc);
@@ -2925,6 +3044,18 @@ extension IngredientQuerySortBy
   QueryBuilder<Ingredient, Ingredient, QAfterSortBy> sortByKeyDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'key', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Ingredient, Ingredient, QAfterSortBy> sortByLastCountedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastCountedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Ingredient, Ingredient, QAfterSortBy> sortByLastCountedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastCountedAt', Sort.desc);
     });
   }
 
@@ -3043,13 +3174,15 @@ extension IngredientQuerySortBy
     });
   }
 
-  QueryBuilder<Ingredient, Ingredient, QAfterSortBy> sortByTrackingMode() {
+  QueryBuilder<Ingredient, Ingredient, QAfterSortBy>
+  sortByLegacyTrackingMode() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'trackingMode', Sort.asc);
     });
   }
 
-  QueryBuilder<Ingredient, Ingredient, QAfterSortBy> sortByTrackingModeDesc() {
+  QueryBuilder<Ingredient, Ingredient, QAfterSortBy>
+  sortByLegacyTrackingModeDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'trackingMode', Sort.desc);
     });
@@ -3105,6 +3238,19 @@ extension IngredientQuerySortThenBy
   QueryBuilder<Ingredient, Ingredient, QAfterSortBy> thenByCategoryDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'category', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Ingredient, Ingredient, QAfterSortBy> thenByCostIsEstimate() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'costIsEstimate', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Ingredient, Ingredient, QAfterSortBy>
+  thenByCostIsEstimateDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'costIsEstimate', Sort.desc);
     });
   }
 
@@ -3165,6 +3311,18 @@ extension IngredientQuerySortThenBy
   QueryBuilder<Ingredient, Ingredient, QAfterSortBy> thenByKeyDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'key', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Ingredient, Ingredient, QAfterSortBy> thenByLastCountedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastCountedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Ingredient, Ingredient, QAfterSortBy> thenByLastCountedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastCountedAt', Sort.desc);
     });
   }
 
@@ -3283,13 +3441,15 @@ extension IngredientQuerySortThenBy
     });
   }
 
-  QueryBuilder<Ingredient, Ingredient, QAfterSortBy> thenByTrackingMode() {
+  QueryBuilder<Ingredient, Ingredient, QAfterSortBy>
+  thenByLegacyTrackingMode() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'trackingMode', Sort.asc);
     });
   }
 
-  QueryBuilder<Ingredient, Ingredient, QAfterSortBy> thenByTrackingModeDesc() {
+  QueryBuilder<Ingredient, Ingredient, QAfterSortBy>
+  thenByLegacyTrackingModeDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'trackingMode', Sort.desc);
     });
@@ -3339,6 +3499,12 @@ extension IngredientQueryWhereDistinct
     });
   }
 
+  QueryBuilder<Ingredient, Ingredient, QDistinct> distinctByCostIsEstimate() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'costIsEstimate');
+    });
+  }
+
   QueryBuilder<Ingredient, Ingredient, QDistinct> distinctByDensityGPerMl() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'densityGPerMl');
@@ -3362,6 +3528,12 @@ extension IngredientQueryWhereDistinct
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'key', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<Ingredient, Ingredient, QDistinct> distinctByLastCountedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'lastCountedAt');
     });
   }
 
@@ -3428,7 +3600,7 @@ extension IngredientQueryWhereDistinct
     });
   }
 
-  QueryBuilder<Ingredient, Ingredient, QDistinct> distinctByTrackingMode({
+  QueryBuilder<Ingredient, Ingredient, QDistinct> distinctByLegacyTrackingMode({
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
@@ -3477,6 +3649,12 @@ extension IngredientQueryProperty
     });
   }
 
+  QueryBuilder<Ingredient, bool, QQueryOperations> costIsEstimateProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'costIsEstimate');
+    });
+  }
+
   QueryBuilder<Ingredient, double?, QQueryOperations> densityGPerMlProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'densityGPerMl');
@@ -3498,6 +3676,13 @@ extension IngredientQueryProperty
   QueryBuilder<Ingredient, String, QQueryOperations> keyProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'key');
+    });
+  }
+
+  QueryBuilder<Ingredient, DateTime?, QQueryOperations>
+  lastCountedAtProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'lastCountedAt');
     });
   }
 
@@ -3566,8 +3751,8 @@ extension IngredientQueryProperty
     });
   }
 
-  QueryBuilder<Ingredient, TrackingMode, QQueryOperations>
-  trackingModeProperty() {
+  QueryBuilder<Ingredient, String?, QQueryOperations>
+  legacyTrackingModeProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'trackingMode');
     });

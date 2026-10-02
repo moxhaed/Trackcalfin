@@ -8,6 +8,7 @@ import '../../application/scan_service.dart';
 import '../../core/currency.dart';
 import '../../core/enums.dart';
 import '../../data/isar/collections/schemas.dart';
+import '../../domain/validation/receipt_validator.dart';
 import '../capture/scan_flow.dart';
 import '../common/format.dart';
 import '../common/widgets.dart';
@@ -76,16 +77,20 @@ class _JobCard extends ConsumerWidget {
       _ => 'Scan',
     };
     final attention = job.lines.where((l) => l.needsAttention).length;
+    final dateFlag = job.flags.any(ReceiptValidator.dateFlags.contains);
     final subtitle = switch (job.status) {
       ScanStatus.queued => job.lastError ?? 'Will process when online',
       ScanStatus.processing => 'The AI is extracting items',
       ScanStatus.needsReview => [
+        if (job.maybeDuplicate) 'already filed?',
         if (attention > 0) '$attention to check',
         if (job.flags.contains('total_mismatch')) 'totals differ',
         if (foreign) job.fxRate == null ? 'needs an exchange rate' : 'converted from ${job.currency}',
         if (job.flags.contains('currency_uncertain')) 'check the currency',
-        if (job.flags.contains('merge_proposed')) 'possible duplicates',
+        if (dateFlag) 'check the date',
+        if (job.flags.contains('merge_proposed')) 'possible matches',
         if (attention == 0 &&
+            !job.maybeDuplicate &&
             job.flags.where((f) => f != 'foreign_currency').isEmpty &&
             (!foreign || job.fxRate != null))
           'ready to file',

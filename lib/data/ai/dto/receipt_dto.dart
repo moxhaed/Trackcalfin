@@ -12,7 +12,6 @@ class NewIngredientDto {
     this.densityGPerMl,
     required this.per100,
     required this.shelfLifeDays,
-    required this.suggestStaple,
   });
   final String name;
   final IngredientCategory category;
@@ -21,7 +20,14 @@ class NewIngredientDto {
   final double? densityGPerMl;
   final Nutrition per100;
   final int shelfLifeDays;
-  final bool suggestStaple;
+}
+
+/// The usual shop price of one package, from a pantry photo: [priceMinor] in the home
+/// currency for [packageQty] of the item's unit.
+class ShelfPriceDto {
+  ShelfPriceDto(this.packageQty, this.priceMinor);
+  final double packageQty;
+  final int priceMinor;
 }
 
 class ReceiptItemDto {
@@ -37,6 +43,8 @@ class ReceiptItemDto {
     this.unit,
     required this.qtySource,
     required this.confidence,
+    this.product,
+    this.shelfPrice,
     this.newIngredient,
   });
   final String rawText;
@@ -50,6 +58,10 @@ class ReceiptItemDto {
   final BaseUnit? unit;
   final QtySource qtySource;
   final Confidence confidence;
+
+  /// The exact product the model recognized: brand, name, variant and pack size.
+  final String? product;
+  final ShelfPriceDto? shelfPrice;
   final NewIngredientDto? newIngredient;
 }
 
@@ -122,6 +134,17 @@ class ReceiptExtraction {
           profile = _profile(j, rawProfile.cast<String, dynamic>(), '$path.new_ingredient');
         }
       }
+      final product = j.str(it, 'product', path, nullable: true);
+      ShelfPriceDto? shelf;
+      final rawShelf = j.object(it, 'shelf_price', path, nullable: true);
+      if (rawShelf != null) {
+        final sp = '$path.shelf_price';
+        final q = j.number(rawShelf, 'package_qty', sp);
+        final price = j.integer(rawShelf, 'price_minor', sp);
+        if (q != null && q <= 0) j.error('$sp.package_qty', 'must be > 0');
+        if (price != null && price <= 0) j.error('$sp.price_minor', 'must be > 0');
+        if (q != null && price != null && q > 0 && price > 0) shelf = ShelfPriceDto(q, price);
+      }
       items.add(
         ReceiptItemDto(
           rawText: j.str(it, 'raw_text', path, nullable: true) ?? '',
@@ -135,6 +158,8 @@ class ReceiptExtraction {
           unit: j.enumOf(it, 'unit', path, EnumCodec.unit, nullable: true),
           qtySource: j.enumOf(it, 'qty_source', path, EnumCodec.qtySource, nullable: true) ?? QtySource.unknown,
           confidence: j.enumOf(it, 'confidence', path, EnumCodec.confidence, nullable: true) ?? Confidence.medium,
+          product: product == null || product.trim().isEmpty ? null : product.trim(),
+          shelfPrice: shelf,
           newIngredient: profile,
         ),
       );
@@ -178,7 +203,6 @@ class ReceiptExtraction {
       densityGPerMl: j.number(p, 'density_g_per_ml', path, nullable: true),
       per100: nutrition,
       shelfLifeDays: j.integer(p, 'shelf_life_days', path) ?? 7,
-      suggestStaple: j.boolean(p, 'suggest_staple', path),
     );
   }
 }

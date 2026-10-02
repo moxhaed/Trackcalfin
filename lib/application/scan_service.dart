@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:isar_community/isar.dart';
 
+import '../core/day_clock.dart';
 import '../core/enums.dart';
 import '../data/ai/context_builders.dart';
 import '../data/ai/dto/receipt_dto.dart';
@@ -18,6 +19,7 @@ import '../platform/image_store.dart';
 import 'ai_gateway.dart';
 import 'clock.dart';
 import 'fx_service.dart';
+import 'recipe_service.dart';
 
 /// A foreign-currency receipt can't be filed until it has an exchange rate.
 class MissingExchangeRate implements Exception {
@@ -30,10 +32,14 @@ class MissingExchangeRate implements Exception {
 }
 
 class ScanResult {
-  ScanResult(this.job, {this.autoCommitted = false, this.transactionId});
+  ScanResult(this.job, {this.autoCommitted = false, this.transactionId, this.clean = false});
   final ScanJob job;
   final bool autoCommitted;
   final int? transactionId;
+
+  /// The AI read the receipt without a flag. It may still wait for review because of what the
+  /// app knows: an old date, a possible duplicate, or items already counted in the pantry.
+  final bool clean;
 }
 
 /// Capture → queue → Prompt A → validate → review/auto-commit → ledger + pantry.
@@ -167,18 +173,97 @@ class ScanService {
       ..flags = draft.flags
       ..lastError = null
       ..status = ScanStatus.needsReview;
+    await _findDuplicate(job);
     if (isForeign(job, profile.currency) && fx != null) {
       final q = await fx!.quote(job.currency!, profile.currency, job.purchasedAt ?? job.capturedAt);
       if (q != null) _setRate(job, q);
     }
     await _save(job);
 
-    if (draft.autoCommitEligible && profile.autoCommitCleanScans) {
+    if (draft.autoCommitEligible && !job.maybeDuplicate && profile.autoCommitCleanScans) {
       final txId = await commit(job.id);
       final fresh = (await isar.scanJobs.get(job.id))!;
-      return ScanResult(fresh, autoCommitted: true, transactionId: txId);
+      return ScanResult(fresh, autoCommitted: true, transactionId: txId, clean: true);
     }
-    return ScanResult(job);
+    return ScanResult(job, clean: draft.clean);
+  }
+
+  static int _lineSum(ScanJob job) => job.lines.where((l) => l.include).fold(0, (a, l) => a + l.totalMinor);
+
+  /// Flags a receipt that looks like one already filed, or like another scan waiting in the
+  /// Inbox: same day, same total (printed or added up) and the same store.
+  Future<void> _findDuplicate(ScanJob job) async {
+    job
+      ..duplicateOfTxId = null
+      ..duplicateOfJobId = null;
+    final day = job.purchasedAt;
+    if (job.kind != ScanKind.receipt || day == null) return;
+    final currency = (job.currency ?? '').toUpperCase();
+    final totals = {?job.receiptTotalMinor, _lineSum(job)};
+    bool same(String? merchant, DateTime otherDay, Iterable<int?> otherTotals) => totals.any(
+      (a) => otherTotals.nonNulls.any(
+        (b) => ReceiptValidator.sameReceipt(
+          merchant: job.merchant,
+          day: day,
+          totalMinor: a,
+          otherMerchant: merchant,
+          otherDay: otherDay,
+          otherTotalMinor: b,
+        ),
+      ),
+    );
+
+    final from = DateTime(day.year, day.month, day.day);
+    final filed = await isar.transactions.where().occurredAtBetween(from, DayClock.addDays(from, 1)).findAll();
+    for (final tx in filed) {
+      // Compare in the receipt's own currency: a foreign receipt keeps its printed total.
+      final txCurrency = (tx.originalCurrency ?? tx.currency).toUpperCase();
+      if (txCurrency != currency) continue;
+      final source = tx.scanJobId == null ? null : await isar.scanJobs.get(tx.scanJobId!);
+      if (same(tx.merchant, tx.occurredAt, [tx.originalTotalMinor ?? tx.totalMinor, source?.receiptTotalMinor])) {
+        job.duplicateOfTxId = tx.id;
+        return;
+      }
+    }
+    final waiting = await isar.scanJobs.where().statusEqualTo(ScanStatus.needsReview).findAll();
+    for (final other in waiting) {
+      if (other.id == job.id || other.kind != ScanKind.receipt || other.purchasedAt == null) continue;
+      if ((other.currency ?? '').toUpperCase() != currency) continue;
+      if (same(other.merchant, other.purchasedAt!, [other.receiptTotalMinor, _lineSum(other)])) {
+        job.duplicateOfJobId = other.id;
+        return;
+      }
+    }
+  }
+
+  /// Review: the user set the receipt's date. Re-runs what depends on it: the pantry
+  /// questions, the duplicate check and an automatic exchange rate.
+  Future<void> setPurchaseDate(int jobId, DateTime date) async {
+    final job = await isar.scanJobs.get(jobId);
+    if (job == null || job.kind != ScanKind.receipt) return;
+    job
+      ..purchasedAt = date
+      ..flags = job.flags.where((f) => !ReceiptValidator.dateFlags.contains(f)).toList();
+    final byId = {for (final i in await isar.ingredients.where().findAll()) i.id: i};
+    for (final l in job.lines) {
+      if (l.ingredientKey == null) continue;
+      ReceiptValidator.checkStock(
+        l,
+        kind: job.kind,
+        existing: byId[l.matchedIngredientId],
+        purchasedAt: date,
+        capturedAt: job.capturedAt,
+      );
+    }
+    await _findDuplicate(job);
+    final home = (await isar.userProfiles.get(1))?.currency ?? 'EUR';
+    final automatic =
+        job.fxSource == null || job.fxSource == FxSource.ecb.name || job.fxSource == FxSource.remembered.name;
+    if (isForeign(job, home) && fx != null && automatic) {
+      final q = await fx!.quote(job.currency!, home, date);
+      if (q != null) _setRate(job, q);
+    }
+    await _save(job);
   }
 
   Future<void> _save(ScanJob job) => isar.writeTxn(() => isar.scanJobs.put(job));
@@ -244,25 +329,43 @@ class ScanService {
       if (job == null || job.status == ScanStatus.committed) return job?.transactionId;
       final included = job.lines.where((l) => l.include).toList();
 
+      final touched = <int>{};
       if (job.kind == ScanKind.pantry) {
+        // The photo shows the pantry as it was when it was taken.
+        final seen = job.capturedAt;
+        final counted = <String>{};
         for (final l in included) {
           if (l.ingredientKey == null || l.qty == null) continue;
-          final ing = await _resolveOrCreate(l, t, qtyOnly: true);
+          final effect = l.effectFor(job.kind);
+          if (effect == StockEffect.none) continue;
+          final ing = await _resolveOrCreate(l, t);
           final before = ing.qtyOnHand;
-          ing.qtyOnHand = l.qty!;
+          // "Extra one" adds to what's there; so does a second line for the same item.
+          final extra = effect == StockEffect.add || counted.contains(ing.key);
+          ing.qtyOnHand = extra ? before + l.qty! : l.qty!;
           if (ing.qtyOnHand < before) {
             ExpiryEstimator.onDeplete(ing);
           } else if (before <= 0 && ing.qtyOnHand > 0) {
             ing
-              ..lastPurchasedAt = t
+              ..lastPurchasedAt = seen
               ..lastPurchaseQty = ing.qtyOnHand
-              ..expiresAt = t.add(Duration(days: ing.shelfLifeDays));
+              ..expiresAt = DayClock.addDays(seen, ing.shelfLifeDays);
+          } else if (extra && l.qty! > 0) {
+            ExpiryEstimator.onPurchase(ing, qtyBefore: before, at: seen);
+            ing
+              ..lastPurchasedAt = seen
+              ..lastPurchaseQty = l.qty!;
           }
+          final shelfPrice = l.estUnitCostMinor;
+          if (shelfPrice != null) CostingEngine.applyEstimate(ing, shelfPrice);
           ing
-            ..lastVerifiedAt = t
+            ..lastVerifiedAt = seen
+            ..lastCountedAt = seen
             ..updatedAt = t;
-          await isar.ingredients.put(ing);
+          touched.add(await isar.ingredients.put(ing));
+          counted.add(ing.key);
         }
+        await RecipeService.refreshUsing(isar, touched);
         job.status = ScanStatus.committed;
         await isar.scanJobs.put(job);
         return null;
@@ -293,16 +396,27 @@ class ScanService {
             l.ingredientKey != null &&
             (l.qty ?? 0) > 0) {
           final ing = await _resolveOrCreate(l, t);
-          CostingEngine.applyPurchase(ing, qtyAdded: l.qty!, lineTotalMinor: l.totalMinor, at: at);
+          final stocked = l.effectFor(job.kind) != StockEffect.none;
+          if (stocked) {
+            CostingEngine.applyPurchase(ing, qtyAdded: l.qty!, lineTotalMinor: l.totalMinor, at: at);
+          } else {
+            // Already counted, or used up: the money is filed, the pantry stays as it is.
+            CostingEngine.learnPrice(ing, qty: l.qty!, lineTotalMinor: l.totalMinor);
+          }
           if (l.rawText.isNotEmpty) IngredientMatcher.learnAlias(ing, l.rawText);
           final id = await isar.ingredients.put(ing);
-          item
-            ..ingredientId = id
-            ..ingredientKey = ing.key
-            ..qtyBase = l.qty;
+          touched.add(id);
+          if (stocked) {
+            item
+              ..ingredientId = id
+              ..ingredientKey = ing.key
+              ..qtyBase = l.qty;
+          }
         }
         txLines.add(item);
       }
+      // Prices changed: recipes show what they cost now.
+      await RecipeService.refreshUsing(isar, touched);
       final tx = Transaction()
         ..occurredAt = at
         ..source = TxSource.receiptScan
@@ -327,7 +441,7 @@ class ScanService {
     });
   }
 
-  Future<Ingredient> _resolveOrCreate(DraftLine l, DateTime t, {bool qtyOnly = false}) async {
+  Future<Ingredient> _resolveOrCreate(DraftLine l, DateTime t) async {
     if (l.matchedIngredientId != null) {
       final hit = await isar.ingredients.get(l.matchedIngredientId!);
       if (hit != null) return hit;
@@ -349,7 +463,6 @@ class ScanService {
       ..per100 = p.per100
       ..nutritionSource = l.profile == null ? DataSource.none : DataSource.aiEstimate
       ..shelfLifeDays = p.shelfLifeDays
-      ..trackingMode = p.suggestStaple ? TrackingMode.staple : TrackingMode.exact
       ..lastVerifiedAt = t
       ..updatedAt = t;
   }

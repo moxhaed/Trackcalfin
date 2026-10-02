@@ -4,9 +4,9 @@ The master prompts are **runtime assets**. The app loads them verbatim as the `s
 
 | Prompt | File | Task |
 |---|---|---|
-| **A** | [`assets/prompts/receipt_extraction.v2.md`](../assets/prompts/receipt_extraction.v2.md) | Receipt or pantry image → structured JSON (expenses, categories, stock quantities, new-ingredient profiles) |
-| **B** | [`assets/prompts/daily_recipe.v1.md`](../assets/prompts/daily_recipe.v1.md) | Inventory JSON → one stock-only recipe JSON (quantities per portion, estimates, hook line) |
-| **C** | [`assets/prompts/spontaneous_recipe.v1.md`](../assets/prompts/spontaneous_recipe.v1.md) | User text/voice + inventory JSON → feasibility verdict + adapted recipe + shopping list JSON |
+| **A** | [`assets/prompts/receipt_extraction.v3.md`](../assets/prompts/receipt_extraction.v3.md) | Receipt or pantry image → structured JSON (expenses, categories, stock quantities, the exact product, a shop price for pantry items, new-ingredient profiles) |
+| **B** | [`assets/prompts/daily_recipe.v2.md`](../assets/prompts/daily_recipe.v2.md) | Inventory JSON → one stock-only recipe JSON (quantities per portion, estimates, hook line). Salt and oil only when they are in the inventory. |
+| **C** | [`assets/prompts/spontaneous_recipe.v2.md`](../assets/prompts/spontaneous_recipe.v2.md) | User text/voice + inventory JSON → feasibility verdict + adapted recipe + shopping list JSON |
 | **D** | [`assets/prompts/nutrition_estimate.v1.md`](../assets/prompts/nutrition_estimate.v1.md) | Ingredients with unknown macros → typical values per 100 g, density, piece weight |
 | **E** | [`assets/prompts/nutrition_label.v1.md`](../assets/prompts/nutrition_label.v1.md) | Photo of a nutrition facts panel → the printed values, unconverted |
 
@@ -49,7 +49,7 @@ Content-Type: application/json
 ```
 ```json
 {
-  "systemInstruction": { "parts": [{ "text": "<contents of receipt_extraction.v2.md>" }] },
+  "systemInstruction": { "parts": [{ "text": "<contents of receipt_extraction.v3.md>" }] },
   "contents": [{
     "role": "user",
     "parts": [
@@ -105,10 +105,10 @@ Read the reply from `candidates[0].content.parts[*].text`, skipping any part fla
 | `kcal_100` … `fat_100` | `per100` (fiber omitted to save tokens) |
 | `days_left` | `ExpiryEstimator.daysLeft`, null when shelf-stable |
 
-Selection: `trackingMode == exact && qtyOnHand ≥ 5 g/ml (or ≥ 1 pc)`, sorted by `days_left` ascending (nulls last) so spoiling items come first. Staples go in a separate `staples: [key, ...]` array.
+Selection: `qtyOnHand ≥ 5 g/ml (or ≥ 1 pc)`, sorted by `days_left` ascending (nulls last) so spoiling items come first. Salt, oil and spices are inventory items like any other. There is no staples list: what isn't in the inventory isn't in the kitchen, and the prompts say so.
 
 ### Prompt B input
-`today, weekday, output_language, currency, minor_unit_digits, portions (= profile.defaultPortions), targets_per_portion { kcal = dailyKcal / mealsPerDay, protein_g = dailyProtein / mealsPerDay, max_cost_minor = targetCostPerPortion }, profile {diet, allergies, dislikes, cuisines_liked, equipment, max_active_minutes}, inventory, staples, recent_recipes (titles suggested or cooked in the last 14 days, newest first, max 20), rejected_today`.
+`today, weekday, output_language, currency, minor_unit_digits, portions (= profile.defaultPortions), targets_per_portion { kcal = dailyKcal / mealsPerDay, protein_g = dailyProtein / mealsPerDay, max_cost_minor = targetCostPerPortion }, profile {diet, allergies, dislikes, cuisines_liked, equipment, max_active_minutes}, inventory, recent_recipes (titles suggested or cooked in the last 14 days, newest first, max 20), rejected_today`.
 
 ### Prompt C input
 Same as B, minus `portions`, `weekday`, `recent_recipes` and `rejected_today`, plus `user_request` (raw STT or typed text), `requested_portions` (parsed locally by regex: `for (\d+)`, `(\d+) portions?`, else null) and `default_portions`.
@@ -120,7 +120,7 @@ The user turn is **the JSON envelope only** (plus images for A). No natural-lang
 ```
 Your previous response failed validation:
 - <error 1, e.g. "items[3].total_minor must be an integer">
-- <error 2, e.g. "ingredients[2].key 'parmesan' is not in inventory or staples">
+- <error 2, e.g. "ingredients[2].key 'parmesan' is not in inventory">
 Return the corrected JSON object only.
 ```
 
@@ -139,11 +139,13 @@ raw text ─► JSON.parse ─► DTO (freezed, strict enums) ─► task valida
 | R3 | Line money in [−50 000, 100 000] minor units | flag the line as low |
 | R4 | Quantity bounds: g/ml ≤ 25 000, pc ≤ 60 | flag the line as low |
 | R5 | Keys match `^[a-z][a-z0-9_]{1,40}$`. A known key must exist. A new key goes through the fuzzy check (§3.13). | remap, or `merge_proposed` → review |
-| R6 | `purchased_at` not in the future and ≤ 60 days old | use `capturedAt`, flag |
+| R6 | `purchased_at` is printed and not in the future. Old receipts keep their date: the expense is filed on that day and freshness counts from it. | none printed → `capturedAt` + `date_missing`; future → `capturedAt` + `date_adjusted`; over a year back → kept + `date_old`. All three go to review, where the date can be changed. |
 | R7 | New-ingredient profile: required fields, `kcal ≤ 900/100 g`, **Atwater check** (§3.5) | flag `nutrition_suspect` (still committed, editable) |
 | R8 | `currency` equals the profile currency (a `currency_uncertain` warning is flagged too) | flag `foreign_currency` → review with a conversion card (see §5.8) |
+| R9 | Each grocery line's quantity belongs in the pantry ([03 §3.16](03-algorithms.md#316-scan-checks-the-receipts-date-pantry-questions-duplicates)) | pantry photo of an item already on hand → "Same one / Extra"; receipt item counted after the purchase → "Already counted / Add"; receipt older than the item keeps → "Used up / Still have it". The money is filed either way. |
+| R10 | No other receipt with the same day, total and store is filed or waiting in the Inbox | `duplicateOfTxId` / `duplicateOfJobId` → review: "Discard this one / It's a different one" |
 
-**Auto-commit** (when `autoCommitCleanScans` is on) requires: `image_type == receipt`, no `total_mismatch`, no `low` confidence line, no grocery line with `qty_source == unknown`, no `merge_proposed`, no `foreign_currency` and no `currency_uncertain`. Otherwise the job goes to `needsReview`. Pantry scans always go to review (a diff screen), because they overwrite quantities.
+**Auto-commit** (when `autoCommitCleanScans` is on) requires: `image_type == receipt`, no `total_mismatch`, no `low` confidence line, no grocery line with `qty_source == unknown`, no `merge_proposed`, no `foreign_currency`, no `currency_uncertain` and no date flag (`ScanDraft.clean`), plus no R9 question and no R10 match. Otherwise the job goes to `needsReview`. Pantry scans always go to review (a diff screen), because they overwrite quantities.
 
 ### RecipeValidator (Prompts B and C)
 | # | Check | On failure |
@@ -151,7 +153,7 @@ raw text ─► JSON.parse ─► DTO (freezed, strict enums) ─► task valida
 | V1 | JSON, enums, required keys, `recipe != null` unless status allows it | repair retry |
 | V2 | **Allergen screen**: ingredient keys and names vs `profile.allergies` + a synonym table (e.g. gluten → wheat, pasta, bread, flour, couscous, barley, rye, soy sauce; dairy → milk, cheese, butter, cream, yogurt; peanut → groundnut, satay; plus tree nuts, egg, fish, shellfish, sesame, soy) | **reject** → repair retry with an explicit error. Never displayed. |
 | V3 | Every `stock` key exists in inventory | `IngredientMatcher.resolve(key, name)` → remap + flag `remapped_key`. Unresolvable: B → repair retry, C → convert to `missing`. |
-| V4 | Every `staple` key is in staples | try stock lookup, else drop if < 5 g/ml, else `missing` |
+| V4 | No staples: salt, oil and spices are `stock` rows checked by V3 and V6 like everything else. A `staple` role is an enum error. | B: repair retry ("'Salt' needs 6 g … but only 0 is available"). C: shortfall or `missing` → shopping list. |
 | V5 | Units convertible to the ingredient's base unit (`UnitConverter`) | flag `unit_mismatch`, exclude that row from the Dart numbers |
 | V6 | Quantities: B needs `need ≤ have` (2% tolerance) | clamp `portions` down to `FeasibilityChecker.maxPortionsNow`, flag. If 0 → repair retry. |
 | V6c | Quantities: C | Dart computes `maxPortionsNow` and shortfalls and **overrides `status`** |
@@ -167,7 +169,7 @@ raw text ─► JSON.parse ─► DTO (freezed, strict enums) ─► task valida
 | `meat_fish, dairy_eggs, grains_pasta, legumes_nuts, canned_jarred, spices_condiments, oils_fats, snacks_sweets` | `IngredientCategory.meatFish …` (camelCase) |
 | `product, adjustment, deposit, fee` | `LineType.*` |
 | `printed, inferred, estimated, unknown` | `QtySource.*` |
-| `stock, staple, missing` | `IngredientRole.*` |
+| `stock, missing` | `IngredientRole.*` |
 | `missing_est { cost_minor_per_portion, kcal_per_portion, protein_g_per_portion, carbs_g_per_portion, fat_g_per_portion }` | `RecipeIngredient.estCostMinor` + `estNutritionPerPortion` (fiber 0) |
 
 Use an explicit `switch` per enum. An unknown value is a validation error (repair retry), never a silent default.
@@ -189,14 +191,25 @@ Prompt A v2 returns amounts in the receipt's own currency and minor units (¥1,2
 
 ## 5.9 Ingredient macros (Prompts D and E)
 
-Every number in a recipe comes from `Ingredient.per100`, so an ingredient with no macros silently counts as 0 kcal. `nutritionSource == none` marks that state. Onboarding staples, items added by hand with empty macro fields, and scanned items without a profile all start there.
+Every number in a recipe comes from `Ingredient.per100`, so an ingredient with no macros silently counts as 0 kcal. `nutritionSource == none` marks that state. Items added by hand with empty macro fields and scanned items without a profile start there (as did the onboarding staples of schema 2).
 
 - **D, estimate** (`NutritionService.fillMissing`): batches of up to 40 unknown items, `thinkingLevel: low`, no images. It runs on app resume, after the API key is saved, after onboarding, after a scan is filed, and from *Fill with AI* in the pantry. The model returns food-table values **per 100 g** plus `density_g_per_ml`, and Dart converts ml items to per 100 ml (`NutritionEngine.per100For`). The DTO rejects missing or unknown keys, macros over 100 g per 100 g, and ml or pc items without a density or piece weight, which triggers the usual repair retry. Items the user filled in while the call was running are left alone.
 - **E, label** (`NutritionService.readLabel`): one or more photos, `mediaResolution: high`. The model only transcribes one column (per 100 g, per 100 ml or per serving with its size) and the energy in kcal and/or kJ. Dart does the conversion (`NutritionEngine.fromLabel`): kJ → kcal, per serving → per 100, g ↔ ml by the ingredient's density, and fiber taken out of US-style total carbohydrate. It flags `energy_mismatch` (Atwater) and `too_dense` (more than 9.1 kcal or 1.05 g of macros per gram). Nothing is saved until the user checks the numbers in the ingredient sheet and taps *Save macros*.
 
 Confirmation lives in `Ingredient.nutritionConfirmedAt`: set by a saved label (`nutritionSource: label`), by typed numbers (`user`) or by *Confirm* on an AI estimate. Changing an ingredient's macros, unit or piece weight refreshes the stored numbers of every non-archived recipe that uses it (`RecipeService.refreshUsing`). Cook sessions keep their snapshot.
 
-## 5.10 References
+## 5.10 Exact products and shelf prices (Prompt A v3)
+
+Every grocery line names the exact product the model recognized (`product`: brand, name, variant and pack size, such as "Barilla Spaghetti n.5, 500 g"), read from the packaging or decoded from the receipt line. On a receipt this helps the quantity, because the identified product's pack size replaces a guessed one. A pantry photo has no prices, so each item also gets a `shelf_price`: the usual price of one pack at a typical supermarket in `country`, in the home currency, plus the pack size. It comes from the model's own knowledge of products and prices, not a live web search.
+
+Dart keeps the decisions:
+- The review screen shows the product and "~€1.99 a pack". The pack price can be edited there.
+- Filing turns it into a unit cost and applies it only where no price was paid (`CostingEngine.applyEstimate`, `Ingredient.costIsEstimate`). The pantry marks such values with "~", and recipes list the items whose prices are estimates. The next receipt for the item replaces the estimate instead of averaging with it.
+- Receipt lines never take a shelf price.
+
+Gemini's Grounding with Google Search could look prices up live instead. It isn't used: it is billed per request on top of the model call, and its results come with display requirements for Google's search suggestions.
+
+## 5.11 References
 
 - Gemini 3.8 Flash announcement and model ID: [Introducing Gemini 3.8 Flash](https://blog.google/innovation-and-ai/models-and-research/gemini-models/3-8-flash-and-3-8-flash-cyber/), [Gemini API: What's new in Gemini 3.8 Flash](https://ai.google.dev/gemini-api/docs/latest-model)
 - Structured output (`responseMimeType`, `responseJsonSchema` / `responseSchema`): [Gemini API structured outputs](https://ai.google.dev/gemini-api/docs/generate-content/structured-output), [Improving structured outputs in the Gemini API](https://blog.google/technology/developers/gemini-api-structured-outputs/)

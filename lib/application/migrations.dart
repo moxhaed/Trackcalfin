@@ -7,7 +7,7 @@ import '../data/isar/collections/schemas.dart';
 class Migrations {
   const Migrations._();
 
-  static const current = 2;
+  static const current = 3;
 
   static Future<void> run(Isar isar) async {
     final p = await isar.userProfiles.get(1);
@@ -25,6 +25,19 @@ class Migrations {
             ..nutritionConfirmedAt = null;
         }
         await isar.ingredients.putAll(zero);
+      }
+      if (p.schemaVersion < 3) {
+        // v3: no more staples. Items that were "always there" become regular pantry items:
+        // counted, deducted when cooked and costed. They were never deducted, so any amount
+        // they show is a guess and goes to Quick Check.
+        final legacy = await isar.ingredients.filter().legacyTrackingModeIsNotNull().findAll();
+        for (final i in legacy) {
+          if (i.legacyTrackingMode == 'staple' && i.qtyOnHand > 0) i.lastVerifiedAt = null;
+          i.legacyTrackingMode = null;
+        }
+        await isar.ingredients.putAll(legacy);
+        // Recipe rows stored with role "staple" already load as stock; store them that way.
+        await isar.recipes.putAll(await isar.recipes.where().findAll());
       }
       p.schemaVersion = current;
       await isar.userProfiles.put(p);

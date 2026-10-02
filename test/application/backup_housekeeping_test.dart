@@ -1,8 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:isar_community/isar.dart';
 import 'package:trackcalfin/application/backup_service.dart';
 import 'package:trackcalfin/application/demo_seed.dart';
 import 'package:trackcalfin/application/housekeeping.dart';
+import 'package:trackcalfin/application/migrations.dart';
 import 'package:trackcalfin/core/enums.dart';
 import 'package:trackcalfin/data/isar/collections/schemas.dart';
 
@@ -38,6 +41,61 @@ void main() {
     final carbonara = await isar.recipes.filter().titleContains('carbonara').findFirst();
     expect(carbonara!.ingredients.where((i) => i.substitutesFor == 'guanciale').length, 1);
     expect((await isar.userProfiles.get(1))!.onboardingDone, isTrue);
+  });
+
+  test('a backup from before schema 3 turns its staples into regular items', () async {
+    final verified = DateTime(2026, 9, 20);
+    await isar.writeTxn(() async {
+      await isar.userProfiles.put(UserProfile());
+      await isar.ingredients.putAll([
+        Ingredient()
+          ..key = 'olive_oil'
+          ..name = 'Olive oil'
+          ..baseUnit = BaseUnit.ml
+          ..qtyOnHand = 1500
+          ..lastVerifiedAt = verified,
+        Ingredient()
+          ..key = 'salt'
+          ..name = 'Salt'
+          ..lastVerifiedAt = verified,
+        Ingredient()
+          ..key = 'chicken_breast'
+          ..name = 'Chicken breast'
+          ..qtyOnHand = 500
+          ..lastVerifiedAt = verified,
+      ]);
+      await isar.recipes.put(
+        Recipe()
+          ..title = 'Salted chicken'
+          ..ingredients = [
+            RecipeIngredient()
+              ..key = 'chicken_breast'
+              ..qtyPerPortion = 150,
+            RecipeIngredient()
+              ..key = 'salt'
+              ..qtyPerPortion = 2,
+          ],
+      );
+    });
+    // What an export from the old version looked like.
+    final data = jsonDecode(await BackupService(isar).exportJson()) as Map<String, dynamic>;
+    for (final i in (data['ingredients'] as List).cast<Map>()) {
+      i['trackingMode'] = i['key'] == 'chicken_breast' ? 'exact' : 'staple';
+    }
+    ((((data['recipes'] as List)[0] as Map)['ingredients'] as List)[1] as Map)['role'] = 'staple';
+    ((data['userProfiles'] as List)[0] as Map)['schemaVersion'] = 2;
+
+    await BackupService(isar).importJson(jsonEncode(data));
+    final oil = (await isar.ingredients.getByKey('olive_oil'))!;
+    expect(oil.legacyTrackingMode, isNull);
+    expect(oil.qtyOnHand, 1500);
+    expect(oil.lastVerifiedAt, isNull, reason: 'it was never deducted, so Quick Check asks about it');
+    expect((await isar.ingredients.getByKey('salt'))!.lastVerifiedAt, verified, reason: 'none on hand');
+    expect((await isar.ingredients.getByKey('chicken_breast'))!.lastVerifiedAt, verified);
+    expect((await isar.userProfiles.get(1))!.schemaVersion, Migrations.current);
+    final again = jsonDecode(await BackupService(isar).exportJson()) as Map<String, dynamic>;
+    final rows = (((again['recipes'] as List)[0] as Map)['ingredients'] as List).cast<Map>();
+    expect(rows.map((r) => r['role']), ['stock', 'stock'], reason: 'stored the new way');
   });
 
   test('import rejects files that are not backups', () async {

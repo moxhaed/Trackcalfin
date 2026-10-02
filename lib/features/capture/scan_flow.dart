@@ -9,6 +9,7 @@ import '../../application/scan_service.dart';
 import '../../core/enums.dart';
 import '../../platform/notifications.dart';
 import '../../platform/photo_capture.dart';
+import '../common/format.dart';
 import '../common/widgets.dart';
 
 /// Snap → queue → back to what you were doing. The AI runs in the background.
@@ -53,7 +54,14 @@ void reportScan(ScanResult r, String Function(int) fmt) {
   if (r.autoCommitted) {
     final items = job.lines.where((l) => l.ingredientKey != null).length;
     final total = job.lines.where((l) => l.include).fold(0, (a, l) => a + l.totalMinor);
-    msg = '${job.merchant ?? 'Receipt'} ${fmt(total)} · $items items stocked';
+    // An older receipt is filed on its own day: say which.
+    final day = job.purchasedAt == null ? 'Today' : dayLabel(job.purchasedAt!, DateTime.now());
+    final when = switch (day) {
+      'Today' => '',
+      'Yesterday' => ' · yesterday',
+      _ => ' · $day',
+    };
+    msg = '${job.merchant ?? 'Receipt'} ${fmt(total)}$when · $items items stocked';
   } else if (job.status == ScanStatus.needsReview) {
     msg = job.kind == ScanKind.pantry ? 'Pantry photo ready to review' : 'Receipt needs a quick look';
   } else if (job.status == ScanStatus.failed) {

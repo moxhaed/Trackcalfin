@@ -48,6 +48,14 @@ class ScanJob {
 
   /// Set on commit.
   int? transactionId;
+
+  /// A receipt that looks like this one (same store, day and total): already filed as this
+  /// transaction, or waiting in the Inbox as this scan. Cleared when the user says it's another.
+  int? duplicateOfTxId;
+  int? duplicateOfJobId;
+
+  @ignore
+  bool get maybeDuplicate => duplicateOfTxId != null || duplicateOfJobId != null;
 }
 
 @embedded
@@ -89,10 +97,39 @@ class DraftLine {
   /// Only when [isNewIngredient].
   NewIngredientProfile? profile;
 
+  /// The exact product the AI recognized: brand, name, variant and pack size.
+  String? product;
+
+  /// Pantry photos: the size of one pack of [product] (in [unit]) and its typical shelf price
+  /// in home-currency minor units. Becomes the item's cost when it has no price yet.
+  double? packageQty;
+  int? packagePriceMinor;
+
+  /// What filing does to the pantry. null = the default for the scan (see [effectFor]).
+  @Enumerated(EnumType.name)
+  StockEffect? stock;
+
+  /// Why the line asks whether its quantity belongs in the pantry; the answer goes in [stock].
+  @Enumerated(EnumType.name)
+  StockCheck? stockCheck;
+
+  /// [stock], or the default: a receipt adds, a pantry photo counts what is there.
+  StockEffect effectFor(ScanKind kind) => stock ?? (kind == ScanKind.pantry ? StockEffect.replace : StockEffect.add);
+
+  /// Shelf price per base unit (minor units); null without a usable estimate.
+  @ignore
+  double? get estUnitCostMinor {
+    final q = packageQty;
+    final p = packagePriceMinor;
+    if (q == null || p == null || q <= 0 || p <= 0) return null;
+    return p / q;
+  }
+
   @ignore
   bool get needsAttention =>
       confidence == Confidence.low ||
       mergeCandidateId != null ||
+      stockCheck != null ||
       (ingredientKey != null && qtySource == QtySource.unknown);
 }
 
@@ -110,5 +147,4 @@ class NewIngredientProfile {
   double? densityGPerMl;
   Nutrition per100 = Nutrition();
   int shelfLifeDays = 7;
-  bool suggestStaple = false;
 }

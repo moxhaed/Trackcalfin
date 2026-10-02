@@ -18,6 +18,16 @@ String dayLabel(DateTime d, DateTime now) {
 String shortDate(DateTime d) => DateFormat('EEE d MMM').format(d);
 String timeOf(DateTime d) => DateFormat.Hm().format(d);
 
+/// "Sat 26 Sep", with the year when it isn't this year: "3 Mar 2025".
+String dateLabel(DateTime d, DateTime now) => d.year == now.year ? shortDate(d) : DateFormat('d MMM yyyy').format(d);
+
+/// "today", "yesterday", "6 days ago".
+String daysAgoLabel(int days) => switch (days) {
+  <= 0 => 'today',
+  1 => 'yesterday',
+  _ => '$days days ago',
+};
+
 String daysLeftLabel(int? days) {
   if (days == null) return '';
   if (days <= 0) return 'use today';

@@ -3,6 +3,8 @@
 Target: **`isar_community` 3.x** (API-compatible with Isar 3). Import `package:isar_community/isar.dart`, generate with `isar_community_generator` + `build_runner`.
 
 > **As built.** The Dart classes in `lib/data/isar/collections/` are the source of truth. They add a few fields to what's listed below: `Recipe.feasibilityStatus/summary/omitted/shoppingList` (Prompt C verdict), `ScanJob.userHint` and `ScanJob.fxRate/fxSource/fxDate`, `Transaction.originalCurrency/originalTotalMinor/fxRate`, and `UserProfile.onboardingDone/notificationsEnabled/weeklyRecapEnabled/autoCommitCleanScans/themeMode/fxMemory`. There's also a ninth collection, `MetricEvent`, for local time-to-log stats. `late` fields were replaced with defaults so an unset field never throws.
+>
+> **Schema 3: no staples.** Nothing is "always there" any more: salt, oil and spices are pantry items like everything else, counted, deducted when cooked and costed. `TrackingMode` and `IngredientRole.staple` are gone (the old column survives as `Ingredient.legacyTrackingMode` for the migration only). Schema 3 also adds what scanning needs to respect a receipt's date and to ask about duplicates: `Ingredient.lastCountedAt/costIsEstimate`, `ScanJob.duplicateOfTxId/duplicateOfJobId` and `DraftLine.product/packageQty/packagePriceMinor/stock/stockCheck`.
 
 ## 4.1 Design decisions
 
@@ -37,9 +39,8 @@ erDiagram
 ## 4.3 Enums
 
 ```dart
-// lib/data/isar/collections/enums.dart
+// lib/core/enums.dart
 enum BaseUnit { g, ml, pc }
-enum TrackingMode { exact, staple }
 enum IngredientCategory {
   produce, meatFish, dairyEggs, grainsPasta, legumesNuts, cannedJarred,
   bakery, frozen, spicesCondiments, oilsFats, beverages, snacksSweets, other,
@@ -52,11 +53,13 @@ enum QtySource { printed, inferred, estimated, unknown }
 enum TxSource { receiptScan, manual, quickText }
 enum RecipeOrigin { dailyAuto, spontaneous, manual }
 enum RecipeStatus { suggested, saved, dismissed, archived }
-enum IngredientRole { stock, staple, missing }
+enum IngredientRole { stock, missing }               // nothing is assumed: no staples
 enum CookStatus { active, finished, discarded, undone }
 enum MealSource { cookedNow, fridge, quickAdd }
 enum ScanStatus { queued, processing, needsReview, committed, failed, discarded }
 enum ScanKind { unknown, receipt, pantry, unreadable }
+enum StockEffect { add, replace, none }             // what filing a scan line does to the pantry
+enum StockCheck { onHand, counted, usedUp }         // why a scan line asks about it
 enum AiTask { receipt, dailyRecipe, spontaneousRecipe, nutritionEstimate, nutritionLabel }
 ```
 AI JSON uses snake_case (`meat_fish`, `eating_out`). The DTO layer maps with an explicit `switch` and never uses `EnumType.name` on AI strings directly.
@@ -98,15 +101,18 @@ class Ingredient {
   @Enumerated(EnumType.name)
   BaseUnit baseUnit = BaseUnit.g;
 
-  /// staple = always assumed available, never deducted (salt, oil, spices).
-  @Enumerated(EnumType.name)
-  TrackingMode trackingMode = TrackingMode.exact;
+  /// "staple" for items assumed always available before schema 3; read only by Migrations.
+  @Name('trackingMode')
+  String? legacyTrackingMode;
 
   /// On-hand quantity in [baseUnit]. Invariant: >= 0.
   double qtyOnHand = 0;
 
   /// Weighted average cost, minor units per base unit (0.998 = 9.98/kg).
   double avgCostPerUnitMinor = 0;
+
+  /// avgCostPerUnitMinor is an AI shelf-price estimate (pantry photo), not a price paid.
+  bool costIsEstimate = false;
 
   double? gramsPerPiece;       // required when baseUnit == pc
   double? densityGPerMl;       // for ml items; null = 1.0
@@ -132,6 +138,9 @@ class Ingredient {
 
   /// null = needs verification (shortfall detected or never checked).
   DateTime? lastVerifiedAt;
+
+  /// Last count by looking (pantry photo, Quick Check, hand adjustment); purchases don't set it.
+  DateTime? lastCountedAt;
 
   DateTime updatedAt = DateTime.now();
 }
@@ -250,7 +259,7 @@ class Recipe {
 
 @embedded
 class RecipeIngredient {
-  String key = '';             // ingredient key or staple key; '' for missing items
+  String key = '';             // ingredient key; '' for missing items
   String name = '';
   int? ingredientId;           // resolved by IngredientMatcher at save time
   double qtyPerPortion = 0;
@@ -380,6 +389,10 @@ class ScanJob {
 
   int? aiCallLogId;
   int? transactionId;                  // set on commit
+
+  // A receipt that looks like this one (same store, day and total): filed, or still in the Inbox.
+  int? duplicateOfTxId;
+  int? duplicateOfJobId;
 }
 
 @embedded
@@ -413,6 +426,16 @@ class DraftLine {
 
   bool include = true;                 // user can untick before commit
   NewIngredientProfile? profile;       // only when isNewIngredient
+
+  String? product;                     // exact product: brand, name, variant, pack size
+  double? packageQty;                  // pantry photos: one pack, in [unit]
+  int? packagePriceMinor;              // ... and its usual shop price (home currency)
+
+  @Enumerated(EnumType.name)
+  StockEffect? stock;                  // null = receipt adds, pantry photo replaces
+
+  @Enumerated(EnumType.name)
+  StockCheck? stockCheck;              // set when the user is asked (docs/03 §3.16)
 }
 
 @embedded
@@ -429,7 +452,6 @@ class NewIngredientProfile {
   double? densityGPerMl;
   Nutrition per100 = Nutrition();
   int shelfLifeDays = 7;
-  bool suggestStaple = false;
 }
 ```
 
@@ -486,7 +508,7 @@ class UserProfile {
   // AI
   String geminiModel = 'gemini-3.8-flash';
 
-  int schemaVersion = 2;               // for data migrations; new profiles start at the current version
+  int schemaVersion = 3;               // for data migrations; new profiles start at the current version
 }
 
 @embedded
@@ -565,7 +587,7 @@ Background isolates (WorkManager, notification actions) call `Isar.getInstance()
 3. `CookSession.portionsRemaining + portionsDiscarded + Σ portions of MealEntries referencing the session == portionsCooked` (while the session is not `undone`).
 4. A `ScanJob` commits **exactly once**. `transactionId != null` ⇔ `status == committed`, and stock is applied inside the same txn that sets it.
 5. `Transaction.totalMinor == Σ lines.totalMinor`.
-6. Staples (`TrackingMode.staple`) are never deducted.
+6. A receipt line filed with `StockEffect.none` (already counted, or used up) adds money and no stock: its `LineItem` has no `ingredientId` or `qtyBase`, so deleting the transaction takes nothing back out.
 7. Every use case that writes more than one object uses a single `isar.writeTxn`.
 
 ## 4.16 Migrations
@@ -577,3 +599,4 @@ Isar adds new fields with their defaults automatically, and removed fields are i
 | Version | Change |
 |---|---|
 | 2 | Ingredients with all-zero macros (onboarding staples, blank manual items) get `nutritionSource = none`, so the AI fills them in. Label-sourced zeros are kept. |
+| 3 | Staples are removed. Former staples become regular items. The ones showing stock were never deducted, so `lastVerifiedAt` is cleared and Quick Check asks about them. Recipe rows stored with role `staple` load as `stock` and are written back that way. A backup import runs the same migrations. |
