@@ -3,6 +3,7 @@ import 'package:isar_community/isar.dart';
 import 'ai_call_log.dart';
 import 'cook_session.dart';
 import 'daily_log.dart';
+import 'food_use.dart';
 import 'ingredient.dart';
 import 'metric_event.dart';
 import 'recipe.dart';
@@ -13,6 +14,7 @@ import 'user_profile.dart';
 export 'ai_call_log.dart';
 export 'cook_session.dart';
 export 'daily_log.dart';
+export 'food_use.dart';
 export 'ingredient.dart';
 export 'metric_event.dart';
 export 'nutrition.dart';
@@ -31,4 +33,5 @@ const List<CollectionSchema<dynamic>> allSchemas = [
   UserProfileSchema,
   AiCallLogSchema,
   MetricEventSchema,
+  FoodUseSchema,
 ];

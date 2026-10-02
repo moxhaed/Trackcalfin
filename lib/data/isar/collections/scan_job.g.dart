@@ -4319,32 +4319,38 @@ const DraftLineSchema = Schema(
       target: r'NewIngredientProfile',
     ),
     r'qty': PropertySchema(id: 18, name: r'qty', type: IsarType.double),
+    r'qtyLeft': PropertySchema(id: 19, name: r'qtyLeft', type: IsarType.double),
     r'qtySource': PropertySchema(
-      id: 19,
+      id: 20,
       name: r'qtySource',
       type: IsarType.string,
       enumMap: _DraftLineqtySourceEnumValueMap,
     ),
-    r'rawText': PropertySchema(id: 20, name: r'rawText', type: IsarType.string),
+    r'rawText': PropertySchema(id: 21, name: r'rawText', type: IsarType.string),
     r'stock': PropertySchema(
-      id: 21,
+      id: 22,
       name: r'stock',
       type: IsarType.string,
       enumMap: _DraftLinestockEnumValueMap,
     ),
     r'stockCheck': PropertySchema(
-      id: 22,
+      id: 23,
       name: r'stockCheck',
       type: IsarType.string,
       enumMap: _DraftLinestockCheckEnumValueMap,
     ),
+    r'thrownAway': PropertySchema(
+      id: 24,
+      name: r'thrownAway',
+      type: IsarType.bool,
+    ),
     r'totalMinor': PropertySchema(
-      id: 23,
+      id: 25,
       name: r'totalMinor',
       type: IsarType.long,
     ),
     r'unit': PropertySchema(
-      id: 24,
+      id: 26,
       name: r'unit',
       type: IsarType.string,
       enumMap: _DraftLineunitEnumValueMap,
@@ -4470,12 +4476,14 @@ void _draftLineSerialize(
     object.profile,
   );
   writer.writeDouble(offsets[18], object.qty);
-  writer.writeString(offsets[19], object.qtySource.name);
-  writer.writeString(offsets[20], object.rawText);
-  writer.writeString(offsets[21], object.stock?.name);
-  writer.writeString(offsets[22], object.stockCheck?.name);
-  writer.writeLong(offsets[23], object.totalMinor);
-  writer.writeString(offsets[24], object.unit.name);
+  writer.writeDouble(offsets[19], object.qtyLeft);
+  writer.writeString(offsets[20], object.qtySource.name);
+  writer.writeString(offsets[21], object.rawText);
+  writer.writeString(offsets[22], object.stock?.name);
+  writer.writeString(offsets[23], object.stockCheck?.name);
+  writer.writeBool(offsets[24], object.thrownAway);
+  writer.writeLong(offsets[25], object.totalMinor);
+  writer.writeString(offsets[26], object.unit.name);
 }
 
 DraftLine _draftLineDeserialize(
@@ -4522,17 +4530,19 @@ DraftLine _draftLineDeserialize(
     allOffsets,
   );
   object.qty = reader.readDoubleOrNull(offsets[18]);
+  object.qtyLeft = reader.readDoubleOrNull(offsets[19]);
   object.qtySource =
-      _DraftLineqtySourceValueEnumMap[reader.readStringOrNull(offsets[19])] ??
+      _DraftLineqtySourceValueEnumMap[reader.readStringOrNull(offsets[20])] ??
       QtySource.printed;
-  object.rawText = reader.readString(offsets[20]);
+  object.rawText = reader.readString(offsets[21]);
   object.stock =
-      _DraftLinestockValueEnumMap[reader.readStringOrNull(offsets[21])];
+      _DraftLinestockValueEnumMap[reader.readStringOrNull(offsets[22])];
   object.stockCheck =
-      _DraftLinestockCheckValueEnumMap[reader.readStringOrNull(offsets[22])];
-  object.totalMinor = reader.readLong(offsets[23]);
+      _DraftLinestockCheckValueEnumMap[reader.readStringOrNull(offsets[23])];
+  object.thrownAway = reader.readBool(offsets[24]);
+  object.totalMinor = reader.readLong(offsets[25]);
   object.unit =
-      _DraftLineunitValueEnumMap[reader.readStringOrNull(offsets[24])] ??
+      _DraftLineunitValueEnumMap[reader.readStringOrNull(offsets[26])] ??
       BaseUnit.g;
   return object;
 }
@@ -4606,22 +4616,26 @@ P _draftLineDeserializeProp<P>(
     case 18:
       return (reader.readDoubleOrNull(offset)) as P;
     case 19:
+      return (reader.readDoubleOrNull(offset)) as P;
+    case 20:
       return (_DraftLineqtySourceValueEnumMap[reader.readStringOrNull(
                 offset,
               )] ??
               QtySource.printed)
           as P;
-    case 20:
-      return (reader.readString(offset)) as P;
     case 21:
+      return (reader.readString(offset)) as P;
+    case 22:
       return (_DraftLinestockValueEnumMap[reader.readStringOrNull(offset)])
           as P;
-    case 22:
+    case 23:
       return (_DraftLinestockCheckValueEnumMap[reader.readStringOrNull(offset)])
           as P;
-    case 23:
-      return (reader.readLong(offset)) as P;
     case 24:
+      return (reader.readBool(offset)) as P;
+    case 25:
+      return (reader.readLong(offset)) as P;
+    case 26:
       return (_DraftLineunitValueEnumMap[reader.readStringOrNull(offset)] ??
               BaseUnit.g)
           as P;
@@ -4702,11 +4716,13 @@ const _DraftLinestockCheckEnumValueMap = {
   r'onHand': r'onHand',
   r'counted': r'counted',
   r'usedUp': r'usedUp',
+  r'whatsLeft': r'whatsLeft',
 };
 const _DraftLinestockCheckValueEnumMap = {
   r'onHand': StockCheck.onHand,
   r'counted': StockCheck.counted,
   r'usedUp': StockCheck.usedUp,
+  r'whatsLeft': StockCheck.whatsLeft,
 };
 const _DraftLineunitEnumValueMap = {r'g': r'g', r'ml': r'ml', r'pc': r'pc'};
 const _DraftLineunitValueEnumMap = {
@@ -6618,6 +6634,96 @@ extension DraftLineQueryFilter
     });
   }
 
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> qtyLeftIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'qtyLeft'),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> qtyLeftIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'qtyLeft'),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> qtyLeftEqualTo(
+    double? value, {
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'qtyLeft',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> qtyLeftGreaterThan(
+    double? value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'qtyLeft',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> qtyLeftLessThan(
+    double? value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'qtyLeft',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> qtyLeftBetween(
+    double? lower,
+    double? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'qtyLeft',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
   QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> qtySourceEqualTo(
     QtySource value, {
     bool caseSensitive = true,
@@ -7235,6 +7341,16 @@ extension DraftLineQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.greaterThan(property: r'stockCheck', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> thrownAwayEqualTo(
+    bool value,
+  ) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'thrownAway', value: value),
       );
     });
   }

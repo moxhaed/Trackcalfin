@@ -123,6 +123,13 @@ class DraftLine {
   @Enumerated(EnumType.name)
   StockCheck? stockCheck;
 
+  /// "What's left?" on an old receipt: some of it, in [unit]. Null with [stock] add = all of
+  /// it. What isn't left was used up since the purchase.
+  double? qtyLeft;
+
+  /// What is gone was thrown away, not eaten.
+  bool thrownAway = false;
+
   /// Where the shelf price comes from. null when the item already has a price paid: the shelf
   /// price isn't used then, so there's nothing to confirm.
   @Enumerated(EnumType.name)

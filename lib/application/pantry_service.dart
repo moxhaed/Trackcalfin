@@ -1,7 +1,9 @@
 import 'package:isar_community/isar.dart';
 
 import '../data/isar/collections/schemas.dart';
+import '../core/enums.dart';
 import '../domain/costing.dart';
+import '../domain/used_up.dart';
 import 'clock.dart';
 import 'recipe_service.dart';
 
@@ -65,18 +67,31 @@ class PantryService {
     });
   }
 
-  /// Sets the on-hand quantity (Quick Check, adjust). Counts as verified and counted.
-  Future<void> setQuantity(int id, double qty) async {
+  /// Sets the on-hand quantity (Quick Check, adjust). Counts as verified and counted. Less
+  /// than the pantry had means the rest was used up without a logged meal: it is recorded
+  /// as eaten (or [kind]) since the last count or purchase. Returns that use's id.
+  Future<int?> setQuantity(int id, double qty, {UseKind kind = UseKind.eaten}) async {
     final t = now();
-    await isar.writeTxn(() async {
+    return isar.writeTxn(() async {
       final ing = await isar.ingredients.get(id);
-      if (ing == null) return;
+      if (ing == null) return null;
+      final use = UsedUp.fromCount(ing, before: ing.qtyOnHand, after: qty, at: t, kind: kind);
       ExpiryEstimator.onCount(ing, qty, t);
       await isar.ingredients.put(ing);
+      return use == null ? null : isar.foodUses.put(use);
     });
   }
 
-  Future<void> markOut(int id) => setQuantity(id, 0);
+  Future<int?> markOut(int id, {UseKind kind = UseKind.eaten}) => setQuantity(id, 0, kind: kind);
+
+  /// "Thrown away, not eaten" after a count: the use stops counting as eaten.
+  Future<void> setUseKind(int useId, UseKind kind) async {
+    await isar.writeTxn(() async {
+      final u = await isar.foodUses.get(useId);
+      if (u == null) return;
+      await isar.foodUses.put(u..kind = kind);
+    });
+  }
 
   /// "Looks right" / "Still have it": the quantity was checked by looking.
   Future<void> verify(int id) async {

@@ -143,6 +143,25 @@ void main() {
     expect((await isar.ingredients.get(id))!.qtyOnHand, 0);
   });
 
+  test('a count that finds less records what went as eaten since the last count; it can be thrown away', () async {
+    final pantry = PantryService(isar, now: now);
+    final oats = await pantry.upsert(
+      Ingredient()
+        ..name = 'Oats'
+        ..key = 'oats'
+        ..qtyOnHand = 1000
+        ..avgCostPerUnitMinor = 0.2,
+    );
+    clockNow = DateTime(2026, 10, 5, 9);
+    final useId = await pantry.setQuantity(oats, 250);
+    final use = (await isar.foodUses.get(useId!))!;
+    expect((use.qtyBase, use.costMinor, use.kind), (750.0, 150, UseKind.eaten));
+    expect((use.from, use.to), (DateTime(2026, 9, 28, 19), DateTime(2026, 10, 5, 9)), reason: 'since it was counted');
+    await pantry.setUseKind(useId, UseKind.thrownAway);
+    expect((await isar.foodUses.get(useId))!.kind, UseKind.thrownAway);
+    expect(await pantry.setQuantity(oats, 400), isNull, reason: 'more than before: nothing went');
+  });
+
   test('slugify and unique keys', () async {
     expect(PantryService.slugify('Greek yogurt 10%'), 'greek_yogurt');
     expect(PantryService.slugify('Crème fraîche'), 'creme_fraiche');

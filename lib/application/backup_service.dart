@@ -26,6 +26,7 @@ class BackupService {
       'scanJobs': await isar.scanJobs.where().exportJson(),
       'userProfiles': await isar.userProfiles.where().exportJson(),
       'metricEvents': await isar.metricEvents.where().exportJson(),
+      'foodUses': await isar.foodUses.where().exportJson(),
     };
     return jsonEncode(data);
   }
@@ -47,6 +48,7 @@ class BackupService {
       await isar.scanJobs.importJson(list('scanJobs'));
       await isar.userProfiles.importJson(list('userProfiles'));
       await isar.metricEvents.importJson(list('metricEvents'));
+      await isar.foodUses.importJson(list('foodUses'));
     });
     // A backup from an older version gets the same upgrades as a database on disk.
     await Migrations.run(isar);

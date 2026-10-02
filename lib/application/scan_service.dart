@@ -17,6 +17,7 @@ import '../domain/fx.dart';
 import '../domain/ingredient_matcher.dart';
 import '../domain/receipt_math.dart';
 import '../domain/stock_index.dart';
+import '../domain/used_up.dart';
 import '../domain/validation/receipt_validator.dart';
 import '../platform/image_store.dart';
 import 'ai_gateway.dart';
@@ -432,6 +433,9 @@ class ScanService {
           final before = ing.qtyOnHand;
           // "Extra one" adds to what's there; so does a second line for the same item.
           final extra = effect == StockEffect.add || counted.contains(ing.key);
+          // The photo shows less than the pantry had: the rest was used up since the last count.
+          final use = extra ? null : UsedUp.fromCount(ing, before: before, after: l.qty!, at: seen);
+          if (use != null) await isar.foodUses.put(use);
           ing.qtyOnHand = extra ? before + l.qty! : l.qty!;
           if (ing.qtyOnHand < before) {
             ExpiryEstimator.onDeplete(ing);
@@ -478,6 +482,7 @@ class ScanService {
           : [for (final l in lines) l.totalMinor];
       final at = job.purchasedAt ?? job.capturedAt;
       final txLines = <LineItem>[];
+      final uses = <FoodUse>[];
       for (final (i, l) in lines.indexed) {
         l.totalMinor = amounts[i];
         final item = LineItem()
@@ -491,9 +496,12 @@ class ScanService {
             l.ingredientKey != null &&
             (l.qty ?? 0) > 0) {
           final ing = await _resolveOrCreate(l, t);
-          final stocked = l.effectFor(job.kind) != StockEffect.none;
+          // "What's left?" on an old receipt: only what is left goes into the pantry.
+          final left = l.effectFor(job.kind) == StockEffect.none ? 0.0 : (l.qtyLeft ?? l.qty!).clamp(0.0, l.qty!);
+          final stocked = left > 0;
           if (stocked) {
-            CostingEngine.applyPurchase(ing, qtyAdded: l.qty!, lineTotalMinor: l.totalMinor, at: at);
+            final paid = left == l.qty! ? l.totalMinor : (l.totalMinor * left / l.qty!).round();
+            CostingEngine.applyPurchase(ing, qtyAdded: left, lineTotalMinor: paid, at: at);
           } else {
             // Already counted, or used up: the money is filed, the pantry stays as it is.
             CostingEngine.learnPrice(ing, qty: l.qty!, lineTotalMinor: l.totalMinor);
@@ -505,7 +513,22 @@ class ScanService {
             item
               ..ingredientId = id
               ..ingredientKey = ing.key
-              ..qtyBase = l.qty;
+              ..qtyBase = left;
+          }
+          // What is gone since an old purchase counts as eaten (or thrown away) in those days.
+          final gone = l.qty! - left;
+          if (gone > 1e-9 && (l.stockCheck == StockCheck.whatsLeft || l.stockCheck == StockCheck.usedUp)) {
+            final use = UsedUp.fromReceipt(
+              key: ing.key,
+              name: ing.name,
+              gone: gone,
+              costMinor: (l.totalMinor * gone / l.qty!).round(),
+              bought: at,
+              found: t,
+              keepsDays: ing.shelfLifeDays,
+              kind: l.thrownAway ? UseKind.thrownAway : UseKind.eaten,
+            );
+            if (use != null) uses.add(use);
           }
         }
         txLines.add(item);
@@ -528,6 +551,7 @@ class ScanService {
         ..scanJobId = job.id
         ..createdAt = t;
       final txId = await isar.transactions.put(tx);
+      await isar.foodUses.putAll([for (final u in uses) u..transactionId = txId]);
       job
         ..status = ScanStatus.committed
         ..transactionId = txId;

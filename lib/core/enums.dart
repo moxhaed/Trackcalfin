@@ -73,8 +73,13 @@ enum StockCheck {
   /// Receipt: the item was counted after this purchase, so the count may already include it.
   counted,
 
-  /// Receipt: bought longer ago than it keeps, so it's probably used up.
+  /// Receipt: bought longer ago than it keeps, so it's probably used up. Drafts from before
+  /// [whatsLeft] still carry it.
   usedUp,
+
+  /// Receipt a week or more old: how much of it is left? What is gone counts as eaten (or
+  /// thrown away) over the days since the purchase.
+  whatsLeft,
 }
 
 /// Where a pantry photo's shop price comes from. The user confirms it either way.
@@ -85,6 +90,9 @@ enum PriceSource {
   /// Looked up with Google Search (Prompt F).
   web,
 }
+
+/// What happened to food that is gone without a logged meal.
+enum UseKind { eaten, thrownAway }
 
 /// What the dashboard's food budget counts. The first value is the default.
 enum FoodBasis {

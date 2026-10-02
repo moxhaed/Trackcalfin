@@ -7,6 +7,7 @@ import 'package:trackcalfin/application/ai_gateway.dart';
 import 'package:trackcalfin/application/ask_service.dart';
 import 'package:trackcalfin/application/cook_service.dart';
 import 'package:trackcalfin/application/daily_pick_service.dart';
+import 'package:trackcalfin/application/ledger_service.dart';
 import 'package:trackcalfin/application/pantry_service.dart';
 import 'package:trackcalfin/application/profile_service.dart';
 import 'package:trackcalfin/application/quick_log_service.dart';
@@ -349,6 +350,62 @@ void main() {
       expect((await s.processQueue()).single.job.duplicateOfJobId, firstId);
     });
 
+    test('a week-old receipt asks what is left; what is gone counts as eaten, in the days it went', () async {
+      await addChicken(shelf: 2);
+      fake.replyJson(receipt((j) => j['purchased_at'] = '2026-09-18'));
+      final s = service();
+      final id = await s.enqueue([await photo()], hint: 'receipt');
+      final job = (await s.processQueue()).single.job;
+      expect(job.status, ScanStatus.needsReview, reason: 'what is left needs an answer');
+      final chicken = job.lines[0];
+      final yogurt = job.lines[1];
+      expect((chicken.stockCheck, chicken.stock), (StockCheck.whatsLeft, StockEffect.none));
+      expect((yogurt.stockCheck, yogurt.stock), (StockCheck.whatsLeft, StockEffect.add));
+      yogurt.qtyLeft = 200;
+      await s.updateJob(job);
+      final txId = (await s.commit(id))!;
+
+      expect((await isar.ingredients.getByKey('greek_yogurt'))!.qtyOnHand, 200, reason: 'only what is left');
+      expect((await isar.ingredients.getByKey('chicken_breast'))!.qtyOnHand, 0);
+      final tx = (await isar.transactions.get(txId))!;
+      expect(tx.totalMinor, 822, reason: 'the money is filed in full');
+      expect(tx.lines[1].qtyBase, 200);
+      final uses = await isar.foodUses.where().findAll();
+      expect(uses.map((u) => (u.ingredientKey, u.qtyBase, u.costMinor, u.kind, u.transactionId)), [
+        ('chicken_breast', 500.0, 499, UseKind.eaten, txId),
+        ('greek_yogurt', 300.0, (179 * 300 / 500).round(), UseKind.eaten, txId),
+      ]);
+      expect(uses[0].to, DateTime(2026, 9, 20, 18, 42), reason: 'eaten before it would have spoiled');
+      expect(uses[1].to, now, reason: 'the yogurt keeps two weeks: any time until now');
+
+      final ledger = LedgerService(isar);
+      final deleted = (await ledger.delete(txId))!;
+      expect(await isar.foodUses.count(), 0, reason: 'deleting the receipt takes them along');
+      await ledger.restore(deleted);
+      expect(await isar.foodUses.count(), 2);
+    });
+
+    test('a pantry photo that counts less records the rest as eaten since the last count', () async {
+      final pasta = await PantryService(isar, now: () => DateTime(2026, 9, 20, 10)).upsert(
+        Ingredient()
+          ..name = 'Spaghetti'
+          ..key = 'dry_pasta'
+          ..qtyOnHand = 900
+          ..avgCostPerUnitMinor = 0.4,
+      );
+      final p = (await isar.userProfiles.get(1))!..lookUpPrices = false;
+      await isar.writeTxn(() => isar.userProfiles.put(p));
+      fake.reply(promptExamples('receipt_extraction.v4.md')[1]);
+      final s = service();
+      final id = await s.enqueue([await photo()], hint: 'pantry');
+      await s.processQueue();
+      await s.commit(id);
+      expect((await isar.ingredients.get(pasta))!.qtyOnHand, 350);
+      final use = (await isar.foodUses.where().findFirst())!;
+      expect((use.ingredientKey, use.qtyBase, use.costMinor), ('dry_pasta', 550.0, 220));
+      expect(use.from, DateTime(2026, 9, 20, 10));
+    });
+
     test('changing the date in review re-asks the pantry questions and clears the date flag', () async {
       await addChicken(shelf: 2);
       fake.replyJson(receipt((j) => j['purchased_at'] = null));
@@ -363,8 +420,11 @@ void main() {
       final job = (await isar.scanJobs.get(id))!;
       expect(job.purchasedAt, DateTime(2026, 9, 20, 18, 42));
       expect(job.flags, isNot(contains('date_missing')));
-      expect(job.lines[0].stockCheck, StockCheck.usedUp);
-      expect(job.lines[1].stockCheck, isNull, reason: 'the yogurt keeps 14 days');
+      // A week old: every grocery line asks what is left.
+      expect(job.lines[0].stockCheck, StockCheck.whatsLeft);
+      expect(job.lines[0].stock, StockEffect.none, reason: 'chicken keeps 2 days: most likely none');
+      expect(job.lines[1].stockCheck, StockCheck.whatsLeft);
+      expect(job.lines[1].stock, StockEffect.add, reason: 'the yogurt keeps 14 days');
     });
   });
 

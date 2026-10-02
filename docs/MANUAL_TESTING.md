@@ -62,7 +62,8 @@ When something goes wrong, note the **test ID** (e.g. `R3`), what you expected, 
 ## 2b · Receipt dates, duplicates and pantry photos (new)
 
 - [ ] **P1 · Old receipt.** Scan a receipt that is a week or more old.
-  *Expect:* it waits in the Inbox. The review says "Bought Wed 23 Sep (9 days ago)" and explains that it's filed on that day. Fresh things that don't keep that long (meat, bread, herbs) show "Probably used up?" with **Used up** selected. After **Looks good**, the Ledger shows it on the printed date, and the Dashboard counts it in that week. Used-up items aren't added to the pantry, and the rest show days left counted from the purchase date.
+  *Expect:* it waits in the Inbox. The review says it's filed on that day and asks "What is left of it now?". Each food line asks "Bought 9 days ago. What's left of it?" with **All of it · Some · None: eaten · Thrown away**; fresh things that don't keep that long (meat, bread, herbs) start on **None: eaten**. Pick **Some** for one item and type what's left. After **Looks good**: the Ledger shows the full amount on the printed date, the pantry has only what's left, and on the Food card (**Eaten**) the rest shows up spread over the days since the purchase.
+- [ ] **P1b · Gone in Quick Check.** In **Quick check**, tap **Gone** on something with a price. *Expect:* "… counts as eaten" with **Thrown away**. Eaten this week goes up a little (its share of the days since it was counted); tapping **Thrown away** takes that back.
 - [ ] **P2 · Change the date.** In a receipt's review, tap **Date** and pick another day.
   *Expect:* the header changes, and the "used up" questions follow the new date.
 - [ ] **P3 · Same receipt twice.** Scan a receipt you already filed.

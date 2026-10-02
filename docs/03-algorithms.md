@@ -203,6 +203,7 @@ monthPace       = monthFood / (monthlyFoodBudget * max(elapsedFraction(month), 0
 ### Food eaten (value of what was eaten, from DailyLog)
 ```
 eaten(range)    = Σ log.foodCostMinor over the days in range
+                + Σ eaten FoodUse × (its days in range / its days)   // found gone without a meal (§3.16)
 week, month     = eaten(weekStart .. today), eaten(monthStart .. today)
 N               = clamp(daysSinceFirstLoggedMeal, 7, 28)   // "projection after 7 days of logged meals" before that
 trailingWeekly  = eaten(today − N d .. today) / N * 7
@@ -352,9 +353,24 @@ The review screen shows "Bought Sat 26 Sep (6 days ago)" and lets you change the
 pantry photo, item already on hand (qtyOnHand > 0)    → onHand:  "Same one" (replace) or "Extra" (add)
 receipt, item counted after the purchase              → counted: "Already counted" (none) or "Add" (add)
    (lastCountedAt > purchasedAt: a pantry photo, Quick Check or hand adjustment since)
-receipt, daysBetween(purchasedAt, photo) > shelfLife  → usedUp:  "Used up" (none) or "Still have it" (add)
+receipt, a week old or more (checkInDays = 7)         → whatsLeft: "All of it" (add) · "Some" (add qtyLeft)
+                                                         · "None: eaten" (none) · "Thrown away" (none, thrownAway)
+   default: none when daysBetween(purchasedAt, photo) > shelfLife, else add
+receipt, younger than a week but past its shelf life   → usedUp:  "Used up" (none) or "Still have it" (add)
 ```
-Any question holds the scan for review, and the review screen offers "All the same / All extra" when a pantry photo has several. `lastCountedAt` is only set by looking (pantry photo at its capture time, Quick Check, hand adjustments), never by a purchase. Two lines for the same item on one pantry photo add up.
+Any question holds the scan for review, and the review screen offers "All the same / All extra" when a pantry photo has several, and "All still here / All eaten" on an old receipt. `lastCountedAt` is only set by looking (pantry photo at its capture time, Quick Check, hand adjustments), never by a purchase. Two lines for the same item on one pantry photo add up.
+
+**What's left, and food used up without a meal (`FoodUse`, `UsedUp`).** On an old receipt only what is left goes into the pantry (`qtyLeft`, or all of it, or nothing); the money is filed in full either way. What is gone was eaten (or thrown away) since the purchase, and the user wants the weeks it went in to show it. So it becomes a `FoodUse`:
+```
+gone       = qty − left
+cost       = lineTotal × gone / qty                       // at the price paid
+from, to   = purchase, min(found, purchase + shelfLife)   // perishables went before they spoiled
+kind       = thrownAway if "Thrown away", else eaten
+transactionId = the receipt's: deleting it deletes the uses (undo puts them back)
+```
+Counts do the same: Quick Check's **Gone** or a lower amount, a pantry photo that shows less, and Say it's "we're out of milk" all record what the pantry had more as a `FoodUse` (cost = gone × average cost) from the last count or purchase (at most 60 days back; a week when neither is known) to the count. Quick Check offers **Thrown away** right after. A use without a price is skipped: it changes no money.
+
+The dashboard's **Eaten** adds the eaten uses to the logged meals, each spread evenly over the days from `from` to `to`, so a week sees only its share (§3.9). Thrown-away uses are kept but are not food eaten.
 
 **Duplicate receipts (R10).** `sameReceipt`: same calendar day, same total (printed total or line sum), and the same store when both name one ("Migros" matches "Migros Zürich"). `ScanService` checks the transactions of that day (compared in the receipt's own currency, including the printed total of the scan they came from) and the receipts waiting in the Inbox. A match sets `duplicateOfTxId` or `duplicateOfJobId` and holds the scan for review, with **Discard this one** and **It's a different one**.
 

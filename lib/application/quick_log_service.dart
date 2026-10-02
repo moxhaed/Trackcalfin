@@ -34,6 +34,7 @@ class QuickLogReceipt {
     required this.ingredients,
     required this.sessions,
     required this.logs,
+    required this.uses,
     required this.ingredientsBefore,
     required this.sessionsBefore,
     required this.logsBefore,
@@ -46,6 +47,7 @@ class QuickLogReceipt {
   final List<int> ingredients;
   final List<int> sessions;
   final List<int> logs;
+  final List<int> uses;
 
   // Changed, as they were before, so Undo puts them back.
   final List<Ingredient> ingredientsBefore;
@@ -162,6 +164,7 @@ class QuickLogService {
           if (l.id == Isar.autoIncrement) l,
       ];
       final txIds = await isar.transactions.putAll(w.transactions);
+      final useIds = await isar.foodUses.putAll(w.uses);
       await isar.ingredients.putAll(w.changedIngredients.where((i) => !created.contains(i)).toList());
       await isar.cookSessions.putAll(w.changedSessions.toList());
       await isar.dailyLogs.putAll(w.changedLogs.toList());
@@ -174,6 +177,7 @@ class QuickLogService {
         ingredients: ingredientIds.values.toList(),
         sessions: sessionIds.values.toList(),
         logs: [for (final l in newLogs) l.id],
+        uses: useIds,
         ingredientsBefore: ingredientsBefore,
         sessionsBefore: sessionsBefore,
         logsBefore: logsBefore,
@@ -188,6 +192,7 @@ class QuickLogService {
       await isar.transactions.deleteAll(r.transactions);
       await isar.cookSessions.deleteAll(r.sessions);
       await isar.dailyLogs.deleteAll(r.logs);
+      await isar.foodUses.deleteAll(r.uses);
       await isar.ingredients.deleteAll(r.ingredients);
       await isar.ingredients.putAll(r.ingredientsBefore);
       await isar.cookSessions.putAll(r.sessionsBefore);

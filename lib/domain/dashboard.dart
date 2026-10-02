@@ -3,9 +3,11 @@ import 'dart:math' as math;
 import '../core/day_clock.dart';
 import '../core/enums.dart';
 import '../data/isar/collections/daily_log.dart';
+import '../data/isar/collections/food_use.dart';
 import '../data/isar/collections/nutrition.dart';
 import '../data/isar/collections/transaction.dart';
 import '../data/isar/collections/user_profile.dart';
+import 'used_up.dart';
 
 const weeksPerMonth = 4.33;
 const paceFloor = 0.2;
@@ -64,6 +66,7 @@ class DashboardInput {
     this.firstTransactionAt,
     this.firstMealAt,
     this.eatingOutAvgMinor,
+    this.uses = const [],
   });
 
   final DateTime now;
@@ -77,8 +80,11 @@ class DashboardInput {
   final List<DailyLog> logs;
   final DateTime? firstTransactionAt;
 
-  /// The day the first meal was logged; the eaten projection waits for 7 days of them.
+  /// The day the first meal (or use) was logged; the eaten projection waits for 7 days.
   final DateTime? firstMealAt;
+
+  /// Food found gone without a logged meal (counts, old receipts) reaching into the window.
+  final List<FoodUse> uses;
 
   /// Mean eating-out transaction over 90 days (null when < 3 transactions).
   final int? eatingOutAvgMinor;
@@ -224,9 +230,11 @@ class DashboardAggregator {
     final todayKeyForFood = clock.dateKey(now);
     final eaten = food((from) {
       final fromKey = clock.dateKey(from);
-      return input.logs
+      final meals = input.logs
           .where((l) => l.dateKey >= fromKey && l.dateKey <= todayKeyForFood)
           .fold(0, (a, l) => a + l.foodCostMinor);
+      // Plus what counts and old receipts found eaten without a logged meal.
+      return meals + UsedUp.eatenIn(input.uses, fromKey, todayKeyForFood, clock).round();
     }, input.firstMealAt);
 
     // --- Non-food ---------------------------------------------------------

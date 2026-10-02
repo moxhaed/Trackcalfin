@@ -50,6 +50,9 @@ class ReceiptValidator {
   /// A printed date further back than this is more likely a misread year than an old receipt.
   static const maxAgeDays = 365;
 
+  /// A receipt this old asks what is left of each item (StockCheck.whatsLeft).
+  static const checkInDays = 7;
+
   /// date_missing: nothing printed, so the photo date is used. date_adjusted: printed in the
   /// future, so the photo date is used. date_old: over a year back, kept but worth a look.
   static const dateFlags = {'date_missing', 'date_adjusted', 'date_old'};
@@ -211,8 +214,16 @@ class ReceiptValidator {
         ..stock = StockEffect.none;
       return;
     }
+    final age = DayClock.daysBetween(purchasedAt, capturedAt);
     final keeps = existing?.shelfLifeDays ?? line.profile?.shelfLifeDays;
-    if (keeps != null && DayClock.daysBetween(purchasedAt, capturedAt) > keeps) {
+    final spoiled = keeps != null && age > keeps;
+    if (age >= checkInDays) {
+      // A week or more later some of it is probably gone: ask. Past its shelf life the
+      // answer is most likely "none".
+      line
+        ..stockCheck = StockCheck.whatsLeft
+        ..stock = spoiled ? StockEffect.none : StockEffect.add;
+    } else if (spoiled) {
       line
         ..stockCheck = StockCheck.usedUp
         ..stock = StockEffect.none;

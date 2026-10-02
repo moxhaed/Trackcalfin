@@ -361,6 +361,53 @@ void main() {
     expect(tahini.costIsEstimate, isFalse);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
+  testWidgets('a week-old receipt asks what is left; the rest counts as eaten', (tester) async {
+    await DemoSeed.run(isar);
+    final bought = DateTime.now().subtract(const Duration(days: 9));
+    final id = await isar.writeTxn(
+      () => isar.scanJobs.put(
+        ScanJob()
+          ..status = ScanStatus.needsReview
+          ..kind = ScanKind.receipt
+          ..merchant = 'Aldi'
+          ..purchasedAt = bought
+          ..receiptTotalMinor = 199
+          ..currency = 'EUR'
+          ..lines = [
+            DraftLine()
+              ..rawText = 'HAFERDRINK 1,99'
+              ..name = 'Oat drink'
+              ..totalMinor = 199
+              ..ingredientKey = 'oat_drink'
+              ..isNewIngredient = true
+              ..qty = 1000
+              ..unit = BaseUnit.ml
+              ..qtySource = QtySource.printed
+              ..stockCheck = StockCheck.whatsLeft
+              ..stock = StockEffect.add
+              ..profile = (NewIngredientProfile()
+                ..name = 'Oat drink'
+                ..category = IngredientCategory.beverages
+                ..unit = BaseUnit.ml
+                ..shelfLifeDays = 10),
+          ],
+      ),
+    );
+    await pumpApp(tester, initial: '/inbox/$id');
+    expect(find.textContaining('What is left of it now?'), findsOneWidget);
+    expect(find.text("Bought 9 days ago. What's left of it?"), findsOneWidget);
+    await tester.tap(find.text('Some'));
+    await settle(tester);
+    await tester.enterText(find.widgetWithText(TextField, 'Left'), '250');
+    await settle(tester);
+    expect(find.text('The other 750 ml counts as eaten'), findsOneWidget);
+    await tester.tap(find.text('Looks good'));
+    await settle(tester);
+    expect((await isar.ingredients.getByKey('oat_drink'))!.qtyOnHand, 250);
+    final use = (await isar.foodUses.filter().ingredientKeyEqualTo('oat_drink').findFirst())!;
+    expect((use.qtyBase, use.costMinor, use.kind), (750.0, (199 * 0.75).round(), UseKind.eaten));
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
   testWidgets('an old receipt shows its date and a possible duplicate', (tester) async {
     await DemoSeed.run(isar);
     final filed = (await isar.transactions.where().findFirst())!;

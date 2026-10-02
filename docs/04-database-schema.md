@@ -59,7 +59,8 @@ enum MealSource { cookedNow, fridge, quickAdd, pantry }   // pantry: eaten strai
 enum ScanStatus { queued, processing, needsReview, committed, failed, discarded }
 enum ScanKind { unknown, receipt, pantry, unreadable }
 enum StockEffect { add, replace, none }             // what filing a scan line does to the pantry
-enum StockCheck { onHand, counted, usedUp }         // why a scan line asks about it
+enum StockCheck { onHand, counted, usedUp, whatsLeft } // why a scan line asks about it
+enum UseKind { eaten, thrownAway }                  // what happened to food gone without a meal
 enum PriceSource { estimate, web }                  // a pantry photo's shop price: the model's idea, or Google
 enum FoodBasis { eaten, spent }                     // what the dashboard's food budget counts
 enum AiTask { receipt, dailyRecipe, spontaneousRecipe, nutritionEstimate, nutritionLabel, priceLookup, quickLog }
@@ -446,6 +447,8 @@ class DraftLine {
 
   @Enumerated(EnumType.name)
   StockCheck? stockCheck;              // set when the user is asked (docs/03 §3.16)
+  double? qtyLeft;                     // "What's left?": some of it (null with stock add = all)
+  bool thrownAway = false;             // what is gone was thrown away, not eaten
 
   @Enumerated(EnumType.name)
   PriceSource? priceSource;            // null when the item has a price paid: nothing to ask
@@ -485,6 +488,30 @@ queued ──► processing ──► needsReview ──► committed
   └─(retry)────┤
                └──► failed ──(retake)──► discarded
 ```
+
+## 4.10b Supporting collection · `FoodUse` (eaten without a logged meal)
+
+```dart
+@collection
+class FoodUse {
+  Id id = Isar.autoIncrement;
+  DateTime from = DateTime.now();      // the purchase, or the last count
+  @Index()
+  DateTime to = DateTime.now();        // when it was found gone
+  String ingredientKey = '';
+  String name = '';
+  double qtyBase = 0;                  // base unit
+  int costMinor = 0;                   // at the price paid (receipt) or the average cost (count)
+
+  @Enumerated(EnumType.name)
+  UseKind kind = UseKind.eaten;        // thrownAway: kept, not counted as eaten
+
+  @Index()
+  int? transactionId;                  // the old receipt it came from (deleted with it)
+  DateTime createdAt = DateTime.now();
+}
+```
+Written by an old receipt's "What's left?", Quick Check and hand counts, pantry photos that count less, and Say it ("we're out of milk", "threw away"). The dashboard spreads each eaten use evenly over its days (docs/03 §3.16). Backups include it.
 
 ## 4.11 Supporting collection · `UserProfile` (singleton: goals & settings)
 

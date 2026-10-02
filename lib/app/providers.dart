@@ -212,6 +212,11 @@ Future<DashboardView> loadDashboard(Isar isar, DateTime now, {Recipe? pick}) asy
   ].reduce((a, b) => a < b ? a : b);
   final logs = await isar.dailyLogs.where().dateKeyBetween(logsFrom, DayClock.addDaysToKey(weekStartKey, 7)).findAll();
   final firstMeal = await isar.dailyLogs.where().anyDateKey().filter().mealsCountGreaterThan(0).findFirst();
+  final uses = await isar.foodUses.where().toGreaterThan(clock.startOfKey(logsFrom)).findAll();
+  DateTime? firstEaten = firstMeal == null ? null : DayClock.dateOfKey(firstMeal.dateKey);
+  for (final u in await isar.foodUses.where().findAll()) {
+    if (firstEaten == null || u.from.isBefore(firstEaten)) firstEaten = u.from;
+  }
   final outTx = await isar.transactions
       .where()
       .occurredAtGreaterThan(now.subtract(const Duration(days: 90)))
@@ -226,7 +231,8 @@ Future<DashboardView> loadDashboard(Isar isar, DateTime now, {Recipe? pick}) asy
       transactions: txs,
       logs: logs,
       firstTransactionAt: first?.occurredAt,
-      firstMealAt: firstMeal == null ? null : DayClock.dateOfKey(firstMeal.dateKey),
+      firstMealAt: firstEaten,
+      uses: uses,
       eatingOutAvgMinor: outTx.length >= 3 ? (outTx.fold(0, (a, t) => a + t.totalMinor) / outTx.length).round() : null,
     ),
   );
@@ -252,6 +258,7 @@ final dashboardProvider = StreamProvider<DashboardView>((ref) {
   final triggers = StreamGroup.merge<void>([
     isar.transactions.watchLazy(fireImmediately: true),
     isar.dailyLogs.watchLazy(),
+    isar.foodUses.watchLazy(),
     isar.userProfiles.watchLazy(),
     Stream<void>.periodic(const Duration(minutes: 10)),
   ]);

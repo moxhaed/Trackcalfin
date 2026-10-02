@@ -6,6 +6,7 @@ import '../core/money.dart';
 import '../data/ai/dto/quick_log_dto.dart';
 import '../data/isar/collections/cook_session.dart';
 import '../data/isar/collections/daily_log.dart';
+import '../data/isar/collections/food_use.dart';
 import '../data/isar/collections/ingredient.dart';
 import '../data/isar/collections/nutrition.dart';
 import '../data/isar/collections/recipe.dart';
@@ -16,6 +17,7 @@ import 'depletion.dart';
 import 'nutrition.dart';
 import 'stock_index.dart';
 import 'units.dart';
+import 'used_up.dart';
 
 /// What one line of the Say it card shows.
 class QuickStep {
@@ -73,6 +75,9 @@ class QuickLogWorld {
   final changedSessions = <CookSession>{};
   final changedLogs = <DailyLog>{};
   final changedRecipes = <Recipe>{};
+
+  /// Food found gone ("we're out of milk") or thrown away: eaten or wasted since the last count.
+  final uses = <FoodUse>[];
   var _nextId = -1;
 
   int takeId() => _nextId--;
@@ -173,6 +178,9 @@ class QuickLogPlanner {
           }
           final had = ing.qtyOnHand;
           final qty = UnitConverter.toBase(a.qty!, a.unit!, ing) ?? a.qty!;
+          // Less than the pantry had: the rest went since the last count, so it counts as eaten.
+          final use = UsedUp.fromCount(ing, before: had, after: qty, at: at);
+          if (use != null) w.uses.add(use);
           ExpiryEstimator.onCount(ing, qty, at);
           w.changedIngredients.add(ing);
           steps.add(
@@ -423,6 +431,15 @@ class QuickLogPlanner {
     if (ing == null) return _gone(i, a);
     final qty = a.qty == null ? ing.qtyOnHand : (UnitConverter.toBase(a.qty!, a.unit!, ing) ?? a.qty!);
     final taken = math.min(qty, ing.qtyOnHand);
+    // Recorded as thrown away: it went, but isn't food eaten.
+    final use = UsedUp.fromCount(
+      ing,
+      before: ing.qtyOnHand,
+      after: ing.qtyOnHand - taken,
+      at: at,
+      kind: UseKind.thrownAway,
+    );
+    if (use != null) w.uses.add(use);
     ing
       ..qtyOnHand = ing.qtyOnHand - taken
       ..updatedAt = at;

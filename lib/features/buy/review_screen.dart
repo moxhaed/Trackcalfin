@@ -245,6 +245,10 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
     final usedUp = job.lines
         .where((l) => l.include && l.stockCheck == StockCheck.usedUp && l.effectFor(job.kind) == StockEffect.none)
         .length;
+    final whatsLeft = [
+      for (final l in job.lines)
+        if (l.include && l.stockCheck == StockCheck.whatsLeft) l,
+    ];
     final onHand = [
       for (final l in job.lines)
         if (l.include && l.stockCheck == StockCheck.onHand) l,
@@ -321,6 +325,38 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                     () => job.flags = job.flags.where((f) => !ReceiptValidator.dateFlags.contains(f)).toList(),
                   ),
                   child: const Text("It's right"),
+                ),
+              ],
+            )
+          else if (date != null && whatsLeft.isNotEmpty)
+            _Banner(
+              icon: Icons.inventory_2_outlined,
+              color: context.scheme.primary,
+              text:
+                  'Bought ${daysAgoLabel(age)}, so it is filed on ${dateLabel(date, now)}. What is left of it now? '
+                  'What is gone counts as eaten in the days since, so those weeks add up.',
+              actions: [
+                TextButton(
+                  onPressed: () => setState(() {
+                    for (final l in whatsLeft) {
+                      l
+                        ..stock = StockEffect.add
+                        ..qtyLeft = null
+                        ..thrownAway = false;
+                    }
+                  }),
+                  child: const Text('All still here'),
+                ),
+                TextButton(
+                  onPressed: () => setState(() {
+                    for (final l in whatsLeft) {
+                      l
+                        ..stock = StockEffect.none
+                        ..qtyLeft = null
+                        ..thrownAway = false;
+                    }
+                  }),
+                  child: const Text('All eaten'),
                 ),
               ],
             )
@@ -742,7 +778,18 @@ class _LineEditorState extends ConsumerState<_LineEditor> {
                 },
                 onChange: _editPrice,
               ),
-            if (l.stockCheck != null && l.include)
+            if (l.stockCheck == StockCheck.whatsLeft && l.include)
+              _WhatsLeft(
+                line: l,
+                age: widget.job.purchasedAt == null
+                    ? 0
+                    : DayClock.daysBetween(widget.job.purchasedAt!, widget.job.capturedAt),
+                onChanged: () {
+                  setState(() {});
+                  widget.onChanged();
+                },
+              )
+            else if (l.stockCheck != null && l.include)
               _StockQuestion(
                 line: l,
                 job: widget.job,
@@ -916,7 +963,7 @@ class _StockQuestion extends StatelessWidget {
             'has ${amount(have)}. Is this already part of it?',
         [('Already counted', StockEffect.none), ('Add${q == null ? '' : ' ${amount(q)}'}', StockEffect.add)],
       ),
-      StockCheck.usedUp => (
+      StockCheck.usedUp || StockCheck.whatsLeft => (
         Icons.hourglass_bottom,
         'Bought ${bought == null ? 'a while' : daysAgoLabel(DayClock.daysBetween(bought, now))}'
             '${keeps == null ? '' : ', and it keeps about $keeps ${keeps == 1 ? 'day' : 'days'}'}. Probably used up?',
@@ -945,6 +992,126 @@ class _StockQuestion extends StatelessWidget {
                 ChoiceChip(label: Text(label), selected: selected == effect, onSelected: (_) => onChanged(effect)),
             ],
           ),
+        ],
+      ),
+    );
+  }
+}
+
+enum _Left { all, some, none, thrown }
+
+/// An old receipt's item: how much is left now? What is gone counts as eaten (or thrown away)
+/// over the days since it was bought, so the weeks it went in add up.
+class _WhatsLeft extends StatefulWidget {
+  const _WhatsLeft({required this.line, required this.age, required this.onChanged});
+  final DraftLine line;
+
+  /// Days since the purchase.
+  final int age;
+  final VoidCallback onChanged;
+
+  @override
+  State<_WhatsLeft> createState() => _WhatsLeftState();
+}
+
+class _WhatsLeftState extends State<_WhatsLeft> {
+  late final _left = TextEditingController(text: widget.line.qtyLeft == null ? '' : _fmt(widget.line.qtyLeft!));
+
+  static String _fmt(double v) => v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
+
+  _Left get _answer {
+    final l = widget.line;
+    if (l.stock == StockEffect.none) return l.thrownAway ? _Left.thrown : _Left.none;
+    return l.qtyLeft != null ? _Left.some : _Left.all;
+  }
+
+  @override
+  void dispose() {
+    _left.dispose();
+    super.dispose();
+  }
+
+  void _set(_Left a) {
+    final l = widget.line;
+    setState(() {
+      l
+        ..stock = a == _Left.all || a == _Left.some ? StockEffect.add : StockEffect.none
+        ..thrownAway = a == _Left.thrown
+        ..qtyLeft = null;
+      if (a == _Left.some) {
+        // Start from half, rounded the way the item is counted.
+        final half = (l.qty ?? 0) / 2;
+        l.qtyLeft = l.unit == BaseUnit.pc ? half.roundToDouble() : (half / 10).roundToDouble() * 10;
+        _left.text = _fmt(l.qtyLeft!);
+      }
+    });
+    widget.onChanged();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = widget.line;
+    final q = l.qty;
+    final answer = _answer;
+    final muted = context.text.bodySmall?.copyWith(color: context.scheme.onSurfaceVariant);
+    final options = [
+      (_Left.all, q == null ? 'All of it' : 'All of it · ${qty(q, l.unit)}'),
+      if (q != null && q > (l.unit == BaseUnit.pc ? 1 : 0)) (_Left.some, 'Some'),
+      (_Left.none, 'None: eaten'),
+      (_Left.thrown, 'Thrown away'),
+    ];
+    return Padding(
+      padding: const EdgeInsets.only(left: 12, top: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.inventory_2_outlined, size: 18, color: context.colors.warning),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text("Bought ${daysAgoLabel(widget.age)}. What's left of it?", style: context.text.bodyMedium),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            children: [
+              for (final (a, label) in options)
+                ChoiceChip(label: Text(label), selected: answer == a, onSelected: (_) => _set(a)),
+            ],
+          ),
+          if (answer == _Left.some && q != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 120,
+                    child: TextField(
+                      controller: _left,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(labelText: 'Left', suffixText: l.unit.label, isDense: true),
+                      onChanged: (v) {
+                        final left = double.tryParse(v.replaceAll(',', '.'));
+                        l.qtyLeft = left?.clamp(0, q).toDouble();
+                        widget.onChanged();
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      l.qtyLeft == null ? '' : 'The other ${qty(q - l.qtyLeft!, l.unit)} counts as eaten',
+                      style: muted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );

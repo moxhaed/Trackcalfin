@@ -6,6 +6,15 @@ import '../domain/costing.dart';
 import '../domain/quick_text_parser.dart';
 import 'clock.dart';
 
+/// A deleted transaction, with the used-up food its old receipt recorded, for undo.
+class DeletedTransaction {
+  DeletedTransaction(this.transaction, this.uses);
+  final Transaction transaction;
+  final List<FoodUse> uses;
+
+  int get totalMinor => transaction.totalMinor;
+}
+
 /// Writes money movements.
 class LedgerService {
   LedgerService(this.isar, {Now? now}) : now = now ?? DateTime.now;
@@ -86,11 +95,14 @@ class LedgerService {
     });
   }
 
-  /// Deletes a transaction and takes back the stock it added. Returns it for undo.
-  Future<Transaction?> delete(int id) async {
+  /// Deletes a transaction, takes back the stock it added and drops the used-up food its old
+  /// receipt recorded. Returns it all for undo.
+  Future<DeletedTransaction?> delete(int id) async {
     return isar.writeTxn(() async {
       final tx = await isar.transactions.get(id);
       if (tx == null) return null;
+      final uses = await isar.foodUses.filter().transactionIdEqualTo(id).findAll();
+      await isar.foodUses.deleteAll([for (final u in uses) u.id]);
       for (final l in tx.lines) {
         if (l.ingredientId == null || l.qtyBase == null) continue;
         final ing = await isar.ingredients.get(l.ingredientId!);
@@ -100,13 +112,15 @@ class LedgerService {
         await isar.ingredients.put(ing);
       }
       await isar.transactions.delete(id);
-      return tx;
+      return DeletedTransaction(tx, uses);
     });
   }
 
-  /// Undo for [delete]: puts the transaction and its stock back.
-  Future<void> restore(Transaction tx) async {
+  /// Undo for [delete]: puts the transaction, its stock and its used-up food back.
+  Future<void> restore(DeletedTransaction deleted) async {
+    final tx = deleted.transaction;
     await isar.writeTxn(() async {
+      await isar.foodUses.putAll(deleted.uses);
       for (final l in tx.lines) {
         if (l.ingredientId == null || l.qtyBase == null) continue;
         final ing = await isar.ingredients.get(l.ingredientId!);
