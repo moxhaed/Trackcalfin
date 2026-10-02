@@ -1037,26 +1037,32 @@ const MealEntrySchema = Schema(
       type: IsarType.dateTime,
     ),
     r'entryId': PropertySchema(id: 3, name: r'entryId', type: IsarType.string),
-    r'nutrition': PropertySchema(
+    r'ingredientKey': PropertySchema(
       id: 4,
+      name: r'ingredientKey',
+      type: IsarType.string,
+    ),
+    r'nutrition': PropertySchema(
+      id: 5,
       name: r'nutrition',
       type: IsarType.object,
 
       target: r'Nutrition',
     ),
     r'portions': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'portions',
       type: IsarType.double,
     ),
-    r'recipeId': PropertySchema(id: 6, name: r'recipeId', type: IsarType.long),
+    r'qtyBase': PropertySchema(id: 7, name: r'qtyBase', type: IsarType.double),
+    r'recipeId': PropertySchema(id: 8, name: r'recipeId', type: IsarType.long),
     r'source': PropertySchema(
-      id: 7,
+      id: 9,
       name: r'source',
       type: IsarType.string,
       enumMap: _MealEntrysourceEnumValueMap,
     ),
-    r'title': PropertySchema(id: 8, name: r'title', type: IsarType.string),
+    r'title': PropertySchema(id: 10, name: r'title', type: IsarType.string),
   },
 
   estimateSize: _mealEntryEstimateSize,
@@ -1072,6 +1078,12 @@ int _mealEntryEstimateSize(
 ) {
   var bytesCount = offsets.last;
   bytesCount += 3 + object.entryId.length * 3;
+  {
+    final value = object.ingredientKey;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount +=
       3 +
       NutritionSchema.estimateSize(
@@ -1094,16 +1106,18 @@ void _mealEntrySerialize(
   writer.writeLong(offsets[1], object.costMinor);
   writer.writeDateTime(offsets[2], object.eatenAt);
   writer.writeString(offsets[3], object.entryId);
+  writer.writeString(offsets[4], object.ingredientKey);
   writer.writeObject<Nutrition>(
-    offsets[4],
+    offsets[5],
     allOffsets,
     NutritionSchema.serialize,
     object.nutrition,
   );
-  writer.writeDouble(offsets[5], object.portions);
-  writer.writeLong(offsets[6], object.recipeId);
-  writer.writeString(offsets[7], object.source.name);
-  writer.writeString(offsets[8], object.title);
+  writer.writeDouble(offsets[6], object.portions);
+  writer.writeDouble(offsets[7], object.qtyBase);
+  writer.writeLong(offsets[8], object.recipeId);
+  writer.writeString(offsets[9], object.source.name);
+  writer.writeString(offsets[10], object.title);
 }
 
 MealEntry _mealEntryDeserialize(
@@ -1117,19 +1131,21 @@ MealEntry _mealEntryDeserialize(
   object.costMinor = reader.readLong(offsets[1]);
   object.eatenAt = reader.readDateTime(offsets[2]);
   object.entryId = reader.readString(offsets[3]);
+  object.ingredientKey = reader.readStringOrNull(offsets[4]);
   object.nutrition =
       reader.readObjectOrNull<Nutrition>(
-        offsets[4],
+        offsets[5],
         NutritionSchema.deserialize,
         allOffsets,
       ) ??
       Nutrition();
-  object.portions = reader.readDouble(offsets[5]);
-  object.recipeId = reader.readLongOrNull(offsets[6]);
+  object.portions = reader.readDouble(offsets[6]);
+  object.qtyBase = reader.readDoubleOrNull(offsets[7]);
+  object.recipeId = reader.readLongOrNull(offsets[8]);
   object.source =
-      _MealEntrysourceValueEnumMap[reader.readStringOrNull(offsets[7])] ??
+      _MealEntrysourceValueEnumMap[reader.readStringOrNull(offsets[9])] ??
       MealSource.cookedNow;
-  object.title = reader.readString(offsets[8]);
+  object.title = reader.readString(offsets[10]);
   return object;
 }
 
@@ -1149,6 +1165,8 @@ P _mealEntryDeserializeProp<P>(
     case 3:
       return (reader.readString(offset)) as P;
     case 4:
+      return (reader.readStringOrNull(offset)) as P;
+    case 5:
       return (reader.readObjectOrNull<Nutrition>(
                 offset,
                 NutritionSchema.deserialize,
@@ -1156,15 +1174,17 @@ P _mealEntryDeserializeProp<P>(
               ) ??
               Nutrition())
           as P;
-    case 5:
-      return (reader.readDouble(offset)) as P;
     case 6:
-      return (reader.readLongOrNull(offset)) as P;
+      return (reader.readDouble(offset)) as P;
     case 7:
+      return (reader.readDoubleOrNull(offset)) as P;
+    case 8:
+      return (reader.readLongOrNull(offset)) as P;
+    case 9:
       return (_MealEntrysourceValueEnumMap[reader.readStringOrNull(offset)] ??
               MealSource.cookedNow)
           as P;
-    case 8:
+    case 10:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -1175,11 +1195,13 @@ const _MealEntrysourceEnumValueMap = {
   r'cookedNow': r'cookedNow',
   r'fridge': r'fridge',
   r'quickAdd': r'quickAdd',
+  r'pantry': r'pantry',
 };
 const _MealEntrysourceValueEnumMap = {
   r'cookedNow': MealSource.cookedNow,
   r'fridge': MealSource.fridge,
   r'quickAdd': MealSource.quickAdd,
+  r'pantry': MealSource.pantry,
 };
 
 extension MealEntryQueryFilter
@@ -1520,6 +1542,165 @@ extension MealEntryQueryFilter
     });
   }
 
+  QueryBuilder<MealEntry, MealEntry, QAfterFilterCondition>
+  ingredientKeyIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'ingredientKey'),
+      );
+    });
+  }
+
+  QueryBuilder<MealEntry, MealEntry, QAfterFilterCondition>
+  ingredientKeyIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'ingredientKey'),
+      );
+    });
+  }
+
+  QueryBuilder<MealEntry, MealEntry, QAfterFilterCondition>
+  ingredientKeyEqualTo(String? value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'ingredientKey',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<MealEntry, MealEntry, QAfterFilterCondition>
+  ingredientKeyGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'ingredientKey',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<MealEntry, MealEntry, QAfterFilterCondition>
+  ingredientKeyLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'ingredientKey',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<MealEntry, MealEntry, QAfterFilterCondition>
+  ingredientKeyBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'ingredientKey',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<MealEntry, MealEntry, QAfterFilterCondition>
+  ingredientKeyStartsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'ingredientKey',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<MealEntry, MealEntry, QAfterFilterCondition>
+  ingredientKeyEndsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'ingredientKey',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<MealEntry, MealEntry, QAfterFilterCondition>
+  ingredientKeyContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'ingredientKey',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<MealEntry, MealEntry, QAfterFilterCondition>
+  ingredientKeyMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'ingredientKey',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<MealEntry, MealEntry, QAfterFilterCondition>
+  ingredientKeyIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'ingredientKey', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<MealEntry, MealEntry, QAfterFilterCondition>
+  ingredientKeyIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'ingredientKey', value: ''),
+      );
+    });
+  }
+
   QueryBuilder<MealEntry, MealEntry, QAfterFilterCondition> portionsEqualTo(
     double value, {
     double epsilon = Query.epsilon,
@@ -1583,6 +1764,96 @@ extension MealEntryQueryFilter
       return query.addFilterCondition(
         FilterCondition.between(
           property: r'portions',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<MealEntry, MealEntry, QAfterFilterCondition> qtyBaseIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'qtyBase'),
+      );
+    });
+  }
+
+  QueryBuilder<MealEntry, MealEntry, QAfterFilterCondition> qtyBaseIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'qtyBase'),
+      );
+    });
+  }
+
+  QueryBuilder<MealEntry, MealEntry, QAfterFilterCondition> qtyBaseEqualTo(
+    double? value, {
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'qtyBase',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<MealEntry, MealEntry, QAfterFilterCondition> qtyBaseGreaterThan(
+    double? value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'qtyBase',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<MealEntry, MealEntry, QAfterFilterCondition> qtyBaseLessThan(
+    double? value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'qtyBase',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<MealEntry, MealEntry, QAfterFilterCondition> qtyBaseBetween(
+    double? lower,
+    double? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'qtyBase',
           lower: lower,
           includeLower: includeLower,
           upper: upper,

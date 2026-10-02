@@ -121,6 +121,7 @@ test/
 | A | User captures a receipt or pantry photo (⊕, quick action, share sheet, onboarding) | [`receipt_extraction.v4`](../assets/prompts/receipt_extraction.v4.md) | 1–3 images + locale + `known_ingredients` (key, name, unit) | Extraction JSON → `ScanJob.lines` (draft) → `Transaction` + `Ingredient` on commit | **low** (extraction that Dart verifies) | `ScanJob` stays `queued`. Retried on reconnect and app resume. | 2–5 per week |
 | B | Evening before (primary), WorkManager morning window (fallback), app open with no pick (last resort), *Swap* button | [`daily_recipe.v2`](../assets/prompts/daily_recipe.v2.md) | Compact inventory (salt and oil included) + targets + profile + recent titles | Recipe JSON → `Recipe(origin: dailyAuto, suggestedForDateKey)` | **medium** | Best "ready" saved recipe, picked by `FeasibilityChecker` + expiry score | 1 per day + ≤ 2 swaps |
 | C | User types or speaks a request on the Cook tab | [`spontaneous_recipe.v2`](../assets/prompts/spontaneous_recipe.v2.md) | Request text + parsed portions + inventory + profile | Feasibility + recipe JSON → `Recipe(origin: spontaneous)` | **medium** | Message "Needs a connection" + local title search over saved recipes | On demand, ~0–2 per day |
+| G | **Say it** in the ⊕ menu or the home-screen shortcut: the user says or types what they did | [`quick_log.v1`](../assets/prompts/quick_log.v1.md) | The sentence + now + pantry (key, name, unit, on hand) + fridge batches + saved recipes | Actions → `QuickLogPlanner` (Dart numbers) → card → **Log it** → one transaction: purchases, expenses, meals, cooking, stock | **low** | Error on the card; nothing is saved. The manual ⊕ flows work offline | On demand, a few a day |
 | F | A pantry photo was read (Prompt A), and some items have no price paid yet | [`price_lookup.v1`](../assets/prompts/price_lookup.v1.md) with **Google Search** | The products (exact name, unit, pack size) + country and currency | Shop price per pack, store, site → `DraftLine` price fields, asked about in review | **low** | Prompt A's estimates stand; review says why and offers **Try again** | With each pantry photo (off in Settings) |
 
 ### Never AI (pure Dart / Isar)
@@ -229,6 +230,9 @@ sequenceDiagram
 
 ### Flow 5: Quick expense
 `⊕ → Expense → amount → chip tap` runs `LogQuickExpense` → one `Transaction` with a single line (`source: manual`) → the dashboard watcher fires. Alternatively, text such as `"12.5 lunch"` goes through `QuickTextParser` (keyword → category, learned keyword memory) with no network.
+
+### Flow 5b: Say it
+`⊕ → Say it` listens (or takes typing) → `QuickLogService.interpret` → Prompt G → `QuickLog.parse` checks every reference → `QuickLogPlanner` works out the numbers on copies of the data → the card shows one line per action, with anything to check (an estimated price, fewer portions left). **Log it** runs `QuickLogService.apply`: planned again on the database and saved in one write transaction → snackbar with **Undo**, which restores what changed in one transaction. See [05 §5.11](05-ai-layer-and-prompts.md#511-say-it-logging-what-the-user-says-prompt-g).
 
 ### Flow 6: Reactive dashboard
 ```

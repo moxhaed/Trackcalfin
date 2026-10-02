@@ -17,11 +17,13 @@ import '../application/metrics_service.dart';
 import '../application/nutrition_service.dart';
 import '../application/pantry_service.dart';
 import '../application/profile_service.dart';
+import '../application/quick_log_service.dart';
 import '../application/recipe_service.dart';
 import '../application/scan_service.dart';
 import '../core/day_clock.dart';
 import '../core/enums.dart';
 import '../core/money.dart';
+import '../data/ai/gemini_client.dart';
 import '../data/ai/prompt_repository.dart';
 import '../data/fx/fx_rate_client.dart';
 import '../data/isar/collections/schemas.dart';
@@ -51,11 +53,17 @@ final cookServiceProvider = Provider((ref) => CookService(ref.watch(isarProvider
 final recipeServiceProvider = Provider((ref) => RecipeService(ref.watch(isarProvider), now: ref.watch(nowProvider)));
 final metricsServiceProvider = Provider((ref) => MetricsService(ref.watch(isarProvider)));
 final backupServiceProvider = Provider((ref) => BackupService(ref.watch(isarProvider)));
+
+/// `--dart-define=GEMINI_BASE_URL=http://127.0.0.1:8765/v1beta` points the app at a local
+/// stand-in for Gemini, to check AI screens on the desktop without a key or quota.
+const _geminiBaseUrl = String.fromEnvironment('GEMINI_BASE_URL', defaultValue: GeminiClient.defaultBaseUrl);
+
 final aiGatewayProvider = Provider(
   (ref) => AiGateway(
     isar: ref.watch(isarProvider),
     secrets: ref.watch(secretStoreProvider),
     prompts: ref.watch(promptRepositoryProvider),
+    baseUrl: _geminiBaseUrl,
   ),
 );
 final fxServiceProvider = Provider(
@@ -80,6 +88,10 @@ final dailyPickServiceProvider = Provider(
 );
 final askServiceProvider = Provider(
   (ref) => AskService(isar: ref.watch(isarProvider), ai: ref.watch(aiGatewayProvider), now: ref.watch(nowProvider)),
+);
+final quickLogServiceProvider = Provider(
+  (ref) =>
+      QuickLogService(isar: ref.watch(isarProvider), ai: ref.watch(aiGatewayProvider), now: ref.watch(nowProvider)),
 );
 
 // ---------------------------------------------------------------------------
@@ -198,10 +210,7 @@ Future<DashboardView> loadDashboard(Isar isar, DateTime now, {Recipe? pick}) asy
     clock.dateKey(monthStart),
     clock.dateKey(trailingStart),
   ].reduce((a, b) => a < b ? a : b);
-  final logs = await isar.dailyLogs
-      .where()
-      .dateKeyBetween(logsFrom, DayClock.addDaysToKey(weekStartKey, 7))
-      .findAll();
+  final logs = await isar.dailyLogs.where().dateKeyBetween(logsFrom, DayClock.addDaysToKey(weekStartKey, 7)).findAll();
   final firstMeal = await isar.dailyLogs.where().anyDateKey().filter().mealsCountGreaterThan(0).findFirst();
   final outTx = await isar.transactions
       .where()

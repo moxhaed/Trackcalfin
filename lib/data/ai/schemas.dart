@@ -128,6 +128,103 @@ class AiSchemas {
     ],
   };
 
+  static Map<String, dynamic> get _newIngredient => {
+    'type': ['object', 'null'],
+    'properties': {
+      'name': {'type': 'string'},
+      'ingredient_category': _enum(_ingCats),
+      'unit': _enum(_units),
+      'grams_per_piece': _nullable('number'),
+      'density_g_per_ml': _nullable('number'),
+      'per_100': {
+        'type': 'object',
+        'properties': {
+          'kcal': {'type': 'number'},
+          'protein_g': {'type': 'number'},
+          'carbs_g': {'type': 'number'},
+          'fat_g': {'type': 'number'},
+          'fiber_g': {'type': 'number'},
+        },
+        'required': ['kcal', 'protein_g', 'carbs_g', 'fat_g', 'fiber_g'],
+      },
+      'shelf_life_days': {'type': 'integer'},
+    },
+    'required': ['name', 'ingredient_category', 'unit', 'per_100', 'shelf_life_days'],
+  };
+
+  /// Prompt G: what the user said they did, as actions.
+  static Map<String, dynamic> get quickLog => {
+    'type': 'object',
+    'properties': {
+      'schema_version': {'type': 'integer'},
+      'actions': {
+        'type': 'array',
+        'items': {
+          'type': 'object',
+          'properties': {
+            'type': _enum(['buy', 'expense', 'eat', 'cook', 'throw_away', 'count']),
+            'when': _nullable('string'),
+            'source': {
+              'type': ['string', 'null'],
+              'enum': ['fridge', 'pantry', 'out', null],
+            },
+            'key': _nullable('string'),
+            'name': _nullable('string'),
+            'qty': _nullable('number'),
+            'unit': {
+              'type': ['string', 'null'],
+              'enum': [..._units, null],
+            },
+            'batch_id': _nullable('integer'),
+            'recipe_id': _nullable('integer'),
+            'portions': _nullable('number'),
+            'ate_portions': _nullable('integer'),
+            'paid_minor': _nullable('integer'),
+            'est_price_minor': _nullable('integer'),
+            'category': {
+              'type': ['string', 'null'],
+              'enum': [..._spend.where((c) => c != 'groceries'), null],
+            },
+            'merchant': _nullable('string'),
+            'nutrition': {
+              'type': ['object', 'null'],
+              'properties': {
+                'kcal': {'type': 'number'},
+                'protein_g': {'type': 'number'},
+                'carbs_g': {'type': 'number'},
+                'fat_g': {'type': 'number'},
+              },
+              'required': ['kcal', 'protein_g', 'carbs_g', 'fat_g'],
+            },
+            'new_ingredient': _newIngredient,
+          },
+          'required': [
+            'type',
+            'when',
+            'source',
+            'key',
+            'name',
+            'qty',
+            'unit',
+            'batch_id',
+            'recipe_id',
+            'portions',
+            'ate_portions',
+            'paid_minor',
+            'est_price_minor',
+            'category',
+            'merchant',
+            'nutrition',
+            'new_ingredient',
+          ],
+        },
+      },
+      'total_paid_minor': _nullable('integer'),
+      'question': _nullable('string'),
+    },
+    'required': ['schema_version', 'actions', 'total_paid_minor', 'question'],
+  };
+
   static Map<String, dynamic> get nutritionEstimate => {
     'type': 'object',
     'properties': {

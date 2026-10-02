@@ -20,6 +20,32 @@ class NewIngredientDto {
   final double? densityGPerMl;
   final Nutrition per100;
   final int shelfLifeDays;
+
+  /// The `new_ingredient` object of Prompts A and G, at [path].
+  static NewIngredientDto parse(JsonReader j, Map<String, dynamic> p, String path) {
+    final per = j.object(p, 'per_100', path);
+    final unit = j.enumOf(p, 'unit', path, EnumCodec.unit);
+    final gpp = j.number(p, 'grams_per_piece', path, nullable: true);
+    if (unit == BaseUnit.pc && gpp == null) j.error('$path.grams_per_piece', 'is required when unit is "pc"');
+    final nutrition = per == null
+        ? Nutrition()
+        : Nutrition(
+            kcal: j.number(per, 'kcal', '$path.per_100') ?? 0,
+            proteinG: j.number(per, 'protein_g', '$path.per_100') ?? 0,
+            carbsG: j.number(per, 'carbs_g', '$path.per_100') ?? 0,
+            fatG: j.number(per, 'fat_g', '$path.per_100') ?? 0,
+            fiberG: j.number(per, 'fiber_g', '$path.per_100', nullable: true) ?? 0,
+          );
+    return NewIngredientDto(
+      name: j.str(p, 'name', path) ?? '',
+      category: j.enumOf(p, 'ingredient_category', path, EnumCodec.ingredientCategory) ?? IngredientCategory.other,
+      unit: unit ?? BaseUnit.g,
+      gramsPerPiece: gpp,
+      densityGPerMl: j.number(p, 'density_g_per_ml', path, nullable: true),
+      per100: nutrition,
+      shelfLifeDays: j.integer(p, 'shelf_life_days', path) ?? 7,
+    );
+  }
 }
 
 /// The usual shop price of one package, from a pantry photo: [priceMinor] in the home
@@ -131,7 +157,7 @@ class ReceiptExtraction {
         if (rawProfile is! Map) {
           j.error('$path.new_ingredient', 'is required when is_new_ingredient is true');
         } else {
-          profile = _profile(j, rawProfile.cast<String, dynamic>(), '$path.new_ingredient');
+          profile = NewIngredientDto.parse(j, rawProfile.cast<String, dynamic>(), '$path.new_ingredient');
         }
       }
       final product = j.str(it, 'product', path, nullable: true);
@@ -178,31 +204,6 @@ class ReceiptExtraction {
         warnings: warnings,
       ),
       const [],
-    );
-  }
-
-  static NewIngredientDto? _profile(JsonReader j, Map<String, dynamic> p, String path) {
-    final per = j.object(p, 'per_100', path);
-    final unit = j.enumOf(p, 'unit', path, EnumCodec.unit);
-    final gpp = j.number(p, 'grams_per_piece', path, nullable: true);
-    if (unit == BaseUnit.pc && gpp == null) j.error('$path.grams_per_piece', 'is required when unit is "pc"');
-    final nutrition = per == null
-        ? Nutrition()
-        : Nutrition(
-            kcal: j.number(per, 'kcal', '$path.per_100') ?? 0,
-            proteinG: j.number(per, 'protein_g', '$path.per_100') ?? 0,
-            carbsG: j.number(per, 'carbs_g', '$path.per_100') ?? 0,
-            fatG: j.number(per, 'fat_g', '$path.per_100') ?? 0,
-            fiberG: j.number(per, 'fiber_g', '$path.per_100', nullable: true) ?? 0,
-          );
-    return NewIngredientDto(
-      name: j.str(p, 'name', path) ?? '',
-      category: j.enumOf(p, 'ingredient_category', path, EnumCodec.ingredientCategory) ?? IngredientCategory.other,
-      unit: unit ?? BaseUnit.g,
-      gramsPerPiece: gpp,
-      densityGPerMl: j.number(p, 'density_g_per_ml', path, nullable: true),
-      per100: nutrition,
-      shelfLifeDays: j.integer(p, 'shelf_life_days', path) ?? 7,
     );
   }
 }

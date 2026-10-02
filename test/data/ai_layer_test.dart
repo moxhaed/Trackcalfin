@@ -6,6 +6,7 @@ import 'package:trackcalfin/data/ai/ai_runner.dart';
 import 'package:trackcalfin/data/ai/context_builders.dart';
 import 'package:trackcalfin/data/ai/dto/nutrition_dto.dart';
 import 'package:trackcalfin/data/ai/dto/price_dto.dart';
+import 'package:trackcalfin/data/ai/dto/quick_log_dto.dart';
 import 'package:trackcalfin/data/ai/dto/receipt_dto.dart';
 import 'package:trackcalfin/data/ai/dto/recipe_dto.dart';
 import 'package:trackcalfin/data/ai/gemini_client.dart';
@@ -64,6 +65,27 @@ void main() {
       expect(r.value!.basis, LabelBasis.per100g);
       expect(r.value!.energyKcal, 348);
     });
+    test('Prompt G examples: buy and drink, fridge and eating out, a split total, a question', () {
+      final ctx = QuickLogContext(
+        now: DateTime(2026, 10, 2, 18, 40),
+        pantry: const {'cola_zero': BaseUnit.pc, 'whole_milk': BaseUnit.ml},
+        fridge: const {12: 3},
+        recipes: const {4},
+      );
+      final examples = promptExamples('quick_log.v1.md');
+      expect(examples, hasLength(4));
+      final parsed = [for (final e in examples) QuickLog.parse(jsonDecode(e), ctx: ctx)];
+      for (final r in parsed) {
+        expect(r.ok, isTrue, reason: r.errors.join('\n'));
+      }
+      expect(parsed[0].value!.actions.map((a) => a.type), [QuickActionType.buy, QuickActionType.eat]);
+      expect(parsed[1].value!.actions[1].category, SpendCategory.eatingOut);
+      expect(parsed[1].value!.actions[2].nutrition!.kcal, 700);
+      expect(parsed[2].value!.totalPaidMinor, 950);
+      expect(parsed[2].value!.actions[0].newIngredient!.gramsPerPiece, 260);
+      expect(parsed[3].value!.actions, isEmpty);
+      expect(parsed[3].value!.question, startsWith('Which chili'));
+    });
     test('Prompt F example', () {
       final r = PriceLookup.parse(
         jsonDecode(promptExample('price_lookup.v1.md')),
@@ -102,6 +124,13 @@ void main() {
       expect(r.errors.single, contains("'staple' is not one of stock, missing"));
     });
     test('schemas mirror the prompts', () {
+      final action = (AiSchemas.quickLog['properties']['actions'] as Map)['items'] as Map;
+      expect(
+        (action['required'] as List).toSet(),
+        (action['properties'] as Map).keys.toSet(),
+        reason: 'every action field is always present',
+      );
+      expect((action['properties']['category'] as Map)['enum'], isNot(contains('groceries')));
       final item = (AiSchemas.receipt['properties']['items'] as Map)['items'] as Map;
       expect(item['required'], containsAll(['product', 'shelf_price']));
       expect((item['properties']['new_ingredient'] as Map)['properties'], isNot(contains('suggest_staple')));
@@ -193,6 +222,121 @@ void main() {
           none,
         ]).errors.single,
         r'$.items[0].found is required (boolean)',
+      );
+    });
+    test('a quick log may only point at what exists, in its unit, with money and dates that make sense', () {
+      final ctx = QuickLogContext(
+        now: DateTime(2026, 10, 2, 18, 40),
+        pantry: const {'cola_zero': BaseUnit.pc},
+        fridge: const {12: 3},
+        recipes: const {4},
+      );
+      Map<String, dynamic> a(String type, Map<String, dynamic> f) => {
+        'type': type,
+        'when': null,
+        'source': null,
+        'key': null,
+        'name': null,
+        'qty': null,
+        'unit': null,
+        'batch_id': null,
+        'recipe_id': null,
+        'portions': null,
+        'ate_portions': null,
+        'paid_minor': null,
+        'est_price_minor': null,
+        'category': null,
+        'merchant': null,
+        'nutrition': null,
+        'new_ingredient': null,
+        ...f,
+      };
+      List<String> errors(List<Map<String, dynamic>> actions, {String? question}) => QuickLog.parse({
+        'schema_version': 1,
+        'actions': actions,
+        'total_paid_minor': null,
+        'question': question,
+      }, ctx: ctx).errors;
+
+      expect(
+        errors([
+          a('eat', {'source': 'fridge', 'batch_id': 99, 'portions': 1}),
+        ]),
+        [r'$.actions[0].batch_id 99 is not in the fridge'],
+      );
+      expect(
+        errors([
+          a('eat', {'source': 'pantry', 'key': 'cola', 'qty': 1, 'unit': 'pc'}),
+        ]),
+        [r"$.actions[0].key 'cola' is not in the pantry; copy pantry keys exactly"],
+      );
+      expect(
+        errors([
+          a('eat', {'source': 'pantry', 'key': 'cola_zero', 'qty': 330, 'unit': 'ml'}),
+        ]),
+        [r"$.actions[0].unit 'cola_zero' is counted in pc; give qty in pc"],
+      );
+      expect(
+        errors([
+          a('buy', {'key': 'cola_zero', 'qty': 1, 'unit': 'pc'}),
+        ]),
+        [r'$.actions[0].est_price_minor is required when paid_minor is null'],
+        reason: 'no invented price',
+      );
+      expect(
+        errors([
+          a('buy', {'key': 'oat_milk', 'qty': 1000, 'unit': 'ml', 'paid_minor': 199}),
+        ]).first,
+        r'$.actions[0].new_ingredient is required (object)',
+      );
+      expect(
+        errors([
+          a('expense', {'paid_minor': 450, 'category': 'groceries'}),
+        ]).single,
+        contains("'groceries' is not one of"),
+        reason: 'groceries are bought, not an expense',
+      );
+      expect(
+        errors([
+          a('cook', {'recipe_id': 4, 'portions': 2, 'ate_portions': 3}),
+        ]),
+        [r'$.actions[0].ate_portions must be between 0 and the portions cooked'],
+      );
+      expect(
+        errors([
+          a('expense', {'paid_minor': 450, 'category': 'other', 'when': '2026-10-03T09:00'}),
+        ]).single,
+        contains('is after now'),
+      );
+      expect(
+        errors([
+          a('expense', {'paid_minor': 450, 'category': 'other', 'when': '2026-09-01T09:00'}),
+        ]).single,
+        contains('more than 14 days back'),
+      );
+      expect(errors(const []), [r'$.question is required when there are no actions']);
+      expect(errors(const [], question: 'Which chili?'), isEmpty);
+      // A key bought earlier in the message can be eaten after it.
+      expect(
+        errors([
+          a('buy', {
+            'key': 'banana',
+            'qty': 3,
+            'unit': 'pc',
+            'paid_minor': 99,
+            'new_ingredient': {
+              'name': 'Banana',
+              'ingredient_category': 'produce',
+              'unit': 'pc',
+              'grams_per_piece': 120,
+              'density_g_per_ml': null,
+              'per_100': {'kcal': 89, 'protein_g': 1.1, 'carbs_g': 20, 'fat_g': 0.3, 'fiber_g': 2.6},
+              'shelf_life_days': 5,
+            },
+          }),
+          a('eat', {'source': 'pantry', 'key': 'banana', 'qty': 1, 'unit': 'pc'}),
+        ]),
+        isEmpty,
       );
     });
     test('daily recipe may not contain missing items', () {

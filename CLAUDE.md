@@ -1,6 +1,6 @@
 # Trackcalfin: notes for coding sessions
 
-Flutter app (Android/iOS; Linux desktop for local UI checks) with a local Isar database and Gemini for six tasks: receipts, Today's Pick, Ask, ingredient macros (estimates and label reading), and shop prices for pantry photos (Google Search grounding). The architecture docs live in `docs/`, and the system prompts in `assets/prompts/`.
+Flutter app (Android/iOS; Linux desktop for local UI checks) with a local Isar database and Gemini for seven tasks: receipts, Today's Pick, Ask, ingredient macros (estimates and label reading), shop prices for pantry photos (Google Search grounding), and Say it (logging what the user says they did). The architecture docs live in `docs/`, and the system prompts in `assets/prompts/`.
 
 ## Commands
 - `flutter pub get`
@@ -8,6 +8,7 @@ Flutter app (Android/iOS; Linux desktop for local UI checks) with a local Isar d
 - `flutter test` (all green; widget smoke tests use the live binding and take ~20 s)
 - `dart run build_runner build` after editing `lib/data/isar/collections/*.dart`
 - `flutter run -d linux --dart-define=DEMO=true` seeds demo data into an empty DB. Add `--dart-define=THEME=dark` for dark mode.
+- `--dart-define=GEMINI_BASE_URL=http://127.0.0.1:8765/v1beta` sends AI calls to a local stand-in instead of Google, to check AI screens on the desktop. The desktop build reads its key from `.gemini_key` in the app support directory when there is no keyring.
 - `GEMINI_API_KEY=... EVAL_BACKUP=backup.json flutter test tool/model_eval_test.dart` compares Gemini models on real data (Today's Pick and receipts) and writes `build/model_eval/*/report.md`. It spends real quota; options are in the file header.
 
 ## Gotchas

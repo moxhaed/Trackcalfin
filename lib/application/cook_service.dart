@@ -181,6 +181,18 @@ class CookService {
           await isar.cookSessions.put(s);
         }
       }
+      // Eaten from the pantry: what it took out of stock goes back.
+      if (entry.source == MealSource.pantry && entry.ingredientKey != null && (entry.qtyBase ?? 0) > 0) {
+        final ing = await isar.ingredients.getByKey(entry.ingredientKey!);
+        if (ing != null) {
+          final before = ing.qtyOnHand;
+          ing.qtyOnHand = before + entry.qtyBase!;
+          if (before <= 0 && ing.lastPurchasedAt != null) {
+            ing.expiresAt = DayClock.addDays(ing.lastPurchasedAt!, ing.shelfLifeDays);
+          }
+          await isar.ingredients.put(ing);
+        }
+      }
     });
   }
 

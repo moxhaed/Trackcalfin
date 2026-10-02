@@ -10,6 +10,7 @@ The master prompts are **runtime assets**. The app loads them verbatim as the `s
 | **D** | [`assets/prompts/nutrition_estimate.v1.md`](../assets/prompts/nutrition_estimate.v1.md) | Ingredients with unknown macros → typical values per 100 g, density, piece weight |
 | **E** | [`assets/prompts/nutrition_label.v1.md`](../assets/prompts/nutrition_label.v1.md) | Photo of a nutrition facts panel → the printed values, unconverted |
 | **F** | [`assets/prompts/price_lookup.v1.md`](../assets/prompts/price_lookup.v1.md) | Products from a pantry photo → their shop price, searched with Google (one pack, its size, the store and the site) |
+| **G** | [`assets/prompts/quick_log.v1.md`](../assets/prompts/quick_log.v1.md) | What the user says they did ("bought a Coke Zero for 1.29 and drank it") + pantry, fridge and recipes → actions to log |
 
 Those files are the single source of truth. This document covers how they're called, fed, and verified.
 
@@ -239,7 +240,32 @@ Dart keeps the decisions:
 
 Cost: one lookup is one model call plus the searches the model runs, usually one per item. Grounding with Google Search is billed per search query beyond a free monthly allowance (see Google's pricing page for the current numbers). At a few pantry photos a month that stays small, and the switch turns it off.
 
-## 5.11 References
+## 5.11 Say it: logging what the user says (Prompt G)
+
+The ⊕ menu's **Say it** (also a home-screen shortcut) takes one sentence, spoken (on-device speech to text, the same as Ask) or typed, and logs everything in it: "bought a Coke Zero for 1.29 and drank it", "two portions of the chili and a döner for 7.50 at lunch", "cooked the bean pasta for three, ate one", "we're out of milk".
+
+**Call.** `QuickLogService.interpret` sends [`quick_log.v1`](../assets/prompts/quick_log.v1.md) the sentence (`said`), `now` and the weekday, the currency, and what it may refer to: every pantry item (key, name, unit, on hand), the fridge (batch id, title, portions left, day cooked) and the saved recipes (id, title). JSON mode with `AiSchemas.quickLog`, `thinkingLevel: low`, 4 096 output tokens, 30 s timeout, one call per use. The input is about 20 tokens per pantry item, so ~2–4k tokens with a full pantry.
+
+**Output.** A list of actions, each with a `type`, plus `total_paid_minor` (one amount for several items) and `question` (one short question when a detail is missing; then that action is left out). Every action has the same fields, null where they don't apply:
+
+| type | What it needs | What Dart does |
+|---|---|---|
+| `buy` | pantry `key` (or a new key + `new_ingredient`), `qty` + `unit`, `paid_minor` or `est_price_minor`, `merchant` | adds the item at that price (`CostingEngine.applyPurchase`); all buys of one message are one grocery transaction |
+| `expense` | `category` (not groceries), `paid_minor`, `name`, `merchant` | a transaction in that category |
+| `eat` · fridge | `batch_id`, `portions` | takes portions from the batch; the meal costs what the batch cost per portion |
+| `eat` · pantry | `key`, `qty` + `unit` | takes it out of stock; calories from the item's per-100 values, cost from its average cost (`MealSource.pantry`) |
+| `eat` · out | `name`, `nutrition` (the model's estimate of the whole thing eaten) | a meal with cost 0: its money is an eating-out expense, and food eaten counts groceries only |
+| `cook` | `recipe_id`, `portions`, `ate_portions` | the same as **I cooked this** (depletion, fridge batch, recipe stats); eats `ate_portions`, or the first portion when the user didn't say and **Log the first portion** is on |
+| `throw_away` | fridge `batch_id` + `portions`, or pantry `key` + `qty` (null = all) | discards portions, or takes stock out |
+| `count` | `key`, `qty` + `unit` | sets what is on hand, as a count (`ExpiryEstimator.onCount`) |
+
+**Checks** (`QuickLog.parse`, a failure gets the repair round): keys, batch ids and recipe ids exist (a key bought earlier in the same message counts); quantities are in the item's own unit; a new key comes with a full `new_ingredient`; a buy without a price has an estimate (no amount paid is ever invented); money is 1 to 100 000 minor units; `when` is `YYYY-MM-DDTHH:MM`, not after now and at most 14 days back; no actions means there must be a question.
+
+**Dart works out every number** (`QuickLogPlanner`, pure). It runs the actions in order on plain copies of the data, so a buy comes before the eat that follows it, and returns one step per action for the card: "Bought Cola Zero · 1 pc · €1.29 · Groceries", "Drank Cola Zero · 1 pc · 1 kcal · €0.84". A total for several items is split by their usual prices (the last item takes the rounding, so the lines add up). A buy priced only at the usual price is marked "~" and offers **Enter the price paid**. Eating more than is left logs what was there and says so. A batch or item that disappeared since is left out with a note.
+
+**Confirm, then one transaction, then Undo.** Nothing is saved until **Log it**. Unticking a step plans again without it. `QuickLogService.apply` plans once more on the database inside one write transaction and saves the result. New ingredients and cook sessions carry negative stand-in ids until then, and are swapped for real ones in purchases, cook deltas and meals. It also keeps copies of everything it changed. **Undo** puts those copies back and deletes what was created, in one transaction. Deleting a pantry meal later from the day's log puts its stock back too.
+
+## 5.12 References
 
 - Gemini 3.8 Flash announcement and model ID: [Introducing Gemini 3.8 Flash](https://blog.google/innovation-and-ai/models-and-research/gemini-models/3-8-flash-and-3-8-flash-cyber/), [Gemini API: What's new in Gemini 3.8 Flash](https://ai.google.dev/gemini-api/docs/latest-model)
 - Structured output (`responseMimeType`, `responseJsonSchema` / `responseSchema`): [Gemini API structured outputs](https://ai.google.dev/gemini-api/docs/generate-content/structured-output), [Improving structured outputs in the Gemini API](https://blog.google/technology/developers/gemini-api-structured-outputs/)

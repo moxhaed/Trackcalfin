@@ -2,7 +2,9 @@ import 'dart:math' as math;
 
 import '../../core/day_clock.dart';
 import '../../core/enums.dart';
+import '../isar/collections/cook_session.dart';
 import '../isar/collections/ingredient.dart';
+import '../isar/collections/recipe.dart';
 import '../isar/collections/scan_job.dart';
 import '../isar/collections/user_profile.dart';
 import '../../domain/costing.dart';
@@ -161,6 +163,44 @@ class ContextBuilders {
         {'id': id, 'product': l.product, 'name': l.name, 'unit': l.unit.label, 'package_qty': l.packageQty},
     ],
   };
+
+  /// Prompt G: what the user said, with the pantry, fridge and recipes it may refer to.
+  static Map<String, dynamic> quickLog({
+    required UserProfile profile,
+    required DateTime now,
+    required List<Ingredient> ingredients,
+    required List<CookSession> fridge,
+    required List<Recipe> recipes,
+    required String said,
+  }) {
+    String two(int v) => v.toString().padLeft(2, '0');
+    final pantry = [...ingredients]..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    return {
+      'now': '${_date(now)}T${two(now.hour)}:${two(now.minute)}',
+      'weekday': _weekdays[now.weekday - 1],
+      'currency': profile.currency,
+      'minor_unit_digits': profile.currencyMinorDigits,
+      'country': profile.country,
+      'output_language': profile.outputLanguage,
+      'pantry': [
+        for (final i in pantry)
+          {'key': i.key, 'name': i.name, 'unit': i.baseUnit.label, 'on_hand': _round(i.qtyOnHand, 1)},
+      ],
+      'fridge': [
+        for (final s in fridge)
+          {
+            'batch_id': s.id,
+            'title': s.recipeTitle,
+            'portions_left': s.portionsRemaining,
+            'cooked_on': _date(s.cookedAt),
+          },
+      ],
+      'recipes': [
+        for (final r in recipes) {'recipe_id': r.id, 'title': r.title},
+      ],
+      'said': said,
+    };
+  }
 
   static const _words = {'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5, 'six': 6, 'seven': 7, 'eight': 8};
 

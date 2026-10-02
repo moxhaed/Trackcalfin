@@ -71,19 +71,7 @@ class PantryService {
     await isar.writeTxn(() async {
       final ing = await isar.ingredients.get(id);
       if (ing == null) return;
-      final before = ing.qtyOnHand;
-      ing.qtyOnHand = qty < 0 ? 0 : qty;
-      if (ing.qtyOnHand < before) {
-        ExpiryEstimator.onDeplete(ing);
-      } else if (before <= 0 && ing.qtyOnHand > 0) {
-        ing.expiresAt = t.add(Duration(days: ing.shelfLifeDays));
-        ing.lastPurchasedAt ??= t;
-        ing.lastPurchaseQty = ing.qtyOnHand;
-      }
-      ing
-        ..lastVerifiedAt = t
-        ..lastCountedAt = t
-        ..updatedAt = t;
+      ExpiryEstimator.onCount(ing, qty, t);
       await isar.ingredients.put(ing);
     });
   }

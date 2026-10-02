@@ -55,14 +55,14 @@ enum RecipeOrigin { dailyAuto, spontaneous, manual }
 enum RecipeStatus { suggested, saved, dismissed, archived }
 enum IngredientRole { stock, missing }               // nothing is assumed: no staples
 enum CookStatus { active, finished, discarded, undone }
-enum MealSource { cookedNow, fridge, quickAdd }
+enum MealSource { cookedNow, fridge, quickAdd, pantry }   // pantry: eaten straight from stock (Say it)
 enum ScanStatus { queued, processing, needsReview, committed, failed, discarded }
 enum ScanKind { unknown, receipt, pantry, unreadable }
 enum StockEffect { add, replace, none }             // what filing a scan line does to the pantry
 enum StockCheck { onHand, counted, usedUp }         // why a scan line asks about it
 enum PriceSource { estimate, web }                  // a pantry photo's shop price: the model's idea, or Google
 enum FoodBasis { eaten, spent }                     // what the dashboard's food budget counts
-enum AiTask { receipt, dailyRecipe, spontaneousRecipe, nutritionEstimate, nutritionLabel, priceLookup }
+enum AiTask { receipt, dailyRecipe, spontaneousRecipe, nutritionEstimate, nutritionLabel, priceLookup, quickLog }
 ```
 AI JSON uses snake_case (`meat_fish`, `eating_out`). The DTO layer maps with an explicit `switch` and never uses `EnumType.name` on AI strings directly.
 
@@ -318,6 +318,9 @@ class MealEntry {
 
   Nutrition nutrition = Nutrition();   // snapshot for [portions]
   int costMinor = 0;                   // snapshot for [portions]
+
+  String? ingredientKey;               // MealSource.pantry: the item eaten,
+  double? qtyBase;                     // ... and what left stock (deleting the entry puts it back)
 }
 ```
 

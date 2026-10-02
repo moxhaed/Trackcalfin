@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../features/capture/capture_sheet.dart';
+import '../features/capture/capture_menu.dart';
 import 'floating_nav.dart';
 import 'providers.dart';
 
@@ -23,7 +23,7 @@ class AppShell extends ConsumerWidget {
       bottomNavigationBar: FloatingNav(
         index: shell.currentIndex,
         onSelect: (index) => shell.goBranch(index, initialLocation: index == shell.currentIndex),
-        onCapture: () => showCaptureSheet(context, ref),
+        onCapture: () => showCaptureMenu(context, ref),
         captureLabel: 'Log something',
         popupOpen: popupOpen,
         tabs: [

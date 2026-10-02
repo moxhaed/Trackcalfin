@@ -209,7 +209,7 @@ costPerMeal     = homeCost / Σ home meal portions          // "€2.14 per home
 savedVsOut      = homeMeals * eatingOutAvg − homeCost
 eatingOutAvg    = mean(eating_out transactions, last 90 d) if count ≥ 3 else profile.eatingOutAvgMealMinor
 ```
-Spent and Eaten are two views of the same money, never added together. Eating out is in neither: it is its own line under Other spend.
+Spent and Eaten are two views of the same money, never added together. Eating out is in neither: it is its own line under Other spend, and a meal eaten out logged with Say it costs 0 in the meal log. Home meals (cost per meal, saved vs eating out) are cooked ones: a can of cola from the pantry counts as eaten food, but not as a meal.
 
 ### Non-food spend
 For each `c ∈ {household, clothes, eatingOut, entertainment, other}`: `monthSpend[c]` vs `limit[c]`, with `pace[c]` as above. There's **no ×4.33 projection** for these lumpy categories (one pair of shoes isn't a trend). Bars show month-to-date against the limit, with a pace marker at `limit · elapsedFraction(month)`.

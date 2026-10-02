@@ -84,6 +84,20 @@ When something goes wrong, note the **test ID** (e.g. `R3`), what you expected, 
 - [ ] **U1 · Upgrade from an install with staples.** Open the pantry on a phone that ran the previous version.
   *Expect:* your old staples (salt, oil, spices) are regular items. The ones you never bought are under **Out of stock**. The ones that showed stock appear in **Quick check**, because their amounts were never deducted.
 
+## 2c · The ⊕ menu and Say it (new)
+
+- [ ] **S1 · The menu.** Tap ⊕.
+  *Expect:* round buttons slide up above it, each with a label (**Pantry photo** says "Count food you already have"). **Say it** is closest to your thumb. The ⊕ turns into ✕, and tapping it or the dark background closes the menu.
+- [ ] **S2 · Bought and drank.** **Say it**, allow the microphone, and say "I just bought a Coke Zero for 1.29 and drank it".
+  *Expect:* it stops listening when you stop talking and shows "Bought … 1 pc · €1.29" and "Drank … · €…". Nothing is in the Ledger yet. **Log it**: the Ledger has €1.29 under Groceries, today's food eaten goes up, and the can count is the same as before. **Undo** takes all of it back.
+- [ ] **S3 · Fridge and eating out.** With something in the fridge, say "Ate two portions of the [meal] and a döner for 7.50 at lunch".
+  *Expect:* two portions leave the fridge, the döner is an Eating out expense dated at lunch, and its calories are marked as an estimate.
+- [ ] **S4 · A price you didn't say.** Say "Bought eggs".
+  *Expect:* the price shows with "~" and **Enter the price paid**. Type the real price before **Log it**.
+- [ ] **S5 · A question.** With two batches of the same meal in the fridge, say "Ate the [meal]".
+  *Expect:* it asks which one. **Answer**, add "the one from Monday", **Next**.
+- [ ] **S6 · Shortcut.** Long-press the app icon. *Expect:* **Say it** opens the same sheet.
+
 ## 3 · Foreign-currency receipts (new)
 
 - [ ] **F1 · Automatic rate.** Scan a receipt in another currency (e.g. CHF, USD, GBP).

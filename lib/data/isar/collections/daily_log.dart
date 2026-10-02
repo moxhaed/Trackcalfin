@@ -48,4 +48,9 @@ class MealEntry {
   /// Snapshot for [portions].
   Nutrition nutrition = Nutrition();
   int costMinor = 0;
+
+  /// [MealSource.pantry]: the item eaten and how much was taken out of stock (base unit), so
+  /// deleting the entry puts it back.
+  String? ingredientKey;
+  double? qtyBase;
 }

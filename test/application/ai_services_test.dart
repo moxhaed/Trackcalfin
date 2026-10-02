@@ -5,9 +5,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:isar_community/isar.dart';
 import 'package:trackcalfin/application/ai_gateway.dart';
 import 'package:trackcalfin/application/ask_service.dart';
+import 'package:trackcalfin/application/cook_service.dart';
 import 'package:trackcalfin/application/daily_pick_service.dart';
 import 'package:trackcalfin/application/pantry_service.dart';
 import 'package:trackcalfin/application/profile_service.dart';
+import 'package:trackcalfin/application/quick_log_service.dart';
 import 'package:trackcalfin/application/recipe_service.dart';
 import 'package:trackcalfin/application/scan_service.dart';
 import 'package:trackcalfin/core/enums.dart';
@@ -632,6 +634,137 @@ void main() {
       expect(fake.requests, hasLength(1));
       expect(oil.priceSource, PriceSource.estimate);
       expect(oil.priceToConfirm, isTrue);
+    });
+  });
+  group('Say it (Prompt G)', () {
+    final at = DateTime(2026, 10, 2, 18, 40);
+    QuickLogService service({AiGateway? gateway}) => QuickLogService(isar: isar, ai: gateway ?? ai, now: () => at);
+
+    Future<int> addCola() => PantryService(isar).upsert(
+      Ingredient()
+        ..name = 'Cola Zero'
+        ..key = 'cola_zero'
+        ..category = IngredientCategory.beverages
+        ..baseUnit = BaseUnit.pc
+        ..gramsPerPiece = 340
+        ..qtyOnHand = 5
+        ..avgCostPerUnitMinor = 75
+        ..per100 = Nutrition(kcal: 0.3)
+        ..nutritionSource = DataSource.aiEstimate,
+    );
+
+    test('shows what it understood, saves it all on Log it, and Undo puts every bit back', () async {
+      final cola = await addCola();
+      fake.reply(promptExample('quick_log.v1.md'));
+      final s = service();
+      final draft = await s.interpret('just bought a coke zero for 1.29 and drank it');
+      expect(draft.error, isNull);
+      expect(draft.steps.map((x) => x.title), ['Bought Cola Zero · 1 pc', 'Drank Cola Zero · 1 pc']);
+      final input = jsonDecode(fake.requests.single['contents'][0]['parts'][0]['text'] as String) as Map;
+      expect(input['said'], 'just bought a coke zero for 1.29 and drank it');
+      expect(input['pantry'], [
+        {'key': 'cola_zero', 'name': 'Cola Zero', 'unit': 'pc', 'on_hand': 5.0},
+      ]);
+      expect(await isar.transactions.count(), 0, reason: 'nothing is saved before Log it');
+
+      final receipt = await s.apply(draft.log!);
+      final tx = (await isar.transactions.where().findFirst())!;
+      expect((tx.totalMinor, tx.primaryCategory, tx.lines.single.ingredientId), (129, SpendCategory.groceries, cola));
+      final after = (await isar.ingredients.get(cola))!;
+      expect((after.qtyOnHand, after.avgCostPerUnitMinor), (5.0, 84.0));
+      final day = (await isar.dailyLogs.getByDateKey(20261002))!;
+      expect((day.mealsCount, day.foodCostMinor), (1, 84));
+
+      await s.undo(receipt);
+      expect(await isar.transactions.count(), 0);
+      expect(await isar.dailyLogs.count(), 0);
+      final back = (await isar.ingredients.get(cola))!;
+      expect((back.qtyOnHand, back.avgCostPerUnitMinor), (5.0, 75.0));
+    });
+
+    test('new items and a cooked batch get real ids; Undo removes them and puts the stock back', () async {
+      final beans = await PantryService(isar).upsert(
+        Ingredient()
+          ..name = 'Kidney beans'
+          ..key = 'kidney_beans'
+          ..qtyOnHand = 800
+          ..avgCostPerUnitMinor = 0.4,
+      );
+      final recipe = await RecipeService(isar).save(
+        Recipe()
+          ..title = 'Bean pasta'
+          ..ingredients = [
+            RecipeIngredient()
+              ..key = 'kidney_beans'
+              ..qtyPerPortion = 200,
+          ],
+      );
+      final example = jsonDecode(promptExamples('quick_log.v1.md')[2]) as Map<String, dynamic>;
+      final banana = (example['actions'] as List)[1] as Map<String, dynamic>;
+      fake.replyJson({
+        'schema_version': 1,
+        'actions': [
+          {...banana, 'qty': 3, 'paid_minor': 99, 'est_price_minor': null, 'merchant': null},
+          {
+            ...banana,
+            'type': 'cook',
+            'key': null,
+            'name': null,
+            'qty': null,
+            'unit': null,
+            'recipe_id': recipe,
+            'portions': 3,
+            'ate_portions': 1,
+            'paid_minor': null,
+            'est_price_minor': null,
+            'merchant': null,
+            'new_ingredient': null,
+          },
+        ],
+        'total_paid_minor': null,
+        'question': null,
+      });
+      final s = service();
+      final draft = await s.interpret('bought 3 bananas for 99 cents, cooked bean pasta for 3 and ate one');
+      expect(draft.error, isNull);
+      final r = await s.apply(draft.log!);
+
+      final made = (await isar.ingredients.getByKey('banana'))!;
+      expect((made.qtyOnHand, made.baseUnit, made.nutritionSource), (3.0, BaseUnit.pc, DataSource.aiEstimate));
+      expect((await isar.transactions.where().findFirst())!.lines.single.ingredientId, made.id);
+      expect((await isar.ingredients.get(beans))!.qtyOnHand, 200);
+      final batch = (await isar.cookSessions.where().findFirst())!;
+      expect((batch.portionsRemaining, batch.status), (2, CookStatus.active));
+      final meal = (await isar.dailyLogs.getByDateKey(20261002))!.meals.single;
+      expect(meal.cookSessionId, batch.id, reason: 'the stand-in id became the real one');
+      expect((await isar.recipes.get(recipe))!.timesCooked, 1);
+
+      await s.undo(r);
+      expect(await isar.ingredients.getByKey('banana'), isNull);
+      expect(await isar.cookSessions.count(), 0);
+      expect((await isar.ingredients.get(beans))!.qtyOnHand, 800);
+      expect((await isar.recipes.get(recipe))!.timesCooked, 0);
+    });
+
+    test('deleting a meal eaten from the pantry puts it back in stock', () async {
+      final cola = await addCola();
+      fake.reply(promptExample('quick_log.v1.md'));
+      final s = service();
+      await s.apply((await s.interpret('a coke zero for 1.29, drank it')).log!);
+      final meal = (await isar.dailyLogs.getByDateKey(20261002))!.meals.single;
+      await CookService(isar, now: () => at).deleteMeal(20261002, meal.entryId);
+      expect((await isar.ingredients.get(cola))!.qtyOnHand, 6, reason: 'bought one, and it is no longer drunk');
+    });
+
+    test('a question comes back as a question, and no key says so', () async {
+      fake.reply(promptExamples('quick_log.v1.md')[3]);
+      final asked = await service().interpret('ate the chili');
+      expect(asked.question, 'Which chili: the one from Monday or the one from Wednesday?');
+      expect(asked.steps, isEmpty);
+      final noKey = await service(
+        gateway: AiGateway(isar: isar, secrets: MemorySecretStore(), prompts: PromptRepository(loadPromptAsset)),
+      ).interpret('ate the chili');
+      expect(noKey.error, 'Add a Gemini API key in Settings to use Say it.');
     });
   });
 }

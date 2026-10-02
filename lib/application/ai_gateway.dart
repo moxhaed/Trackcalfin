@@ -15,6 +15,7 @@ class AiGateway {
     http.Client? httpClient,
     this.model = GeminiClient.defaultPrimaryModel,
     this.fallbackModel = GeminiClient.defaultFallbackModel,
+    this.baseUrl = GeminiClient.defaultBaseUrl,
   }) : httpClient = httpClient ?? http.Client();
 
   final Isar isar;
@@ -26,6 +27,9 @@ class AiGateway {
   /// Null pins every call to [model] (the model eval does this).
   final String? fallbackModel;
 
+  /// Google's endpoint, or a local stand-in for UI checks (`--dart-define=GEMINI_BASE_URL`).
+  final String baseUrl;
+
   Future<bool> get hasKey async => ((await secrets.readApiKey()) ?? '').trim().isNotEmpty;
 
   Future<AiRunner?> runner() async {
@@ -35,6 +39,7 @@ class AiGateway {
       apiKey: secrets.readApiKey,
       model: model,
       fallbackModel: fallbackModel,
+      baseUrl: baseUrl,
     );
     return AiRunner(isar, client);
   }

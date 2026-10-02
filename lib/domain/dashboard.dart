@@ -262,14 +262,13 @@ class DashboardAggregator {
     }
 
     final weekLogs = weekKeys.map((k) => logsByKey[k]).whereType<DailyLog>().toList();
+    // Home meals are cooked ones; a can of cola from the pantry is no meal saved from eating out.
+    bool home(MealEntry m) => m.source == MealSource.cookedNow || m.source == MealSource.fridge;
     final homeMeals = weekLogs.fold<double>(
       0,
-      (a, l) => a + l.meals.where((m) => m.source != MealSource.quickAdd).fold<double>(0, (b, m) => b + m.portions),
+      (a, l) => a + l.meals.where(home).fold<double>(0, (b, m) => b + m.portions),
     );
-    final homeCost = weekLogs.fold<int>(
-      0,
-      (a, l) => a + l.meals.where((m) => m.source != MealSource.quickAdd).fold<int>(0, (b, m) => b + m.costMinor),
-    );
+    final homeCost = weekLogs.fold<int>(0, (a, l) => a + l.meals.where(home).fold<int>(0, (b, m) => b + m.costMinor));
     final eatingOutAvg = input.eatingOutAvgMinor ?? p.eatingOutAvgMealMinor;
     final savedVsOut = homeMeals > 0 ? (homeMeals * eatingOutAvg - homeCost).round() : null;
 

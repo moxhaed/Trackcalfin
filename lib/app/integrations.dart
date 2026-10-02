@@ -12,6 +12,7 @@ import '../application/habit_scheduler.dart';
 import '../application/housekeeping.dart';
 import '../features/capture/cooked_sheet.dart';
 import '../features/capture/expense_sheet.dart';
+import '../features/capture/say_it_sheet.dart';
 import '../features/capture/scan_flow.dart';
 import 'providers.dart';
 import 'router.dart';
@@ -79,6 +80,8 @@ class AppIntegrations {
     final ctx = _ctx;
     if (ctx == null) return;
     switch (type) {
+      case 'say_it':
+        unawaited(showSayIt(ctx));
       case 'scan':
         router.go('/buy');
         unawaited(startScan(ctx, ref, hint: 'receipt'));
@@ -95,6 +98,7 @@ class AppIntegrations {
       const qa = QuickActions();
       qa.initialize((type) => WidgetsBinding.instance.addPostFrameCallback((_) => handleShortcut(type)));
       qa.setShortcutItems(const [
+        ShortcutItem(type: 'say_it', localizedTitle: 'Say it', icon: 'ic_shortcut_say'),
         ShortcutItem(type: 'scan', localizedTitle: 'Scan receipt', icon: 'ic_shortcut_scan'),
         ShortcutItem(type: 'expense', localizedTitle: 'Log expense', icon: 'ic_shortcut_expense'),
         ShortcutItem(type: 'cooked', localizedTitle: 'I cooked', icon: 'ic_shortcut_cooked'),

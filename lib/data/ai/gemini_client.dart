@@ -130,13 +130,14 @@ class GeminiResponse {
 class GeminiClient {
   static const defaultPrimaryModel = 'gemini-3.5-flash-lite';
   static const defaultFallbackModel = 'gemini-3.8-flash';
+  static const defaultBaseUrl = 'https://generativelanguage.googleapis.com/v1beta';
 
   GeminiClient({
     required this.httpClient,
     required this.apiKey,
     this.model = defaultPrimaryModel,
     this.fallbackModel = defaultFallbackModel,
-    this.baseUrl = 'https://generativelanguage.googleapis.com/v1beta',
+    this.baseUrl = defaultBaseUrl,
     Future<void> Function(Duration)? delay,
   }) : _delay = delay ?? Future.delayed;
 

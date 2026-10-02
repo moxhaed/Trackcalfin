@@ -45,7 +45,9 @@ enum IngredientRole { stock, missing }
 
 enum CookStatus { active, finished, discarded, undone }
 
-enum MealSource { cookedNow, fridge, quickAdd }
+/// Where a logged meal came from. [pantry]: an item eaten straight from the pantry (a can of
+/// cola, a banana), which takes it out of stock.
+enum MealSource { cookedNow, fridge, quickAdd, pantry }
 
 enum ScanStatus { queued, processing, needsReview, committed, failed, discarded }
 
@@ -93,7 +95,7 @@ enum FoodBasis {
   spent,
 }
 
-enum AiTask { receipt, dailyRecipe, spontaneousRecipe, nutritionEstimate, nutritionLabel, priceLookup }
+enum AiTask { receipt, dailyRecipe, spontaneousRecipe, nutritionEstimate, nutritionLabel, priceLookup, quickLog }
 
 extension BaseUnitLabel on BaseUnit {
   String get label => switch (this) {

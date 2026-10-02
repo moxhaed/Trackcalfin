@@ -85,6 +85,24 @@ class ExpiryEstimator {
     }
   }
 
+  /// Sets what is on hand after looking (Quick Check, an adjustment, "we're out of milk"):
+  /// counts as verified and counted at [at].
+  static void onCount(Ingredient ing, double qty, DateTime at) {
+    final before = ing.qtyOnHand;
+    ing.qtyOnHand = qty < 0 ? 0 : qty;
+    if (ing.qtyOnHand < before) {
+      onDeplete(ing);
+    } else if (before <= 0 && ing.qtyOnHand > 0) {
+      ing.expiresAt = DayClock.addDays(at, ing.shelfLifeDays);
+      ing.lastPurchasedAt ??= at;
+      ing.lastPurchaseQty = ing.qtyOnHand;
+    }
+    ing
+      ..lastVerifiedAt = at
+      ..lastCountedAt = at
+      ..updatedAt = at;
+  }
+
   static bool isShelfStable(Ingredient ing) => ing.shelfLifeDays >= shelfStableDays;
 
   /// Days until the item spoils; null when shelf-stable or unknown.

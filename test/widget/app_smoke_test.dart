@@ -3,11 +3,13 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:isar_community/isar.dart';
 import 'package:trackcalfin/app/app.dart';
 import 'package:trackcalfin/app/providers.dart';
 import 'package:trackcalfin/app/router.dart';
+import 'package:trackcalfin/application/ai_gateway.dart';
 import 'package:trackcalfin/application/demo_seed.dart';
 import 'package:trackcalfin/core/enums.dart';
 import 'package:trackcalfin/data/ai/prompt_repository.dart';
@@ -33,7 +35,12 @@ void main() {
     await tmp.delete(recursive: true);
   });
 
-  Future<void> pumpApp(WidgetTester tester, {String initial = '/', bool demo = true}) async {
+  Future<void> pumpApp(
+    WidgetTester tester, {
+    String initial = '/',
+    bool demo = true,
+    List<Override> overrides = const [],
+  }) async {
     if (demo) await DemoSeed.run(isar);
     tester.view.physicalSize = const Size(1080, 2340);
     tester.view.devicePixelRatio = 2.75;
@@ -46,6 +53,7 @@ void main() {
           secretStoreProvider.overrideWithValue(MemorySecretStore()),
           imageStoreProvider.overrideWithValue(ImageStore(tmp.path)),
           promptRepositoryProvider.overrideWithValue(PromptRepository(loadPromptAsset)),
+          ...overrides,
         ],
         child: TrackcalfinApp(router: router),
       ),
@@ -132,6 +140,72 @@ void main() {
     await tester.tap(find.byTooltip('Log something'));
     await settle(tester);
     expect(find.text('I cooked'), findsOneWidget);
+    expect(find.text('Count food you already have'), findsOneWidget, reason: 'says what a pantry photo is for');
+    await tester.tap(find.byTooltip('Close'));
+    await settle(tester);
+    expect(find.text('I cooked'), findsNothing);
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  testWidgets('say it: reads what you did, shows it, logs it on one tap and Undo takes it back', (tester) async {
+    final fake = FakeGemini()
+      ..replyJson({
+        'schema_version': 1,
+        'actions': [
+          {
+            'type': 'expense',
+            'when': null,
+            'source': null,
+            'key': null,
+            'name': 'Haircut',
+            'qty': null,
+            'unit': null,
+            'batch_id': null,
+            'recipe_id': null,
+            'portions': null,
+            'ate_portions': null,
+            'paid_minor': 2500,
+            'est_price_minor': null,
+            'category': 'other',
+            'merchant': null,
+            'nutrition': null,
+            'new_ingredient': null,
+          },
+        ],
+        'total_paid_minor': null,
+        'question': null,
+      });
+    await pumpApp(
+      tester,
+      overrides: [
+        aiGatewayProvider.overrideWith(
+          (ref) => AiGateway(
+            isar: isar,
+            secrets: MemorySecretStore('test-key'),
+            prompts: PromptRepository(loadPromptAsset),
+            httpClient: fake.client,
+          ),
+        ),
+      ],
+    );
+    final before = await isar.transactions.count();
+    await tester.tap(find.byTooltip('Log something'));
+    await settle(tester);
+    await tester.tap(find.text('Say it'));
+    await settle(tester);
+    expect(find.textContaining('Nothing is saved until you check it'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), 'spent 25 on a haircut');
+    await tester.tap(find.text('Next'));
+    await settle(tester);
+    expect(find.text('Here is what I got'), findsOneWidget);
+    expect(find.textContaining('Haircut ·'), findsOneWidget);
+    expect(await isar.transactions.count(), before, reason: 'nothing is saved before Log it');
+    await tester.tap(find.text('Log it'));
+    await settle(tester);
+    final haircut = await isar.transactions.filter().noteEqualTo('Haircut').findFirst();
+    expect((haircut!.totalMinor, haircut.primaryCategory), (2500, SpendCategory.other));
+    await tester.tap(find.text('Undo'));
+    await settle(tester);
+    expect(await isar.transactions.filter().noteEqualTo('Haircut').findFirst(), isNull);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   testWidgets('pantry macros: unknown banner, confirm and edit an item', (tester) async {

@@ -107,7 +107,7 @@ Stock accuracy is the **core trust metric**. Drift comes from untracked consumpt
 
 ## 1.8 UX layout
 
-Three tabs plus a **global capture button (⊕)** docked in the center of the bottom bar. ⊕ opens a 4-option speed dial: **Scan · Expense · Cooked · Ate**. Settings live behind the gear on the Dashboard.
+Three tabs plus a **global capture button (⊕)** beside the bottom bar. ⊕ opens a speed dial: round buttons stacked above it, each with a label saying what it does. **Say it** (talk or type what you did; the AI logs it after you check it) sits right above the ⊕, closest to the thumb; then **Scan receipt · I ate · I cooked · Expense · Receipt from photos · Pantry photo** (count the food you already have). The ⊕ turns into ✕ to close. Settings live behind the gear on the Dashboard.
 
 ### Tab 1: Dashboard (read-only, 100% algorithmic)
 ```
