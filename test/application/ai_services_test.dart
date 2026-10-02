@@ -70,14 +70,14 @@ void main() {
     }
 
     Map<String, dynamic> receipt([void Function(Map<String, dynamic>)? edit]) {
-      final json = jsonDecode(promptExample('receipt_extraction.v3.md')) as Map<String, dynamic>;
+      final json = jsonDecode(promptExample('receipt_extraction.v4.md')) as Map<String, dynamic>;
       edit?.call(json);
       return json;
     }
 
     test('clean receipt auto-commits: ledger, stock, WAC, new ingredient, aliases', () async {
       await addChicken();
-      fake.reply(promptExample('receipt_extraction.v3.md'));
+      fake.reply(promptExample('receipt_extraction.v4.md'));
       final s = service();
       final id = await s.enqueue([await photo()], hint: 'receipt');
       final results = await s.processQueue();
@@ -218,7 +218,7 @@ void main() {
               ..qtyPerPortion = 100,
           ],
       );
-      fake.reply(promptExamples('receipt_extraction.v3.md')[1]);
+      fake.reply(promptExamples('receipt_extraction.v4.md')[1]);
       final s = service();
       final id = await s.enqueue([await photo()], hint: 'pantry');
       final job = (await s.processQueue()).single.job;
@@ -265,7 +265,7 @@ void main() {
 
     test('an old receipt files the money on its own day; what has spoiled since stays out of the pantry', () async {
       final chicken = await addChicken(shelf: 2);
-      fake.reply(promptExample('receipt_extraction.v3.md'));
+      fake.reply(promptExample('receipt_extraction.v4.md'));
       final s = service(at: DateTime(2026, 10, 2, 9));
       final id = await s.enqueue([await photo()], hint: 'receipt');
       final r = (await s.processQueue()).single;
@@ -288,7 +288,7 @@ void main() {
 
     test('a receipt from before a pantry count asks first; "already counted" adds nothing', () async {
       final chicken = await addChicken(qty: 400, counted: DateTime(2026, 9, 27, 18, 55));
-      fake.reply(promptExample('receipt_extraction.v3.md'));
+      fake.reply(promptExample('receipt_extraction.v4.md'));
       final s = service();
       final id = await s.enqueue([await photo()], hint: 'receipt');
       final r = (await s.processQueue()).single;
@@ -303,7 +303,7 @@ void main() {
     test('the same receipt twice: filed or still in the Inbox, the second one is flagged', () async {
       await addChicken();
       final s = service();
-      fake.reply(promptExample('receipt_extraction.v3.md'));
+      fake.reply(promptExample('receipt_extraction.v4.md'));
       await s.enqueue([await photo()], hint: 'receipt');
       final first = (await s.processQueue()).single;
       expect(first.autoCommitted, isTrue);
@@ -522,7 +522,7 @@ void main() {
           ..qtyOnHand = 900,
       );
       fake
-        ..reply(promptExamples('receipt_extraction.v3.md')[1])
+        ..reply(promptExamples('receipt_extraction.v4.md')[1])
         ..replyJson(
           prices([
             found('0', 179, 500, 'Lidl', 'lidl.de'),
@@ -591,7 +591,7 @@ void main() {
           ..avgCostPerUnitMinor = 0.3,
       );
       fake
-        ..reply(promptExamples('receipt_extraction.v3.md')[1])
+        ..reply(promptExamples('receipt_extraction.v4.md')[1])
         ..status(400, 'Search Grounding is not supported.')
         ..status(400, 'Search Grounding is not supported.');
       final s = service();
@@ -625,7 +625,7 @@ void main() {
     test('Settings can turn the lookup off; the photo estimate is still asked about', () async {
       final p = (await isar.userProfiles.get(1))!..lookUpPrices = false;
       await isar.writeTxn(() => isar.userProfiles.put(p));
-      fake.reply(promptExamples('receipt_extraction.v3.md')[1]);
+      fake.reply(promptExamples('receipt_extraction.v4.md')[1]);
       final s = service();
       await s.enqueue([await photo()], hint: 'pantry');
       final oil = (await s.processQueue()).single.job.lines[1];

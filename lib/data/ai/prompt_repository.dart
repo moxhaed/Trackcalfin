@@ -5,7 +5,7 @@ class PromptRepository {
   final Future<String> Function(String assetPath) _loader;
   final _cache = <String, String>{};
 
-  static const receipt = 'receipt_extraction.v3';
+  static const receipt = 'receipt_extraction.v4';
   static const daily = 'daily_recipe.v2';
   static const spontaneous = 'spontaneous_recipe.v2';
   static const nutritionEstimate = 'nutrition_estimate.v1';

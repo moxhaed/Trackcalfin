@@ -78,6 +78,14 @@ void main() {
       expect(UnitConverter.toBase(110, BaseUnit.g, ing(BaseUnit.pc, gpp: 55)), 2);
       expect(UnitConverter.toBase(92, BaseUnit.g, ing(BaseUnit.ml, density: 0.92)), closeTo(100, 1e-9));
     });
+    test('factor: units of one kind per unit of another, pieces by their weight', () {
+      expect(UnitConverter.factor(BaseUnit.ml, BaseUnit.pc, toGramsPerPiece: 340), closeTo(1 / 340, 1e-12));
+      expect(UnitConverter.factor(BaseUnit.pc, BaseUnit.g, fromGramsPerPiece: 55), 55);
+      expect(UnitConverter.factor(BaseUnit.ml, BaseUnit.g, density: 0.92), closeTo(0.92, 1e-12));
+      expect(UnitConverter.factor(BaseUnit.pc, BaseUnit.pc, fromGramsPerPiece: 50, toGramsPerPiece: 100), 0.5);
+      expect(UnitConverter.factor(BaseUnit.g, BaseUnit.g), 1);
+      expect(UnitConverter.factor(BaseUnit.ml, BaseUnit.pc), isNull, reason: 'a piece needs its weight');
+    });
     test('parses human quantities', () {
       expect(UnitConverter.parseHuman('1,5 kg').toString(), '1500.0 g');
       expect(UnitConverter.parseHuman('6x0,33l')!.qty, closeTo(1980, 1e-9));

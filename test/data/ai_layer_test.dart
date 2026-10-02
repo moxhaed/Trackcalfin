@@ -22,7 +22,7 @@ void main() {
 
   group('Prompt examples parse with the app DTOs', () {
     test('Prompt A examples: a receipt and a pantry photo', () {
-      final examples = promptExamples('receipt_extraction.v3.md');
+      final examples = promptExamples('receipt_extraction.v4.md');
       expect(examples.length, 2);
       final r = ReceiptExtraction.parse(jsonDecode(examples[0]));
       expect(r.ok, isTrue, reason: r.errors.join('\n'));
@@ -81,7 +81,7 @@ void main() {
 
   group('DTO strictness', () {
     test('decimal money, unknown enum and missing profile are path-qualified errors', () {
-      final json = jsonDecode(promptExample('receipt_extraction.v3.md')) as Map<String, dynamic>;
+      final json = jsonDecode(promptExample('receipt_extraction.v4.md')) as Map<String, dynamic>;
       final items = json['items'] as List;
       (items[0] as Map)['total_minor'] = 4.99;
       (items[2] as Map)['spend_category'] = 'toiletries';

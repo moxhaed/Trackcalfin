@@ -97,7 +97,7 @@ test/             domain, application (Isar), data (AI layer), widget
 
 | Prompt | File |
 |---|---|
-| A · Receipt & expense extraction (image → JSON) | [`assets/prompts/receipt_extraction.v3.md`](assets/prompts/receipt_extraction.v3.md) |
+| A · Receipt & expense extraction (image → JSON) | [`assets/prompts/receipt_extraction.v4.md`](assets/prompts/receipt_extraction.v4.md) |
 | B · Daily stock-based recipe (inventory → recipe JSON) | [`assets/prompts/daily_recipe.v2.md`](assets/prompts/daily_recipe.v2.md) |
 | C · Spontaneous recipe calculator (request + inventory → feasibility JSON) | [`assets/prompts/spontaneous_recipe.v2.md`](assets/prompts/spontaneous_recipe.v2.md) |
 | D · Ingredient macros estimate (keys → per-100 g values) | [`assets/prompts/nutrition_estimate.v1.md`](assets/prompts/nutrition_estimate.v1.md) |

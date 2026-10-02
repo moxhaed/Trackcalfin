@@ -36,6 +36,28 @@ class UnitConverter {
     };
   }
 
+  /// How many [to] units make one [from] unit: 1 ml of cola is 1/340 of a 340 g can.
+  /// Pieces need their weight ([fromGramsPerPiece], [toGramsPerPiece]); ml counts [density] g.
+  /// null when a piece weight is missing.
+  static double? factor(
+    BaseUnit from,
+    BaseUnit to, {
+    double? fromGramsPerPiece,
+    double? toGramsPerPiece,
+    double? density,
+  }) {
+    if (from == to && (from != BaseUnit.pc || fromGramsPerPiece == toGramsPerPiece)) return 1;
+    double? grams(BaseUnit u, double? gpp) => switch (u) {
+      BaseUnit.g => 1,
+      BaseUnit.ml => density ?? 1.0,
+      BaseUnit.pc => gpp == null || gpp <= 0 ? null : gpp,
+    };
+    final a = grams(from, fromGramsPerPiece);
+    final b = grams(to, toGramsPerPiece);
+    if (a == null || b == null) return null;
+    return a / b;
+  }
+
   static final _multi = RegExp(r'(\d+)\s*[x×]\s*(\d+(?:[.,]\d+)?)\s*([a-zA-Z]+)');
   static final _single = RegExp(r'(\d+(?:[.,]\d+)?)\s*([a-zA-Zµ]+)?');
 

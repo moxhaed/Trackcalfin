@@ -77,6 +77,10 @@ When something goes wrong, note the **test ID** (e.g. `R3`), what you expected, 
   *Expect:* "You counted it today, after this purchase… Is this already part of it?" with **Already counted** selected. Filing it adds the money but not the item a second time.
 - [ ] **P7 · Salt and oil count.** Open a recipe that uses salt or oil you haven't scanned.
   *Expect:* the row says it's not in the pantry (or "have 0 g"), and today's pick doesn't use it. After you scan it, the recipe's cost includes it. If a pantry item has no price yet, the recipe says so under the cost.
+- [ ] **P8 · Cans are pieces.** Scan a receipt with a six-pack of cans (or photograph the cans).
+  *Expect:* the line says "6 pc", not "1.98 l". A big 1.5 l bottle stays in ml, and so does a drink that was already in your pantry in ml.
+- [ ] **P9 · Switch an item to pieces.** Open a drink that is in ml, tap the pencil, pick **pc** and tap **Save**.
+  *Expect:* "How much does one weigh?". Type 340: the quantity turns into cans (1.98 l → 6). After **Save** the price per can is about the pack price divided by 6, not a fraction of a cent.
 - [ ] **U1 · Upgrade from an install with staples.** Open the pantry on a phone that ran the previous version.
   *Expect:* your old staples (salt, oil, spices) are regular items. The ones you never bought are under **Out of stock**. The ones that showed stock appear in **Quick check**, because their amounts were never deducted.
 

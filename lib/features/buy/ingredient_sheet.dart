@@ -61,6 +61,15 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
   late BaseUnit _unit = _ing.baseUnit;
   late IngredientCategory _category = _ing.category;
 
+  // What the item was in its stored unit, so a unit switch can re-express it.
+  late final _origUnit = _ing.baseUnit;
+  late final _origGpp = _ing.gramsPerPiece;
+  late final _origQty = _ing.qtyOnHand;
+  late final _origLow = _ing.lowStockThreshold;
+  bool _qtyTouched = false;
+  bool _lowTouched = false;
+  String? _gppError;
+
   bool _macroEditing = false;
 
   /// Reading a label or asking the AI.
@@ -70,6 +79,31 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
 
   static String _fmt(double v) => v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
   static double? _num(TextEditingController c) => double.tryParse(c.text.replaceAll(',', '.').trim());
+
+  /// Pieces close to a whole number are whole (1980 ml of 340 g cans is 6, not 5.8).
+  static String _fmtIn(double v, BaseUnit unit) {
+    if (unit == BaseUnit.pc && (v - v.roundToDouble()).abs() <= 0.25) return _fmt(v.roundToDouble());
+    return _fmt(unit == BaseUnit.pc ? v : v.roundToDouble());
+  }
+
+  /// New units per stored unit, with the piece weight typed now; null if it can't be worked out.
+  double? get _unitFactor => UnitConverter.factor(
+    _origUnit,
+    _unit,
+    fromGramsPerPiece: _origGpp,
+    toGramsPerPiece: _unit == BaseUnit.pc ? _num(_gpp) : null,
+    density: _ing.densityGPerMl,
+  );
+
+  /// An existing item switched units (cola from ml to cans): show its amount and low-stock
+  /// threshold in the new unit, unless the user typed their own.
+  void _reexpress() {
+    if (widget.ingredient == null) return;
+    final f = _unitFactor;
+    if (f == null) return;
+    if (!_qtyTouched) _qty.text = _fmtIn(_origQty * f, _unit);
+    if (!_lowTouched && _origLow > 0) _low.text = _fmtIn(_origLow * f, _unit);
+  }
 
   @override
   void dispose() {
@@ -189,6 +223,11 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
   Future<void> _save() async {
     if (_name.text.trim().isEmpty) return;
     final isNew = widget.ingredient == null;
+    if (!isNew && _unit != _origUnit && _unit == BaseUnit.pc && (_num(_gpp) ?? 0) <= 0) {
+      // Without it the amount and the price per piece can't be worked out.
+      setState(() => _gppError = 'How much does one weigh?');
+      return;
+    }
     final newQty = _num(_qty) ?? 0;
     final pantry = ref.read(pantryServiceProvider);
     if (isNew) {
@@ -240,8 +279,16 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
         }
       }
     } else {
+      final f = _unit == _origUnit ? null : _unitFactor;
+      if (f != null) {
+        // The same food in another unit: one unit costs more or less, the amount isn't recounted.
+        _ing
+          ..avgCostPerUnitMinor = _ing.avgCostPerUnitMinor / f
+          ..lastPurchaseQty = _ing.lastPurchaseQty * f;
+        if (!_qtyTouched) _ing.qtyOnHand = newQty;
+      }
       await pantry.upsert(_ing);
-      if ((newQty - widget.ingredient!.qtyOnHand).abs() > 1e-9) await pantry.setQuantity(_ing.id, newQty);
+      if ((newQty - _ing.qtyOnHand).abs() > 1e-9) await pantry.setQuantity(_ing.id, newQty);
     }
     if (_ing.needsNutrition) unawaited(ref.read(nutritionServiceProvider).fillMissing());
     if (mounted) Navigator.of(context).pop();
@@ -355,6 +402,7 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
                         controller: _qty,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         decoration: InputDecoration(labelText: 'Quantity', suffixText: _unit.label),
+                        onChanged: (_) => _qtyTouched = true,
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -362,7 +410,11 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
                       segments: [for (final u in BaseUnit.values) ButtonSegment(value: u, label: Text(u.label))],
                       selected: {_unit},
                       showSelectedIcon: false,
-                      onSelectionChanged: (s) => setState(() => _unit = s.first),
+                      onSelectionChanged: (s) => setState(() {
+                        _unit = s.first;
+                        _gppError = null;
+                        _reexpress();
+                      }),
                     ),
                   ],
                 ),
@@ -383,7 +435,16 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
                   TextField(
                     controller: _gpp,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(labelText: 'Grams per piece', suffixText: 'g'),
+                    decoration: InputDecoration(
+                      labelText: 'Grams per piece',
+                      suffixText: 'g',
+                      helperText: 'What one weighs: an egg 55, a 330 ml can 340',
+                      errorText: _gppError,
+                    ),
+                    onChanged: (_) => setState(() {
+                      _gppError = null;
+                      _reexpress();
+                    }),
                   ),
                 ],
                 const SizedBox(height: 10),
@@ -419,6 +480,7 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
                         controller: _low,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         decoration: InputDecoration(labelText: 'Low below', suffixText: _unit.label),
+                        onChanged: (_) => _lowTouched = true,
                       ),
                     ),
                   ],

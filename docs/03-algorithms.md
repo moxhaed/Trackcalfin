@@ -342,7 +342,7 @@ Any question holds the scan for review, and the review screen offers "All the sa
 
 **Duplicate receipts (R10).** `sameReceipt`: same calendar day, same total (printed total or line sum), and the same store when both name one ("Migros" matches "Migros Zürich"). `ScanService` checks the transactions of that day (compared in the receipt's own currency, including the printed total of the scan they came from) and the receipts waiting in the Inbox. A match sets `duplicateOfTxId` or `duplicateOfJobId` and holds the scan for review, with **Discard this one** and **It's a different one**.
 
-**Shop price (pantry photos).** Prompt A names the exact product and estimates the usual price of one pack; Prompt F then looks the price up on Google for every item without a price paid ([05 §5.10](05-ai-layer-and-prompts.md#510-exact-products-and-shop-prices-prompts-a-v3-and-f)). Dart decides what is used and asked:
+**Shop price (pantry photos).** Prompt A names the exact product and estimates the usual price of one pack; Prompt F then looks the price up on Google for every item without a price paid ([05 §5.10](05-ai-layer-and-prompts.md#510-exact-products-and-shop-prices-prompts-a-v4-and-f)). Dart decides what is used and asked:
 ```
 needsPrice(item)   = no item yet, or avgCostPerUnitMinor = 0, or costIsEstimate
 priceSource        = web (Google found it) | estimate (Prompt A) | null when !needsPrice: not used, not asked

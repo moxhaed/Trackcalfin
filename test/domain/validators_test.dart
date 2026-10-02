@@ -36,7 +36,7 @@ void main() {
     final capturedAt = DateTime(2026, 9, 27, 19);
 
     ReceiptExtraction example([void Function(Map<String, dynamic>)? edit, int index = 0]) {
-      final json = jsonDecode(promptExamples('receipt_extraction.v3.md')[index]) as Map<String, dynamic>;
+      final json = jsonDecode(promptExamples('receipt_extraction.v4.md')[index]) as Map<String, dynamic>;
       edit?.call(json);
       return ReceiptExtraction.parse(json).value!;
     }
@@ -147,6 +147,19 @@ void main() {
       expect(m.qty, isNull);
       expect(m.qtySource, QtySource.unknown);
       expect(m.packagePriceMinor, isNull);
+    });
+
+    test('alignUnit: a cola counted in cans takes a receipt in ml as cans, and the other way round', () {
+      final ml = DraftLine()
+        ..qty = 1980
+        ..unit = BaseUnit.ml;
+      ReceiptValidator.alignUnit(ml, BaseUnit.pc, 340);
+      expect(ml.qty, 6);
+      final cans = DraftLine()
+        ..qty = 6
+        ..unit = BaseUnit.pc;
+      ReceiptValidator.alignUnit(cans, BaseUnit.ml, 340);
+      expect(cans.qty, 2040);
     });
 
     test('sameReceipt: same day, total and store; store names may differ in detail', () {

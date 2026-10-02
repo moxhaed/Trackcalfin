@@ -116,7 +116,7 @@ void main() {
     );
 
     Future<int> scanSwissReceipt(ScanService s) async {
-      final json = jsonDecode(promptExample('receipt_extraction.v3.md')) as Map<String, dynamic>;
+      final json = jsonDecode(promptExample('receipt_extraction.v4.md')) as Map<String, dynamic>;
       json['currency'] = 'CHF';
       json['merchant'] = 'Migros';
       json['warnings'] = ['foreign_currency'];

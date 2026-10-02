@@ -4,7 +4,7 @@ The master prompts are **runtime assets**. The app loads them verbatim as the `s
 
 | Prompt | File | Task |
 |---|---|---|
-| **A** | [`assets/prompts/receipt_extraction.v3.md`](../assets/prompts/receipt_extraction.v3.md) | Receipt or pantry image → structured JSON (expenses, categories, stock quantities, the exact product, a shop price for pantry items, new-ingredient profiles) |
+| **A** | [`assets/prompts/receipt_extraction.v4.md`](../assets/prompts/receipt_extraction.v4.md) | Receipt or pantry image → structured JSON (expenses, categories, stock quantities, the exact product, a shop price for pantry items, new-ingredient profiles) |
 | **B** | [`assets/prompts/daily_recipe.v2.md`](../assets/prompts/daily_recipe.v2.md) | Inventory JSON → one stock-only recipe JSON (quantities per portion, estimates, hook line). Salt and oil only when they are in the inventory. |
 | **C** | [`assets/prompts/spontaneous_recipe.v2.md`](../assets/prompts/spontaneous_recipe.v2.md) | User text/voice + inventory JSON → feasibility verdict + adapted recipe + shopping list JSON |
 | **D** | [`assets/prompts/nutrition_estimate.v1.md`](../assets/prompts/nutrition_estimate.v1.md) | Ingredients with unknown macros → typical values per 100 g, density, piece weight |
@@ -50,7 +50,7 @@ Content-Type: application/json
 ```
 ```json
 {
-  "systemInstruction": { "parts": [{ "text": "<contents of receipt_extraction.v3.md>" }] },
+  "systemInstruction": { "parts": [{ "text": "<contents of receipt_extraction.v4.md>" }] },
   "contents": [{
     "role": "user",
     "parts": [
@@ -199,7 +199,19 @@ Every number in a recipe comes from `Ingredient.per100`, so an ingredient with n
 
 Confirmation lives in `Ingredient.nutritionConfirmedAt`: set by a saved label (`nutritionSource: label`), by typed numbers (`user`) or by *Confirm* on an AI estimate. Changing an ingredient's macros, unit or piece weight refreshes the stored numbers of every non-archived recipe that uses it (`RecipeService.refreshUsing`). Cook sessions keep their snapshot.
 
-## 5.10 Exact products and shop prices (Prompts A v3 and F)
+## 5.9b Units: pieces or grams (Prompt A v4)
+
+A quantity is stored in the unit the item gets used up in, because that is how the user talks about it later ("I drank a cola", "200 g of rice"). v4 of Prompt A spells it out:
+
+| Unit | For | Example |
+|---|---|---|
+| `pc` | what is eaten or drunk whole, one at a time: cans and bottles up to 0.5 l, yogurt and dessert cups, bars, ready meals, eggs, fruit and bread sold by the piece | "6x0,33l Cola" → 6 pc, `grams_per_piece` 340 |
+| `g` | what is measured out in cooking or shared over servings: flour, rice, pasta, meat, cheese, a 500 g tub of yogurt | "Joghurt 500g" → 500 g |
+| `ml` | what is poured over several servings: milk, oil, juice cartons, drink bottles over 0.5 l | "1,5l Cola" → 1500 ml |
+
+v3 turned a six-pack of cans into 1980 ml. An item already in the pantry keeps its unit (`known_ingredients`), and `ReceiptValidator.alignUnit` converts ml and pieces by the piece weight, counting g and ml alike. To move an existing item to another unit, edit it in its sheet: the amount on hand, the cost per unit, the low-stock threshold and the last purchase are converted with the piece weight (`UnitConverter.factor`), and switching to pieces asks for that weight. Nothing is recounted.
+
+## 5.10 Exact products and shop prices (Prompts A v4 and F)
 
 Every grocery line names the exact product the model recognized (`product`: brand, name, variant and pack size, such as "Barilla Spaghetti n.5, 500 g"), read from the packaging or decoded from the receipt line. On a receipt this helps the quantity, because the identified product's pack size replaces a guessed one. A pantry photo has no prices, so Prompt A also gives each item a `shelf_price`: the usual price of one pack at a typical supermarket in `country`, in the home currency, plus the pack size, from the model's own knowledge.
 

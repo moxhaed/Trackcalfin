@@ -268,14 +268,13 @@ class ReceiptValidator {
     line.unit = target;
   }
 
+  /// g and ml count as the same here (a receipt doesn't say how dense a drink is), so
+  /// 6 cans of a 340 g cola are 2040 ml, and 1980 ml of a cola counted in cans is 6 pc.
   static double? _convert(double q, BaseUnit from, BaseUnit to, double? gramsPerPiece) {
     if (from == to) return q;
-    if ((from == BaseUnit.ml && to == BaseUnit.g) || (from == BaseUnit.g && to == BaseUnit.ml)) return q;
-    if (from == BaseUnit.pc && to == BaseUnit.g && gramsPerPiece != null) return q * gramsPerPiece;
-    if (from == BaseUnit.g && to == BaseUnit.pc && gramsPerPiece != null && gramsPerPiece > 0) {
-      return (q / gramsPerPiece).roundToDouble();
-    }
-    return null;
+    if (from != BaseUnit.pc && to != BaseUnit.pc) return q;
+    if (gramsPerPiece == null || gramsPerPiece <= 0) return null;
+    return from == BaseUnit.pc ? q * gramsPerPiece : (q / gramsPerPiece).roundToDouble();
   }
 
   static NewIngredientProfile _profile(ReceiptItemDto item) {

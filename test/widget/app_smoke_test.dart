@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -11,6 +12,7 @@ import 'package:trackcalfin/application/demo_seed.dart';
 import 'package:trackcalfin/core/enums.dart';
 import 'package:trackcalfin/data/ai/prompt_repository.dart';
 import 'package:trackcalfin/data/isar/collections/schemas.dart';
+import 'package:trackcalfin/features/buy/ingredient_sheet.dart';
 import 'package:trackcalfin/platform/image_store.dart';
 import 'package:trackcalfin/platform/secret_store.dart';
 
@@ -158,6 +160,52 @@ void main() {
     expect(cumin.per100.kcal, 380);
     expect(cumin.per100.proteinG, 18, reason: 'untouched fields keep their values');
     expect(cumin.nutritionSource, DataSource.user);
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  testWidgets('switching an item from ml to cans keeps its amount and price per can right', (tester) async {
+    await DemoSeed.run(isar);
+    await isar.writeTxn(
+      () => isar.ingredients.put(
+        Ingredient()
+          ..key = 'cola_zero'
+          ..name = 'Cola Zero'
+          ..category = IngredientCategory.beverages
+          ..baseUnit = BaseUnit.ml
+          ..qtyOnHand = 1980
+          ..avgCostPerUnitMinor = 449 / 1980
+          ..lowStockThreshold = 660
+          ..lastPurchaseQty = 1980
+          ..nutritionSource = DataSource.aiEstimate,
+      ),
+    );
+    await pumpApp(tester, initial: '/buy');
+    final cola = (await isar.ingredients.getByKey('cola_zero'))!;
+    unawaited(showIngredientSheet(tester.element(find.byType(Scaffold).first), ingredient: cola));
+    await settle(tester);
+    await tester.tap(find.byTooltip('Edit details'));
+    await settle(tester);
+    await tester.tap(find.descendant(of: find.byType(SegmentedButton<BaseUnit>), matching: find.text('pc')));
+    await settle(tester);
+    Future<void> save() async {
+      await tester.ensureVisible(find.text('Save'));
+      await settle(tester);
+      await tester.tap(find.text('Save'));
+      await settle(tester);
+    }
+
+    await save();
+    expect(find.text('How much does one weigh?'), findsOneWidget, reason: 'cans need their weight');
+    await tester.enterText(find.widgetWithText(TextField, 'Grams per piece'), '340');
+    await settle(tester);
+    expect(find.widgetWithText(TextField, '6'), findsOneWidget, reason: '1980 ml are 6 cans');
+    await save();
+
+    final after = (await isar.ingredients.getByKey('cola_zero'))!;
+    expect((after.baseUnit, after.gramsPerPiece, after.qtyOnHand), (BaseUnit.pc, 340.0, 6.0));
+    expect(after.avgCostPerUnitMinor, closeTo(449 / 1980 * 340, 1e-6), reason: 'about 77 cents a can');
+    expect(after.lowStockThreshold, 2);
+    expect(after.lastCountedAt, isNull, reason: 'the same cans in another unit, not a new count');
+    expect(after.needsNutrition, isTrue, reason: 'per 100 ml numbers are not per 100 g');
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   testWidgets('pantry photo review asks "same one or extra?" and prices what it found', (tester) async {
