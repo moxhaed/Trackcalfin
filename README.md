@@ -1,6 +1,6 @@
 # Trackcalfin
 
-A personal **micro-procurement, pantry and meal-prep tracker** built with Flutter, Dart and a local Isar database. Gemini 3.8 Flash does exactly three jobs: reading receipts, planning a daily recipe from your stock, and answering "can I cook this?". Everything else is deterministic Dart that works offline.
+A personal **micro-procurement, pantry and meal-prep tracker** built with Flutter, Dart and a local Isar database. Gemini does a few well-fenced jobs: reading receipts and pantry photos, looking up what pantry items cost in the shops (with Google Search), planning a daily recipe from your stock, answering "can I cook this?", and filling in ingredient macros. Everything else is deterministic Dart that works offline.
 
 <table>
   <tr>
@@ -22,7 +22,7 @@ A personal **micro-procurement, pantry and meal-prep tracker** built with Flutte
 | Tab | What you do | What the app does |
 |---|---|---|
 | **Dashboard** | Glance | Vibe Check score with one next-step insight, today's kcal/protein rings, weekly and monthly food spend with pace markers and a ×4.33 projection, other-spend limits, the week's calories, and a streak with a weekly freeze. All pure Dart. |
-| **Buy** | Snap a receipt or pantry photo, or log an expense in 3 taps | Gemini extracts lines, categories, quantities and new-ingredient nutrition, names the exact product, and gives pantry-photo items their usual shop price. Clean receipts file themselves; messy ones wait in the Inbox for one "Looks good". A receipt is filed on its printed date, so an old one counts toward the week it was paid and its spoiled items stay out of the pantry. A receipt you already filed, or an item already in the pantry, is asked about instead of counted twice. Receipts in another currency are converted at the European Central Bank rate for the purchase day, or from the amount your card was charged. The stock list shows use-soon and running-low items. |
+| **Buy** | Snap a receipt or pantry photo, or log an expense in 3 taps | Gemini extracts lines, categories, quantities and new-ingredient nutrition, names the exact product, and looks up what pantry-photo items cost in the shops with Google Search, asking you to confirm each price. Clean receipts file themselves; messy ones wait in the Inbox for one "Looks good". A receipt is filed on its printed date, so an old one counts toward the week it was paid and its spoiled items stay out of the pantry. A receipt you already filed, or an item already in the pantry, is asked about instead of counted twice. Receipts in another currency are converted at the European Central Bank rate for the purchase day, or from the amount your card was charged. The stock list shows use-soon and running-low items. |
 | **Cook** | Tap "I cooked this ×3", tap "Eat 1", or ask "carbonara for two" | Daily pick from your stock (planned the evening before), exact stock deduction, fridge portions, macros logged when you eat, and a Dart-checked feasibility verdict for requests. |
 | **⊕** | One button for every log | Scan, pantry photo, expense, cooked, ate. |
 
@@ -32,12 +32,12 @@ Principles: every log takes ≤ 3 seconds, the LLM proposes and Dart does the ma
 
 **Built and verified in this repo**
 - All 33 sprints from the [sprint plan](docs/06-sprint-plan.md) are implemented.
-- 159 automated tests pass: domain math, use cases against a real Isar database, the full AI pipeline against a scripted fake Gemini endpoint (including repair retries and allergen rejection), and widget smoke tests that drive the whole app. `flutter analyze` is clean.
+- 170 automated tests pass: domain math, use cases against a real Isar database, the full AI pipeline against a scripted fake Gemini endpoint (including repair retries and allergen rejection), and widget smoke tests that drive the whole app. `flutter analyze` is clean.
 - The Linux desktop build runs. The screenshots above come from it.
 
 **Not verified here (needs your machine)**
 - **Android and iOS builds.** The build environment couldn't download the Android SDK and has no Xcode. The native configuration (manifest permissions, notification receivers, desugaring, share intent, `Info.plist` usage strings, background task ID, `AppDelegate`) follows each plugin's README, but it hasn't been compiled.
-- **Live Gemini calls.** No API key was available. Requests follow the documented `generateContent` shape. If the API rejects a config field (schema, thinking level, media resolution), the client automatically retries with a simpler body and remembers what works.
+- **Live Gemini calls.** No API key was available. Requests follow the documented `generateContent` shape. If the API rejects a config field (schema, thinking level, media resolution), the client automatically retries with a simpler body and remembers what works. The Google Search price lookup for pantry photos hasn't run against the live API either, and the web view that shows Google's search suggestions hasn't run on a phone.
 
 ## Getting started
 
@@ -78,7 +78,7 @@ lib/
   application/    use cases: ledger, pantry, cook, recipes, scan, daily pick, ask, habit scheduler, backup
   platform/       notifications, background task, speech, photo capture, image and secret stores
   features/       dashboard, buy, cook, capture, settings, onboarding
-assets/prompts/   the three master system prompts (runtime assets)
+assets/prompts/   the master system prompts (runtime assets)
 test/             domain, application (Isar), data (AI layer), widget
 ```
 
@@ -100,6 +100,9 @@ test/             domain, application (Isar), data (AI layer), widget
 | A · Receipt & expense extraction (image → JSON) | [`assets/prompts/receipt_extraction.v3.md`](assets/prompts/receipt_extraction.v3.md) |
 | B · Daily stock-based recipe (inventory → recipe JSON) | [`assets/prompts/daily_recipe.v2.md`](assets/prompts/daily_recipe.v2.md) |
 | C · Spontaneous recipe calculator (request + inventory → feasibility JSON) | [`assets/prompts/spontaneous_recipe.v2.md`](assets/prompts/spontaneous_recipe.v2.md) |
+| D · Ingredient macros estimate (keys → per-100 g values) | [`assets/prompts/nutrition_estimate.v1.md`](assets/prompts/nutrition_estimate.v1.md) |
+| E · Nutrition label reading (photo → printed values) | [`assets/prompts/nutrition_label.v1.md`](assets/prompts/nutrition_label.v1.md) |
+| F · Shop price lookup with Google Search (products → price per pack) | [`assets/prompts/price_lookup.v1.md`](assets/prompts/price_lookup.v1.md) |
 
 ## Known limitations
 

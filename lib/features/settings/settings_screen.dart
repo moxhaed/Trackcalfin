@@ -170,6 +170,14 @@ class SettingsScreen extends ConsumerWidget {
             subtitle: const Text('gemini-3.5-flash-lite (fallback: gemini-3.8-flash)'),
             trailing: const Icon(Icons.lock_outline, size: 20),
           ),
+          SwitchListTile(
+            title: const Text('Look up prices on Google'),
+            subtitle: const Text(
+              'Pantry photos: Gemini searches what each item costs in the shops. You confirm every price.',
+            ),
+            value: p.lookUpPrices,
+            onChanged: (v) => update((x) => x.lookUpPrices = v),
+          ),
           const _Section('Appearance & region'),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),

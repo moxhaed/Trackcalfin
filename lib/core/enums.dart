@@ -75,7 +75,16 @@ enum StockCheck {
   usedUp,
 }
 
-enum AiTask { receipt, dailyRecipe, spontaneousRecipe, nutritionEstimate, nutritionLabel }
+/// Where a pantry photo's shop price comes from. The user confirms it either way.
+enum PriceSource {
+  /// The model's own idea of the usual price (Prompt A).
+  estimate,
+
+  /// Looked up with Google Search (Prompt F).
+  web,
+}
+
+enum AiTask { receipt, dailyRecipe, spontaneousRecipe, nutritionEstimate, nutritionLabel, priceLookup }
 
 extension BaseUnitLabel on BaseUnit {
   String get label => switch (this) {

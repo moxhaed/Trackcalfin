@@ -44,6 +44,9 @@ class UserProfile {
   bool weeklyRecapEnabled = true;
   bool autoCommitCleanScans = true;
 
+  /// Pantry photos: look shop prices up with Google Search. The user confirms each one.
+  bool lookUpPrices = true;
+
   /// Fallback for "saved vs eating out".
   int eatingOutAvgMealMinor = 1500;
 
@@ -62,7 +65,7 @@ class UserProfile {
   String themeMode = 'system';
 
   /// For data migrations (see Migrations). New profiles start at the current version.
-  int schemaVersion = 3;
+  int schemaVersion = 4;
 
   int limitFor(SpendCategory c) => monthlyCategoryLimits.where((l) => l.category == c).firstOrNull?.limitMinor ?? 0;
 }

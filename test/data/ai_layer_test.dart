@@ -5,10 +5,13 @@ import 'package:trackcalfin/core/enums.dart';
 import 'package:trackcalfin/data/ai/ai_runner.dart';
 import 'package:trackcalfin/data/ai/context_builders.dart';
 import 'package:trackcalfin/data/ai/dto/nutrition_dto.dart';
+import 'package:trackcalfin/data/ai/dto/price_dto.dart';
 import 'package:trackcalfin/data/ai/dto/receipt_dto.dart';
 import 'package:trackcalfin/data/ai/dto/recipe_dto.dart';
 import 'package:trackcalfin/data/ai/gemini_client.dart';
+import 'package:trackcalfin/data/ai/json_reader.dart';
 import 'package:trackcalfin/data/ai/schemas.dart';
+import 'package:trackcalfin/data/isar/collections/scan_job.dart';
 import 'package:trackcalfin/data/isar/collections/user_profile.dart';
 
 import '../domain/fixtures.dart';
@@ -60,6 +63,19 @@ void main() {
       expect(r.ok, isTrue, reason: r.errors.join('\n'));
       expect(r.value!.basis, LabelBasis.per100g);
       expect(r.value!.energyKcal, 348);
+    });
+    test('Prompt F example', () {
+      final r = PriceLookup.parse(
+        jsonDecode(promptExample('price_lookup.v1.md')),
+        units: const {'0': BaseUnit.g, '1': BaseUnit.g},
+      );
+      expect(r.ok, isTrue, reason: r.errors.join('\n'));
+      expect(
+        (r.value!.items[0].priceMinor, r.value!.items[0].packageQty, r.value!.items[0].source),
+        (199, 500, 'rewe.de'),
+      );
+      expect(r.value!.items[1].found, isFalse);
+      expect(r.value!.items[1].note, 'no shop price online');
     });
   });
 
@@ -117,6 +133,67 @@ void main() {
       expect(LabelReading.parse(json).ok, isFalse);
       json['serving_size_g'] = 30;
       expect(LabelReading.parse(json).ok, isTrue);
+    });
+    test('a price lookup answers every id once, with one pack at a plausible price', () {
+      ParseResult<PriceLookup> parse(List<Object> items) =>
+          PriceLookup.parse({'schema_version': 1, 'items': items}, units: const {'0': BaseUnit.g, '1': BaseUnit.pc});
+      final ok = {
+        'id': '0',
+        'found': true,
+        'price_minor': 199,
+        'package_qty': 500,
+        'store': 'REWE',
+        'source': 'rewe.de',
+        'note': null,
+      };
+      final none = {
+        'id': '1',
+        'found': false,
+        'price_minor': null,
+        'package_qty': null,
+        'store': null,
+        'source': null,
+        'note': ' ',
+      };
+      expect(parse([ok, none]).ok, isTrue);
+      expect(parse([ok, none]).value!.items[1].note, isNull, reason: 'a blank note is no note');
+      expect(parse([ok]).errors.single, r'$.items is missing ids: 1');
+      expect(parse([ok, ok, none]).errors.single, contains("'0' appears twice"));
+      expect(
+        parse([
+          ok,
+          {...none, 'id': '7'},
+        ]).errors,
+        containsAll([r"$.items[1].id '7' was not in the input; copy input ids exactly", r'$.items is missing ids: 1']),
+      );
+      expect(
+        parse([
+          {...ok, 'price_minor': 1.99},
+          none,
+        ]).errors.single,
+        r'$.items[0].price_minor must be an integer',
+      );
+      expect(
+        parse([
+          {...ok, 'price_minor': 0},
+          none,
+        ]).errors.single,
+        contains('between 1 and 100000'),
+      );
+      expect(
+        parse([
+          ok,
+          {...none, 'found': true, 'price_minor': 299, 'package_qty': 100},
+        ]).errors.single,
+        r'$.items[1].package_qty must be between 0 and 60 pc for one pack',
+      );
+      expect(
+        parse([
+          {...ok}..remove('found'),
+          none,
+        ]).errors.single,
+        r'$.items[0].found is required (boolean)',
+      );
     });
     test('daily recipe may not contain missing items', () {
       final json = jsonDecode(promptExample('daily_recipe.v2.md')) as Map<String, dynamic>;
@@ -304,6 +381,56 @@ void main() {
     test('stripFences', () {
       expect(GeminiClient.stripFences('```json\n{"a":1}\n```'), '{"a":1}');
       expect(GeminiClient.stripFences('Sure! {"a":1}'), '{"a":1}');
+      expect(GeminiClient.stripFences('{"a":1}\nPrices from rewe.de.'), '{"a":1}');
+    });
+
+    test('a Google Search request turns the tool on, asks for plain-text JSON and reads the grounding', () async {
+      final fake = FakeGemini()..reply('{"ok":true}', grounding: groundingMetadata());
+      final c = GeminiClient(httpClient: fake.client, apiKey: () async => 'k', model: 'm');
+      final res = await c.generate(
+        GeminiRequest(
+          systemPrompt: 's',
+          turns: const [Turn.user('x')],
+          thinkingLevel: 'low',
+          responseSchema: {'type': 'object'},
+          googleSearch: true,
+        ),
+      );
+      final body = fake.requests.single;
+      expect(body['tools'], [
+        {'google_search': {}},
+      ]);
+      final config = body['generationConfig'] as Map;
+      expect(config.containsKey('responseMimeType'), isFalse, reason: 'JSON mode drops the sources');
+      expect(config.containsKey('responseJsonSchema'), isFalse);
+      expect(config['thinkingConfig'], {'thinkingLevel': 'low'});
+      final g = res.grounding!;
+      expect(g.queries, ['Barilla Spaghetti n.5 500 g Preis']);
+      expect(g.sources.single.title, 'lidl.de');
+      expect(g.sources.single.uri, startsWith('https://vertexaisearch.cloud.google.com/'));
+      expect(g.searchEntryHtml, contains('class="chip"'));
+
+      final plain = FakeGemini()..reply('{}');
+      final res2 = await GeminiClient(
+        httpClient: plain.client,
+        apiKey: () async => 'k',
+        model: 'm',
+      ).generate(GeminiRequest(systemPrompt: 's', turns: const [Turn.user('x')]));
+      expect(plain.requests.single.containsKey('tools'), isFalse);
+      expect(res2.grounding, isNull);
+    });
+
+    test("a 400 on a search request goes to the fallback and doesn't step down the config", () async {
+      final fake = FakeGemini()
+        ..status(400, 'Invalid JSON payload received. Unknown name "google_search"')
+        ..status(400, 'Invalid JSON payload received. Unknown name "google_search"');
+      final c = GeminiClient(httpClient: fake.client, apiKey: () async => 'k', model: 'm', fallbackModel: 'f');
+      await expectLater(
+        c.generate(GeminiRequest(systemPrompt: 's', turns: const [Turn.user('x')], googleSearch: true)),
+        throwsA(isA<GeminiException>()),
+      );
+      expect(fake.requestedUris.map((u) => u.pathSegments.last), ['m:generateContent', 'f:generateContent']);
+      expect(GeminiClient.compatLevel, 0, reason: 'other calls keep their JSON schema');
     });
   });
 
@@ -342,6 +469,22 @@ void main() {
       );
       expect(out.ok, isFalse);
       expect(out.errors.first, startsWith('Response is not valid JSON'));
+    });
+
+    test('a repaired search answer keeps the searches of the first round', () async {
+      final fake = FakeGemini()
+        ..reply('{"schema_version":1,"items":[]}', grounding: groundingMetadata())
+        ..reply(promptExample('price_lookup.v1.md'));
+      final runner = AiRunner(null, GeminiClient(httpClient: fake.client, apiKey: () async => 'k', model: 'm'));
+      final out = await runner.run(
+        task: AiTask.priceLookup,
+        promptVersion: 'price_lookup.v1',
+        request: GeminiRequest(systemPrompt: 's', turns: const [Turn.user('{}')], googleSearch: true),
+        parse: (m) => PriceLookup.parse(m, units: const {'0': BaseUnit.g, '1': BaseUnit.g}),
+      );
+      expect(out.ok, isTrue);
+      expect(out.repaired, isTrue);
+      expect(out.grounding!.queries, ['Barilla Spaghetti n.5 500 g Preis']);
     });
 
     test('AiRunner uses fallback model when primary fails', () async {
@@ -404,6 +547,27 @@ void main() {
       expect(ctx.containsKey('staples'), isFalse);
       expect((ctx['inventory'] as List).map((e) => e['key']), contains('salt'));
       expect(ctx['profile']['allergies'], ['peanut']);
+    });
+
+    test('price lookup input: ids, the product and the unit to price in', () {
+      final m = ContextBuilders.priceLookup(
+        profile: UserProfile()
+          ..country = 'DE'
+          ..currency = 'EUR',
+        now: DateTime(2026, 10, 2, 9),
+        items: {
+          '3': DraftLine()
+            ..name = 'Eggs'
+            ..unit = BaseUnit.pc
+            ..product = 'Bio eggs, 10 pcs'
+            ..packageQty = 10,
+        },
+      );
+      expect(m['today'], '2026-10-02');
+      expect((m['country'], m['currency'], m['minor_unit_digits']), ('DE', 'EUR', 2));
+      expect(m['items'], [
+        {'id': '3', 'product': 'Bio eggs, 10 pcs', 'name': 'Eggs', 'unit': 'pc', 'package_qty': 10.0},
+      ]);
     });
 
     test('portion parsing', () {

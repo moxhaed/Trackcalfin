@@ -16,6 +16,7 @@ import '../../domain/units.dart';
 import '../../domain/validation/receipt_validator.dart';
 import '../common/category_style.dart';
 import '../common/format.dart';
+import '../common/search_suggestions.dart';
 import '../common/widgets.dart';
 import 'fx_widgets.dart';
 
@@ -36,6 +37,11 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
   bool _showAll = false;
   bool _saving = false;
   bool _fxBusy = false;
+  bool _pricesBusy = false;
+
+  /// Lines that needed a look when the scan was opened. They stay under "Check" once answered,
+  /// so nothing jumps away mid-edit.
+  Set<int> _check = {};
 
   @override
   void initState() {
@@ -59,6 +65,10 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
       setState(() {
         _job = j;
         _duplicate = duplicate;
+        _check = {
+          for (final (i, l) in j.lines.indexed)
+            if (l.needsAttention) i,
+        };
       });
     }
   }
@@ -172,6 +182,15 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
     await _reload();
   }
 
+  Future<void> _retryPrices() async {
+    await _persist();
+    setState(() => _pricesBusy = true);
+    await ref.read(scanServiceProvider).retryPrices(widget.jobId);
+    if (!mounted) return;
+    setState(() => _pricesBusy = false);
+    await _reload();
+  }
+
   Future<void> _changeCurrency() async {
     final job = _job!;
     final home = _home;
@@ -208,7 +227,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
     final attention = <int>[];
     final fine = <int>[];
     for (var i = 0; i < job.lines.length; i++) {
-      (job.lines[i].needsAttention ? attention : fine).add(i);
+      (_check.contains(i) || job.lines[i].needsAttention ? attention : fine).add(i);
     }
     final sum = job.lines.where((l) => l.include).fold(0, (a, l) => a + l.totalMinor);
     final now = DateTime.now();
@@ -230,8 +249,15 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
       for (final l in job.lines)
         if (l.include && l.stockCheck == StockCheck.onHand) l,
     ];
+    final prices = [
+      for (final l in job.lines)
+        if (l.include && l.priceToConfirm) l,
+    ];
+    final found = prices.where((l) => l.priceSource == PriceSource.web).length;
+    final searched = pantry && job.lines.any((l) => l.include && l.priceSource == PriceSource.web);
 
     Widget line(int i) => _LineEditor(
+      key: ObjectKey(job.lines[i]),
       line: job.lines[i],
       job: job,
       ingredients: ingredients,
@@ -331,6 +357,44 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                 ),
               ],
             ),
+          if (pantry && prices.length > 1)
+            _Banner(
+              icon: Icons.sell_outlined,
+              color: context.colors.warning,
+              text: found == 0
+                  ? '${prices.length} prices are estimates. Are they about right?'
+                  : 'Google found what ${found == prices.length ? 'these' : '$found of these'} cost in the shops'
+                        '${found < prices.length ? ', the rest are estimates' : ''}. Are the prices right?',
+              actions: [
+                TextButton(
+                  onPressed: () => setState(() {
+                    for (final l in prices) {
+                      l.priceConfirmed = true;
+                    }
+                  }),
+                  child: const Text('All correct'),
+                ),
+              ],
+            ),
+          if (pantry && job.priceLookupError != null)
+            _Banner(
+              icon: Icons.cloud_off_outlined,
+              color: context.colors.warning,
+              text:
+                  "Couldn't look prices up on Google (${_short(job.priceLookupError!)}). "
+                  'The prices below are estimates from the photo.',
+              actions: [
+                TextButton(
+                  onPressed: _pricesBusy ? null : _retryPrices,
+                  child: Text(_pricesBusy ? 'Looking up…' : 'Try again'),
+                ),
+              ],
+            ),
+          if (searched)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: SearchSuggestions(html: job.priceSearchHtml, queries: job.priceQueries),
+            ),
           if (job.flags.contains('total_mismatch') && job.receiptTotalMinor != null)
             _Banner(
               icon: Icons.calculate_outlined,
@@ -367,9 +431,10 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
               ],
             ),
           if (attention.isNotEmpty) ...[_Label('Check ${attention.length}'), for (final i in attention) line(i)],
-          _Label(
-            pantry ? '${fine.length} ${fine.length == 1 ? 'item' : 'items'} detected' : '${fine.length} look good',
-          ),
+          if (fine.isNotEmpty)
+            _Label(
+              pantry ? '${fine.length} ${fine.length == 1 ? 'item' : 'items'} detected' : '${fine.length} look good',
+            ),
           if (!_showAll && fine.isNotEmpty)
             Card(
               child: ListTile(
@@ -414,6 +479,12 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
       ),
     );
   }
+}
+
+/// An error message cut to a short reason for a banner.
+String _short(String error) {
+  final t = error.trim().replaceAll(RegExp(r'[.\s]+$'), '');
+  return t.length <= 90 ? t : '${t.substring(0, 89)}…';
 }
 
 class _Label extends StatelessWidget {
@@ -462,6 +533,7 @@ class _Banner extends StatelessWidget {
 
 class _LineEditor extends ConsumerStatefulWidget {
   const _LineEditor({
+    super.key,
     required this.line,
     required this.job,
     required this.ingredients,
@@ -494,7 +566,9 @@ class _LineEditorState extends ConsumerState<_LineEditor> {
   late final _packPrice = TextEditingController(
     text: widget.line.packagePriceMinor == null ? '' : widget.homeMoney.toInput(widget.line.packagePriceMinor!),
   );
-  bool _open = false;
+
+  /// A line that needed a look stays open after it's answered.
+  late bool _open = widget.line.needsAttention;
 
   static String _fmt(double v) => v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
 
@@ -537,6 +611,26 @@ class _LineEditorState extends ConsumerState<_LineEditor> {
         purchasedAt: widget.job.purchasedAt,
         capturedAt: widget.job.capturedAt,
       );
+      if (_pantry) ReceiptValidator.checkPrice(l, existing: merge);
+    });
+    widget.onChanged();
+  }
+
+  /// "Change" on the price question: the price of one pack and its size, as the user knows them.
+  Future<void> _editPrice() async {
+    final l = widget.line;
+    final result = await showDialog<(int, double)>(
+      context: context,
+      builder: (_) => _PriceDialog(line: l, money: widget.homeMoney),
+    );
+    if (result == null || !mounted) return;
+    final (price, size) = result;
+    setState(() {
+      l
+        ..packagePriceMinor = price
+        ..packageQty = size
+        ..priceConfirmed = true;
+      _packPrice.text = widget.homeMoney.toInput(price);
     });
     widget.onChanged();
   }
@@ -552,6 +646,8 @@ class _LineEditorState extends ConsumerState<_LineEditor> {
     final open = _open || l.needsAttention;
     final product = l.product != null && l.product!.toLowerCase() != l.name.toLowerCase() ? l.product : null;
     final outOfPantry = !_pantry && l.ingredientKey != null && l.effectFor(widget.job.kind) == StockEffect.none;
+    // A shelf price prices the item only while it has no price paid.
+    final priced = _pantry && l.estUnitCostMinor != null && ReceiptValidator.needsPrice(current);
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: Padding(
@@ -590,8 +686,9 @@ class _LineEditorState extends ConsumerState<_LineEditor> {
                             if (l.confidence == Confidence.low) 'hard to read',
                             if (_pantry && current != null && l.stockCheck == null)
                               'was ${qty(current.qtyOnHand, current.baseUnit)}',
-                            if (_pantry && l.packagePriceMinor != null)
-                              '~${widget.homeMoney.format(l.packagePriceMinor!)} a pack',
+                            if (priced && !l.priceToConfirm)
+                              '${l.priceConfirmed ? '' : '~'}${widget.homeMoney.format(l.packagePriceMinor!)} '
+                                  'for ${qty(l.packageQty!, l.unit)}',
                             if (outOfPantry) 'not added to the pantry',
                           ].join(' · '),
                           style: context.text.bodySmall,
@@ -634,6 +731,16 @@ class _LineEditorState extends ConsumerState<_LineEditor> {
                     ),
                   ],
                 ),
+              ),
+            if (priced && l.priceToConfirm && l.include)
+              _PriceQuestion(
+                line: l,
+                money: widget.homeMoney,
+                onConfirm: () {
+                  setState(() => l.priceConfirmed = true);
+                  widget.onChanged();
+                },
+                onChange: _editPrice,
               ),
             if (l.stockCheck != null && l.include)
               _StockQuestion(
@@ -689,7 +796,10 @@ class _LineEditorState extends ConsumerState<_LineEditor> {
                               },
                             ),
                           ),
-                        if (_pantry && l.packageQty != null) ...[
+                        if (_pantry &&
+                            l.packageQty != null &&
+                            ReceiptValidator.needsPrice(current) &&
+                            !l.priceToConfirm) ...[
                           const SizedBox(width: 8),
                           Expanded(
                             child: TextField(
@@ -702,7 +812,10 @@ class _LineEditorState extends ConsumerState<_LineEditor> {
                               ),
                               onChanged: (v) {
                                 final p = widget.homeMoney.parse(v);
-                                l.packagePriceMinor = p != null && p > 0 ? p : null;
+                                // Typed by the user, so it's a checked price.
+                                l
+                                  ..packagePriceMinor = p != null && p > 0 ? p : null
+                                  ..priceConfirmed = l.packagePriceMinor != null;
                                 widget.onChanged();
                               },
                             ),
@@ -834,6 +947,149 @@ class _StockQuestion extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Pantry photos: is the shop price found on Google (or, if none was, the photo's estimate) right?
+class _PriceQuestion extends StatelessWidget {
+  const _PriceQuestion({required this.line, required this.money, required this.onConfirm, required this.onChange});
+  final DraftLine line;
+  final MoneyFormat money;
+  final VoidCallback onConfirm;
+  final VoidCallback onChange;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = line;
+    final web = l.priceSource == PriceSource.web;
+    final price = '${money.format(l.packagePriceMinor!)} for ${qty(l.packageQty!, l.unit)}';
+    final muted = context.text.bodySmall?.copyWith(color: context.scheme.onSurfaceVariant);
+    return Padding(
+      padding: const EdgeInsets.only(left: 12, top: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(web ? Icons.travel_explore : Icons.sell_outlined, size: 18, color: context.colors.warning),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  web
+                      ? 'Google found $price${l.priceStore == null ? '' : ' at ${l.priceStore}'}. Is that the price?'
+                      : 'Estimated at $price. Is that about what it costs?',
+                  style: context.text.bodyMedium,
+                ),
+              ),
+            ],
+          ),
+          if (l.priceNote != null)
+            Padding(
+              padding: const EdgeInsets.only(left: 24, top: 2),
+              child: Text(l.priceNote!, style: muted),
+            ),
+          Wrap(
+            spacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              TextButton(onPressed: onConfirm, child: const Text('Yes')),
+              TextButton(onPressed: onChange, child: const Text('Change')),
+              for (final link in l.priceLinks)
+                TextButton.icon(
+                  onPressed: () => openWebPage(link.uri),
+                  icon: const Icon(Icons.open_in_new, size: 16),
+                  label: Text(link.title.isEmpty ? 'Source' : link.title),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The price of one pack and the pack's size; pops (price in minor units, size in the line's unit).
+class _PriceDialog extends StatefulWidget {
+  const _PriceDialog({required this.line, required this.money});
+  final DraftLine line;
+  final MoneyFormat money;
+
+  @override
+  State<_PriceDialog> createState() => _PriceDialogState();
+}
+
+class _PriceDialogState extends State<_PriceDialog> {
+  late final _price = _selected(
+    widget.line.packagePriceMinor == null ? '' : widget.money.toInput(widget.line.packagePriceMinor!),
+  );
+  late final _size = TextEditingController(text: _fmt(widget.line.packageQty));
+
+  /// All selected, so typing replaces the price that was found.
+  static TextEditingController _selected(String text) => TextEditingController.fromValue(
+    TextEditingValue(
+      text: text,
+      selection: TextSelection(baseOffset: 0, extentOffset: text.length),
+    ),
+  );
+
+  static String _fmt(double? v) =>
+      v == null ? '' : (v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(1));
+
+  int? get _priceMinor {
+    final p = widget.money.parse(_price.text);
+    return p != null && p > 0 ? p : null;
+  }
+
+  double? get _sizeQty {
+    final q = double.tryParse(_size.text.trim().replaceAll(',', '.'));
+    return q != null && q > 0 ? q : null;
+  }
+
+  @override
+  void dispose() {
+    _price.dispose();
+    _size.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = widget.line;
+    final price = _priceMinor;
+    final size = _sizeQty;
+    return AlertDialog(
+      title: Text(l.name),
+      content: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _price,
+              autofocus: true,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(labelText: 'Price', prefixText: '${widget.money.symbol} '),
+              onChanged: (_) => setState(() {}),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: TextField(
+              controller: _size,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(labelText: 'Pack size', suffixText: l.unit.label),
+              onChanged: (_) => setState(() {}),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+        FilledButton(
+          onPressed: price == null || size == null ? null : () => Navigator.of(context).pop((price, size)),
+          child: const Text('Save'),
+        ),
+      ],
     );
   }
 }

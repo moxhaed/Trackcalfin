@@ -7,7 +7,7 @@ import '../data/isar/collections/schemas.dart';
 class Migrations {
   const Migrations._();
 
-  static const current = 3;
+  static const current = 4;
 
   static Future<void> run(Isar isar) async {
     final p = await isar.userProfiles.get(1);
@@ -39,6 +39,9 @@ class Migrations {
         // Recipe rows stored with role "staple" already load as stock; store them that way.
         await isar.recipes.putAll(await isar.recipes.where().findAll());
       }
+      // v4: shop prices for pantry photos are looked up with Google. A stored profile reads
+      // the new switch as false, so turn it on.
+      if (p.schemaVersion < 4) p.lookUpPrices = true;
       p.schemaVersion = current;
       await isar.userProfiles.put(p);
     });

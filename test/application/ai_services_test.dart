@@ -64,6 +64,11 @@ void main() {
         ..lastCountedAt = counted,
     );
 
+    Future<void> lookUpPrices(bool on) async {
+      final p = (await isar.userProfiles.get(1))!..lookUpPrices = on;
+      await isar.writeTxn(() => isar.userProfiles.put(p));
+    }
+
     Map<String, dynamic> receipt([void Function(Map<String, dynamic>)? edit]) {
       final json = jsonDecode(promptExample('receipt_extraction.v3.md')) as Map<String, dynamic>;
       edit?.call(json);
@@ -78,6 +83,7 @@ void main() {
       final results = await s.processQueue();
       expect(results.single.autoCommitted, isTrue);
       expect(results.single.clean, isTrue);
+      expect(fake.requests, hasLength(1), reason: 'a receipt has its prices; nothing is looked up');
 
       final req = fake.requests.single;
       expect((req['contents'][0]['parts'] as List).length, 2, reason: 'context JSON + 1 image');
@@ -145,6 +151,7 @@ void main() {
     });
 
     test('pantry photo sets quantities and verifies', () async {
+      await lookUpPrices(false);
       final pantry = PantryService(isar);
       await pantry.upsert(
         Ingredient()
@@ -195,6 +202,7 @@ void main() {
     });
 
     test('pantry photo: "extra" adds to what is there and the shop price prices it', () async {
+      await lookUpPrices(false);
       final pasta = await PantryService(isar).upsert(
         Ingredient()
           ..name = 'Spaghetti'
@@ -489,6 +497,141 @@ void main() {
       final out = await AskService(isar: isar, ai: ai, now: () => now).ask("what's the weather");
       expect(out.notARecipe, isTrue);
       expect(out.summary, 'I can only help with cooking.');
+    });
+  });
+  group('Price lookup (Prompt F)', () {
+    ScanService service() => ScanService(isar: isar, images: ImageStore('${tmp.path}/store'), ai: ai, now: () => now);
+    Map<String, dynamic> prices(List<Map<String, dynamic>> items) => {'schema_version': 1, 'items': items};
+    Map<String, dynamic> found(String id, int price, double size, String store, String site) => {
+      'id': id,
+      'found': true,
+      'price_minor': price,
+      'package_qty': size,
+      'store': store,
+      'source': site,
+      'note': null,
+    };
+    Map<String, dynamic> input(int request) =>
+        jsonDecode(fake.requests[request]['contents'][0]['parts'][0]['text'] as String) as Map<String, dynamic>;
+
+    test('a pantry photo looks prices up on Google; a confirmed one counts, the rest stay estimates', () async {
+      final pasta = await PantryService(isar).upsert(
+        Ingredient()
+          ..name = 'Spaghetti'
+          ..key = 'dry_pasta'
+          ..qtyOnHand = 900,
+      );
+      fake
+        ..reply(promptExamples('receipt_extraction.v3.md')[1])
+        ..replyJson(
+          prices([
+            found('0', 179, 500, 'Lidl', 'lidl.de'),
+            {
+              'id': '1',
+              'found': false,
+              'price_minor': null,
+              'package_qty': null,
+              'store': null,
+              'source': null,
+              'note': 'no shop price online',
+            },
+          ]),
+          grounding: groundingMetadata(),
+        );
+      final s = service();
+      final id = await s.enqueue([await photo()], hint: 'pantry');
+      final job = (await s.processQueue()).single.job;
+
+      final ask = fake.requests[1];
+      expect(ask['tools'], [
+        {'google_search': {}},
+      ]);
+      expect(
+        (ask['generationConfig'] as Map).containsKey('responseMimeType'),
+        isFalse,
+        reason: 'JSON mode would drop the sources',
+      );
+      expect(
+        [for (final i in input(1)['items'] as List) (i as Map)['product']],
+        ['Barilla Spaghetti n.5, 500 g', 'Bertolli extra virgin olive oil, 750 ml'],
+      );
+      expect(input(1)['currency'], 'EUR');
+
+      final spaghetti = job.lines[0];
+      expect(spaghetti.priceSource, PriceSource.web);
+      expect((spaghetti.packagePriceMinor, spaghetti.packageQty, spaghetti.priceStore), (179, 500.0, 'Lidl'));
+      expect(spaghetti.priceLinks.single.title, 'lidl.de');
+      expect(spaghetti.priceToConfirm, isTrue);
+      expect(spaghetti.needsAttention, isTrue);
+      final oil = job.lines[1];
+      expect(oil.priceSource, PriceSource.estimate, reason: 'nothing found online: the photo estimate stands');
+      expect(oil.packagePriceMinor, 899);
+      expect(oil.priceNote, 'no shop price online');
+      expect(job.priceSearchHtml.single, contains('class="chip"'));
+      expect(job.priceQueries, ['Barilla Spaghetti n.5 500 g Preis']);
+      expect(job.priceLookupError, isNull);
+
+      spaghetti.priceConfirmed = true;
+      await s.updateJob(job);
+      await s.commit(id);
+      final p = (await isar.ingredients.get(pasta))!;
+      expect(p.avgCostPerUnitMinor, closeTo(179 / 500, 1e-9));
+      expect(p.costIsEstimate, isFalse, reason: 'the user said the price is right');
+      final o = (await isar.ingredients.getByKey('olive_oil'))!;
+      expect(o.avgCostPerUnitMinor, closeTo(899 / 750, 1e-9));
+      expect(o.costIsEstimate, isTrue, reason: 'never confirmed, so still an estimate');
+    });
+
+    test('items with a price paid are skipped; a failed lookup keeps the estimates and can run again', () async {
+      await PantryService(isar).upsert(
+        Ingredient()
+          ..name = 'Spaghetti'
+          ..key = 'dry_pasta'
+          ..qtyOnHand = 900
+          ..avgCostPerUnitMinor = 0.3,
+      );
+      fake
+        ..reply(promptExamples('receipt_extraction.v3.md')[1])
+        ..status(400, 'Search Grounding is not supported.')
+        ..status(400, 'Search Grounding is not supported.');
+      final s = service();
+      final id = await s.enqueue([await photo()], hint: 'pantry');
+      final job = (await s.processQueue()).single.job;
+      expect(fake.requests, hasLength(3), reason: 'the photo, then the lookup on both models');
+      expect(
+        [for (final i in input(1)['items'] as List) (i as Map)['id']],
+        ['1'],
+        reason: 'spaghetti has a price paid',
+      );
+      expect(GeminiClient.compatLevel, 0, reason: "a search request's 400 says nothing about other calls");
+      expect(job.status, ScanStatus.needsReview);
+      expect(job.priceLookupError, contains('not supported'));
+      expect(job.lines[0].priceSource, isNull, reason: 'its shelf price is not used, so not asked about');
+      expect(job.lines[1].priceSource, PriceSource.estimate);
+      expect(job.lines[1].packagePriceMinor, 899);
+
+      fake.replyJson(
+        prices([found('1', 949, 750, 'REWE', 'shop.rewe.de')]),
+        grounding: groundingMetadata(pages: {'rewe.de': 'https://example.com/oil'}),
+      );
+      await s.retryPrices(id);
+      final again = (await isar.scanJobs.get(id))!;
+      expect(again.priceLookupError, isNull);
+      expect(again.lines[1].priceSource, PriceSource.web);
+      expect(again.lines[1].packagePriceMinor, 949);
+      expect(again.lines[1].priceLinks.single.uri, 'https://example.com/oil', reason: 'shop.rewe.de is rewe.de');
+    });
+
+    test('Settings can turn the lookup off; the photo estimate is still asked about', () async {
+      final p = (await isar.userProfiles.get(1))!..lookUpPrices = false;
+      await isar.writeTxn(() => isar.userProfiles.put(p));
+      fake.reply(promptExamples('receipt_extraction.v3.md')[1]);
+      final s = service();
+      await s.enqueue([await photo()], hint: 'pantry');
+      final oil = (await s.processQueue()).single.job.lines[1];
+      expect(fake.requests, hasLength(1));
+      expect(oil.priceSource, PriceSource.estimate);
+      expect(oil.priceToConfirm, isTrue);
     });
   });
 }

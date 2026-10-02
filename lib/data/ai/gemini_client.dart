@@ -31,6 +31,7 @@ class GeminiRequest {
     this.responseSchema,
     this.maxOutputTokens = 8192,
     this.timeout = const Duration(seconds: 45),
+    this.googleSearch = false,
   });
 
   final String systemPrompt;
@@ -41,6 +42,10 @@ class GeminiRequest {
   final int maxOutputTokens;
   final Duration timeout;
 
+  /// Lets the model search Google (grounding). The answer then comes as plain text holding the
+  /// JSON: with JSON mode on, the API leaves out the sources it searched.
+  final bool googleSearch;
+
   GeminiRequest copyWith({List<Turn>? turns, int? maxOutputTokens}) => GeminiRequest(
     systemPrompt: systemPrompt,
     turns: turns ?? this.turns,
@@ -49,7 +54,44 @@ class GeminiRequest {
     responseSchema: responseSchema,
     maxOutputTokens: maxOutputTokens ?? this.maxOutputTokens,
     timeout: timeout,
+    googleSearch: googleSearch,
   );
+}
+
+/// A web page a grounded answer drew on. [title] is usually the site's domain ("rewe.de").
+class WebSource {
+  const WebSource(this.title, this.uri);
+  final String title;
+  final String uri;
+}
+
+/// What Google Search added to an answer (the response's groundingMetadata).
+class Grounding {
+  const Grounding({this.queries = const [], this.sources = const [], this.searchEntryHtml});
+
+  /// The searches the model ran.
+  final List<String> queries;
+  final List<WebSource> sources;
+
+  /// Google's search-suggestion chips as HTML. Google requires showing them unmodified
+  /// next to anything taken from the search.
+  final String? searchEntryHtml;
+
+  static Grounding? fromJson(Map? m) {
+    if (m == null) return null;
+    final web = [
+      for (final c in (m['groundingChunks'] as List?) ?? const [])
+        if (c is Map && c['web'] is Map) c['web'] as Map,
+    ];
+    return Grounding(
+      queries: [...((m['webSearchQueries'] as List?) ?? const []).whereType<String>()],
+      sources: [
+        for (final w in web)
+          if (w['uri'] is String) WebSource(w['title'] is String ? w['title'] as String : '', w['uri'] as String),
+      ],
+      searchEntryHtml: (m['searchEntryPoint'] as Map?)?['renderedContent'] as String?,
+    );
+  }
 }
 
 class GeminiResponse {
@@ -60,6 +102,7 @@ class GeminiResponse {
     this.inputTokens,
     this.outputTokens,
     this.model,
+    this.grounding,
   });
   final String text;
   final String? finishReason;
@@ -67,6 +110,9 @@ class GeminiResponse {
   final int? inputTokens;
   final int? outputTokens;
   final String? model;
+
+  /// Set when the model searched Google.
+  final Grounding? grounding;
 
   bool get truncated => finishReason == 'MAX_TOKENS';
 }
@@ -106,13 +152,18 @@ class GeminiClient {
   static const _backoff = [Duration(seconds: 2), Duration(seconds: 8)];
 
   Map<String, dynamic> buildBody(GeminiRequest r, {int level = 0}) {
-    final config = <String, dynamic>{'responseMimeType': 'application/json', 'maxOutputTokens': r.maxOutputTokens};
+    final config = <String, dynamic>{'maxOutputTokens': r.maxOutputTokens};
+    if (!r.googleSearch) config['responseMimeType'] = 'application/json';
     if (level < 2) config['thinkingConfig'] = {'thinkingLevel': r.thinkingLevel};
     if (level < 1) {
-      if (r.responseSchema != null) config['responseJsonSchema'] = r.responseSchema;
+      if (r.responseSchema != null && !r.googleSearch) config['responseJsonSchema'] = r.responseSchema;
       if (r.highMediaResolution) config['mediaResolution'] = 'MEDIA_RESOLUTION_HIGH';
     }
     return {
+      if (r.googleSearch)
+        'tools': [
+          {'google_search': <String, dynamic>{}},
+        ],
       'systemInstruction': {
         'parts': [
           {'text': r.systemPrompt},
@@ -165,6 +216,9 @@ class GeminiClient {
       try {
         return await _send(r, key, targetModel);
       } on GeminiException catch (e) {
+        // A model or key without Google Search answers a search request with a 400. That says
+        // nothing about the config every other call uses, so don't step it down.
+        if (r.googleSearch && e.status == 400) rethrow;
         if (e.status == 400 && compatLevel < 2 && _looksLikeFieldRejection(e.message)) {
           compatLevel++;
           continue;
@@ -250,6 +304,7 @@ class GeminiClient {
       inputTokens: (usage?['promptTokenCount'] as num?)?.toInt(),
       outputTokens: (usage?['candidatesTokenCount'] as num?)?.toInt(),
       model: targetModel,
+      grounding: Grounding.fromJson(c['groundingMetadata'] as Map?),
     );
   }
 
@@ -260,7 +315,7 @@ class GeminiClient {
     if (m != null) return m.group(1)!;
     final start = t.indexOf('{');
     final end = t.lastIndexOf('}');
-    if (start > 0 && end > start) return t.substring(start, end + 1);
+    if (start >= 0 && end > start) return t.substring(start, end + 1);
     return t;
   }
 }

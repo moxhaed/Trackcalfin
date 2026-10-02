@@ -10,6 +10,7 @@ class PromptRepository {
   static const spontaneous = 'spontaneous_recipe.v2';
   static const nutritionEstimate = 'nutrition_estimate.v1';
   static const nutritionLabel = 'nutrition_label.v1';
+  static const priceLookup = 'price_lookup.v1';
 
   Future<String> load(String version) async => _cache[version] ??= await _loader('assets/prompts/$version.md');
 }

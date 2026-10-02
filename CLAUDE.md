@@ -1,6 +1,6 @@
 # Trackcalfin: notes for coding sessions
 
-Flutter app (Android/iOS; Linux desktop for local UI checks) with a local Isar database and Gemini for five tasks: receipts, Today's Pick, Ask, and ingredient macros (estimates and label reading). The architecture docs live in `docs/`, and the system prompts in `assets/prompts/`.
+Flutter app (Android/iOS; Linux desktop for local UI checks) with a local Isar database and Gemini for six tasks: receipts, Today's Pick, Ask, ingredient macros (estimates and label reading), and shop prices for pantry photos (Google Search grounding). The architecture docs live in `docs/`, and the system prompts in `assets/prompts/`.
 
 ## Commands
 - `flutter pub get`

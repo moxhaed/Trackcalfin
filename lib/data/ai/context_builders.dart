@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import '../../core/day_clock.dart';
 import '../../core/enums.dart';
 import '../isar/collections/ingredient.dart';
+import '../isar/collections/scan_job.dart';
 import '../isar/collections/user_profile.dart';
 import '../../domain/costing.dart';
 import 'dto/enum_codec.dart';
@@ -143,6 +144,23 @@ class ContextBuilders {
   };
 
   static Map<String, dynamic> nutritionLabel(Ingredient i) => {'name': i.name, 'unit': i.baseUnit.label};
+
+  /// Prompt F: pantry-photo lines to price, by id.
+  static Map<String, dynamic> priceLookup({
+    required UserProfile profile,
+    required DateTime now,
+    required Map<String, DraftLine> items,
+  }) => {
+    'today': _date(now),
+    'country': profile.country,
+    'currency': profile.currency,
+    'minor_unit_digits': profile.currencyMinorDigits,
+    'output_language': profile.outputLanguage,
+    'items': [
+      for (final MapEntry(key: id, value: l) in items.entries)
+        {'id': id, 'product': l.product, 'name': l.name, 'unit': l.unit.label, 'package_qty': l.packageQty},
+    ],
+  };
 
   static const _words = {'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5, 'six': 6, 'seven': 7, 'eight': 8};
 

@@ -79,29 +79,44 @@ const ScanJobSchema = CollectionSchema(
       name: r'merchant',
       type: IsarType.string,
     ),
-    r'purchasedAt': PropertySchema(
+    r'priceLookupError': PropertySchema(
       id: 15,
+      name: r'priceLookupError',
+      type: IsarType.string,
+    ),
+    r'priceQueries': PropertySchema(
+      id: 16,
+      name: r'priceQueries',
+      type: IsarType.stringList,
+    ),
+    r'priceSearchHtml': PropertySchema(
+      id: 17,
+      name: r'priceSearchHtml',
+      type: IsarType.stringList,
+    ),
+    r'purchasedAt': PropertySchema(
+      id: 18,
       name: r'purchasedAt',
       type: IsarType.dateTime,
     ),
     r'receiptTotalMinor': PropertySchema(
-      id: 16,
+      id: 19,
       name: r'receiptTotalMinor',
       type: IsarType.long,
     ),
     r'status': PropertySchema(
-      id: 17,
+      id: 20,
       name: r'status',
       type: IsarType.string,
       enumMap: _ScanJobstatusEnumValueMap,
     ),
     r'transactionId': PropertySchema(
-      id: 18,
+      id: 21,
       name: r'transactionId',
       type: IsarType.long,
     ),
     r'userHint': PropertySchema(
-      id: 19,
+      id: 22,
       name: r'userHint',
       type: IsarType.string,
     ),
@@ -132,6 +147,7 @@ const ScanJobSchema = CollectionSchema(
     r'DraftLine': DraftLineSchema,
     r'NewIngredientProfile': NewIngredientProfileSchema,
     r'Nutrition': NutritionSchema,
+    r'WebLink': WebLinkSchema,
   },
 
   getId: _scanJobGetId,
@@ -193,6 +209,26 @@ int _scanJobEstimateSize(
       bytesCount += 3 + value.length * 3;
     }
   }
+  {
+    final value = object.priceLookupError;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  bytesCount += 3 + object.priceQueries.length * 3;
+  {
+    for (var i = 0; i < object.priceQueries.length; i++) {
+      final value = object.priceQueries[i];
+      bytesCount += value.length * 3;
+    }
+  }
+  bytesCount += 3 + object.priceSearchHtml.length * 3;
+  {
+    for (var i = 0; i < object.priceSearchHtml.length; i++) {
+      final value = object.priceSearchHtml[i];
+      bytesCount += value.length * 3;
+    }
+  }
   bytesCount += 3 + object.status.name.length * 3;
   {
     final value = object.userHint;
@@ -229,11 +265,14 @@ void _scanJobSerialize(
     object.lines,
   );
   writer.writeString(offsets[14], object.merchant);
-  writer.writeDateTime(offsets[15], object.purchasedAt);
-  writer.writeLong(offsets[16], object.receiptTotalMinor);
-  writer.writeString(offsets[17], object.status.name);
-  writer.writeLong(offsets[18], object.transactionId);
-  writer.writeString(offsets[19], object.userHint);
+  writer.writeString(offsets[15], object.priceLookupError);
+  writer.writeStringList(offsets[16], object.priceQueries);
+  writer.writeStringList(offsets[17], object.priceSearchHtml);
+  writer.writeDateTime(offsets[18], object.purchasedAt);
+  writer.writeLong(offsets[19], object.receiptTotalMinor);
+  writer.writeString(offsets[20], object.status.name);
+  writer.writeLong(offsets[21], object.transactionId);
+  writer.writeString(offsets[22], object.userHint);
 }
 
 ScanJob _scanJobDeserialize(
@@ -268,13 +307,16 @@ ScanJob _scanJobDeserialize(
       ) ??
       [];
   object.merchant = reader.readStringOrNull(offsets[14]);
-  object.purchasedAt = reader.readDateTimeOrNull(offsets[15]);
-  object.receiptTotalMinor = reader.readLongOrNull(offsets[16]);
+  object.priceLookupError = reader.readStringOrNull(offsets[15]);
+  object.priceQueries = reader.readStringList(offsets[16]) ?? [];
+  object.priceSearchHtml = reader.readStringList(offsets[17]) ?? [];
+  object.purchasedAt = reader.readDateTimeOrNull(offsets[18]);
+  object.receiptTotalMinor = reader.readLongOrNull(offsets[19]);
   object.status =
-      _ScanJobstatusValueEnumMap[reader.readStringOrNull(offsets[17])] ??
+      _ScanJobstatusValueEnumMap[reader.readStringOrNull(offsets[20])] ??
       ScanStatus.queued;
-  object.transactionId = reader.readLongOrNull(offsets[18]);
-  object.userHint = reader.readStringOrNull(offsets[19]);
+  object.transactionId = reader.readLongOrNull(offsets[21]);
+  object.userHint = reader.readStringOrNull(offsets[22]);
   return object;
 }
 
@@ -325,16 +367,22 @@ P _scanJobDeserializeProp<P>(
     case 14:
       return (reader.readStringOrNull(offset)) as P;
     case 15:
-      return (reader.readDateTimeOrNull(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 16:
-      return (reader.readLongOrNull(offset)) as P;
+      return (reader.readStringList(offset) ?? []) as P;
     case 17:
+      return (reader.readStringList(offset) ?? []) as P;
+    case 18:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 19:
+      return (reader.readLongOrNull(offset)) as P;
+    case 20:
       return (_ScanJobstatusValueEnumMap[reader.readStringOrNull(offset)] ??
               ScanStatus.queued)
           as P;
-    case 18:
+    case 21:
       return (reader.readLongOrNull(offset)) as P;
-    case 19:
+    case 22:
       return (reader.readStringOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -2322,6 +2370,561 @@ extension ScanJobQueryFilter
     });
   }
 
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceLookupErrorIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'priceLookupError'),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceLookupErrorIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'priceLookupError'),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition> priceLookupErrorEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'priceLookupError',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceLookupErrorGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'priceLookupError',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceLookupErrorLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'priceLookupError',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition> priceLookupErrorBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'priceLookupError',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceLookupErrorStartsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'priceLookupError',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceLookupErrorEndsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'priceLookupError',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceLookupErrorContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'priceLookupError',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition> priceLookupErrorMatches(
+    String pattern, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'priceLookupError',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceLookupErrorIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'priceLookupError', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceLookupErrorIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'priceLookupError', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceQueriesElementEqualTo(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'priceQueries',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceQueriesElementGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'priceQueries',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceQueriesElementLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'priceQueries',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceQueriesElementBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'priceQueries',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceQueriesElementStartsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'priceQueries',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceQueriesElementEndsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'priceQueries',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceQueriesElementContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'priceQueries',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceQueriesElementMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'priceQueries',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceQueriesElementIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'priceQueries', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceQueriesElementIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'priceQueries', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceQueriesLengthEqualTo(int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'priceQueries', length, true, length, true);
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition> priceQueriesIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'priceQueries', 0, true, 0, true);
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceQueriesIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'priceQueries', 0, false, 999999, true);
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceQueriesLengthLessThan(int length, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'priceQueries', 0, true, length, include);
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceQueriesLengthGreaterThan(int length, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'priceQueries', length, include, 999999, true);
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceQueriesLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'priceQueries',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceSearchHtmlElementEqualTo(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'priceSearchHtml',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceSearchHtmlElementGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'priceSearchHtml',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceSearchHtmlElementLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'priceSearchHtml',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceSearchHtmlElementBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'priceSearchHtml',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceSearchHtmlElementStartsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'priceSearchHtml',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceSearchHtmlElementEndsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'priceSearchHtml',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceSearchHtmlElementContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'priceSearchHtml',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceSearchHtmlElementMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'priceSearchHtml',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceSearchHtmlElementIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'priceSearchHtml', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceSearchHtmlElementIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'priceSearchHtml', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceSearchHtmlLengthEqualTo(int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'priceSearchHtml', length, true, length, true);
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceSearchHtmlIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'priceSearchHtml', 0, true, 0, true);
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceSearchHtmlIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'priceSearchHtml', 0, false, 999999, true);
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceSearchHtmlLengthLessThan(int length, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'priceSearchHtml', 0, true, length, include);
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceSearchHtmlLengthGreaterThan(int length, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'priceSearchHtml',
+        length,
+        include,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition>
+  priceSearchHtmlLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'priceSearchHtml',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
+    });
+  }
+
   QueryBuilder<ScanJob, ScanJob, QAfterFilterCondition> purchasedAtIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
@@ -3012,6 +3615,18 @@ extension ScanJobQuerySortBy on QueryBuilder<ScanJob, ScanJob, QSortBy> {
     });
   }
 
+  QueryBuilder<ScanJob, ScanJob, QAfterSortBy> sortByPriceLookupError() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'priceLookupError', Sort.asc);
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterSortBy> sortByPriceLookupErrorDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'priceLookupError', Sort.desc);
+    });
+  }
+
   QueryBuilder<ScanJob, ScanJob, QAfterSortBy> sortByPurchasedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'purchasedAt', Sort.asc);
@@ -3231,6 +3846,18 @@ extension ScanJobQuerySortThenBy
     });
   }
 
+  QueryBuilder<ScanJob, ScanJob, QAfterSortBy> thenByPriceLookupError() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'priceLookupError', Sort.asc);
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QAfterSortBy> thenByPriceLookupErrorDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'priceLookupError', Sort.desc);
+    });
+  }
+
   QueryBuilder<ScanJob, ScanJob, QAfterSortBy> thenByPurchasedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'purchasedAt', Sort.asc);
@@ -3388,6 +4015,29 @@ extension ScanJobQueryWhereDistinct
     });
   }
 
+  QueryBuilder<ScanJob, ScanJob, QDistinct> distinctByPriceLookupError({
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(
+        r'priceLookupError',
+        caseSensitive: caseSensitive,
+      );
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QDistinct> distinctByPriceQueries() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'priceQueries');
+    });
+  }
+
+  QueryBuilder<ScanJob, ScanJob, QDistinct> distinctByPriceSearchHtml() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'priceSearchHtml');
+    });
+  }
+
   QueryBuilder<ScanJob, ScanJob, QDistinct> distinctByPurchasedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'purchasedAt');
@@ -3521,6 +4171,25 @@ extension ScanJobQueryProperty
     });
   }
 
+  QueryBuilder<ScanJob, String?, QQueryOperations> priceLookupErrorProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'priceLookupError');
+    });
+  }
+
+  QueryBuilder<ScanJob, List<String>, QQueryOperations> priceQueriesProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'priceQueries');
+    });
+  }
+
+  QueryBuilder<ScanJob, List<String>, QQueryOperations>
+  priceSearchHtmlProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'priceSearchHtml');
+    });
+  }
+
   QueryBuilder<ScanJob, DateTime?, QQueryOperations> purchasedAtProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'purchasedAt');
@@ -3613,41 +4282,69 @@ const DraftLineSchema = Schema(
       name: r'packageQty',
       type: IsarType.double,
     ),
-    r'product': PropertySchema(id: 11, name: r'product', type: IsarType.string),
-    r'profile': PropertySchema(
+    r'priceConfirmed': PropertySchema(
+      id: 11,
+      name: r'priceConfirmed',
+      type: IsarType.bool,
+    ),
+    r'priceLinks': PropertySchema(
       id: 12,
+      name: r'priceLinks',
+      type: IsarType.objectList,
+
+      target: r'WebLink',
+    ),
+    r'priceNote': PropertySchema(
+      id: 13,
+      name: r'priceNote',
+      type: IsarType.string,
+    ),
+    r'priceSource': PropertySchema(
+      id: 14,
+      name: r'priceSource',
+      type: IsarType.string,
+      enumMap: _DraftLinepriceSourceEnumValueMap,
+    ),
+    r'priceStore': PropertySchema(
+      id: 15,
+      name: r'priceStore',
+      type: IsarType.string,
+    ),
+    r'product': PropertySchema(id: 16, name: r'product', type: IsarType.string),
+    r'profile': PropertySchema(
+      id: 17,
       name: r'profile',
       type: IsarType.object,
 
       target: r'NewIngredientProfile',
     ),
-    r'qty': PropertySchema(id: 13, name: r'qty', type: IsarType.double),
+    r'qty': PropertySchema(id: 18, name: r'qty', type: IsarType.double),
     r'qtySource': PropertySchema(
-      id: 14,
+      id: 19,
       name: r'qtySource',
       type: IsarType.string,
       enumMap: _DraftLineqtySourceEnumValueMap,
     ),
-    r'rawText': PropertySchema(id: 15, name: r'rawText', type: IsarType.string),
+    r'rawText': PropertySchema(id: 20, name: r'rawText', type: IsarType.string),
     r'stock': PropertySchema(
-      id: 16,
+      id: 21,
       name: r'stock',
       type: IsarType.string,
       enumMap: _DraftLinestockEnumValueMap,
     ),
     r'stockCheck': PropertySchema(
-      id: 17,
+      id: 22,
       name: r'stockCheck',
       type: IsarType.string,
       enumMap: _DraftLinestockCheckEnumValueMap,
     ),
     r'totalMinor': PropertySchema(
-      id: 18,
+      id: 23,
       name: r'totalMinor',
       type: IsarType.long,
     ),
     r'unit': PropertySchema(
-      id: 19,
+      id: 24,
       name: r'unit',
       type: IsarType.string,
       enumMap: _DraftLineunitEnumValueMap,
@@ -3676,6 +4373,32 @@ int _draftLineEstimateSize(
   }
   bytesCount += 3 + object.lineType.name.length * 3;
   bytesCount += 3 + object.name.length * 3;
+  bytesCount += 3 + object.priceLinks.length * 3;
+  {
+    final offsets = allOffsets[WebLink]!;
+    for (var i = 0; i < object.priceLinks.length; i++) {
+      final value = object.priceLinks[i];
+      bytesCount += WebLinkSchema.estimateSize(value, offsets, allOffsets);
+    }
+  }
+  {
+    final value = object.priceNote;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final value = object.priceSource;
+    if (value != null) {
+      bytesCount += 3 + value.name.length * 3;
+    }
+  }
+  {
+    final value = object.priceStore;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   {
     final value = object.product;
     if (value != null) {
@@ -3729,20 +4452,30 @@ void _draftLineSerialize(
   writer.writeString(offsets[8], object.name);
   writer.writeLong(offsets[9], object.packagePriceMinor);
   writer.writeDouble(offsets[10], object.packageQty);
-  writer.writeString(offsets[11], object.product);
-  writer.writeObject<NewIngredientProfile>(
+  writer.writeBool(offsets[11], object.priceConfirmed);
+  writer.writeObjectList<WebLink>(
     offsets[12],
+    allOffsets,
+    WebLinkSchema.serialize,
+    object.priceLinks,
+  );
+  writer.writeString(offsets[13], object.priceNote);
+  writer.writeString(offsets[14], object.priceSource?.name);
+  writer.writeString(offsets[15], object.priceStore);
+  writer.writeString(offsets[16], object.product);
+  writer.writeObject<NewIngredientProfile>(
+    offsets[17],
     allOffsets,
     NewIngredientProfileSchema.serialize,
     object.profile,
   );
-  writer.writeDouble(offsets[13], object.qty);
-  writer.writeString(offsets[14], object.qtySource.name);
-  writer.writeString(offsets[15], object.rawText);
-  writer.writeString(offsets[16], object.stock?.name);
-  writer.writeString(offsets[17], object.stockCheck?.name);
-  writer.writeLong(offsets[18], object.totalMinor);
-  writer.writeString(offsets[19], object.unit.name);
+  writer.writeDouble(offsets[18], object.qty);
+  writer.writeString(offsets[19], object.qtySource.name);
+  writer.writeString(offsets[20], object.rawText);
+  writer.writeString(offsets[21], object.stock?.name);
+  writer.writeString(offsets[22], object.stockCheck?.name);
+  writer.writeLong(offsets[23], object.totalMinor);
+  writer.writeString(offsets[24], object.unit.name);
 }
 
 DraftLine _draftLineDeserialize(
@@ -3769,24 +4502,37 @@ DraftLine _draftLineDeserialize(
   object.name = reader.readString(offsets[8]);
   object.packagePriceMinor = reader.readLongOrNull(offsets[9]);
   object.packageQty = reader.readDoubleOrNull(offsets[10]);
-  object.product = reader.readStringOrNull(offsets[11]);
+  object.priceConfirmed = reader.readBool(offsets[11]);
+  object.priceLinks =
+      reader.readObjectList<WebLink>(
+        offsets[12],
+        WebLinkSchema.deserialize,
+        allOffsets,
+        WebLink(),
+      ) ??
+      [];
+  object.priceNote = reader.readStringOrNull(offsets[13]);
+  object.priceSource =
+      _DraftLinepriceSourceValueEnumMap[reader.readStringOrNull(offsets[14])];
+  object.priceStore = reader.readStringOrNull(offsets[15]);
+  object.product = reader.readStringOrNull(offsets[16]);
   object.profile = reader.readObjectOrNull<NewIngredientProfile>(
-    offsets[12],
+    offsets[17],
     NewIngredientProfileSchema.deserialize,
     allOffsets,
   );
-  object.qty = reader.readDoubleOrNull(offsets[13]);
+  object.qty = reader.readDoubleOrNull(offsets[18]);
   object.qtySource =
-      _DraftLineqtySourceValueEnumMap[reader.readStringOrNull(offsets[14])] ??
+      _DraftLineqtySourceValueEnumMap[reader.readStringOrNull(offsets[19])] ??
       QtySource.printed;
-  object.rawText = reader.readString(offsets[15]);
+  object.rawText = reader.readString(offsets[20]);
   object.stock =
-      _DraftLinestockValueEnumMap[reader.readStringOrNull(offsets[16])];
+      _DraftLinestockValueEnumMap[reader.readStringOrNull(offsets[21])];
   object.stockCheck =
-      _DraftLinestockCheckValueEnumMap[reader.readStringOrNull(offsets[17])];
-  object.totalMinor = reader.readLong(offsets[18]);
+      _DraftLinestockCheckValueEnumMap[reader.readStringOrNull(offsets[22])];
+  object.totalMinor = reader.readLong(offsets[23]);
   object.unit =
-      _DraftLineunitValueEnumMap[reader.readStringOrNull(offsets[19])] ??
+      _DraftLineunitValueEnumMap[reader.readStringOrNull(offsets[24])] ??
       BaseUnit.g;
   return object;
 }
@@ -3829,33 +4575,53 @@ P _draftLineDeserializeProp<P>(
     case 10:
       return (reader.readDoubleOrNull(offset)) as P;
     case 11:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 12:
+      return (reader.readObjectList<WebLink>(
+                offset,
+                WebLinkSchema.deserialize,
+                allOffsets,
+                WebLink(),
+              ) ??
+              [])
+          as P;
+    case 13:
+      return (reader.readStringOrNull(offset)) as P;
+    case 14:
+      return (_DraftLinepriceSourceValueEnumMap[reader.readStringOrNull(
+            offset,
+          )])
+          as P;
+    case 15:
+      return (reader.readStringOrNull(offset)) as P;
+    case 16:
+      return (reader.readStringOrNull(offset)) as P;
+    case 17:
       return (reader.readObjectOrNull<NewIngredientProfile>(
             offset,
             NewIngredientProfileSchema.deserialize,
             allOffsets,
           ))
           as P;
-    case 13:
+    case 18:
       return (reader.readDoubleOrNull(offset)) as P;
-    case 14:
+    case 19:
       return (_DraftLineqtySourceValueEnumMap[reader.readStringOrNull(
                 offset,
               )] ??
               QtySource.printed)
           as P;
-    case 15:
+    case 20:
       return (reader.readString(offset)) as P;
-    case 16:
+    case 21:
       return (_DraftLinestockValueEnumMap[reader.readStringOrNull(offset)])
           as P;
-    case 17:
+    case 22:
       return (_DraftLinestockCheckValueEnumMap[reader.readStringOrNull(offset)])
           as P;
-    case 18:
+    case 23:
       return (reader.readLong(offset)) as P;
-    case 19:
+    case 24:
       return (_DraftLineunitValueEnumMap[reader.readStringOrNull(offset)] ??
               BaseUnit.g)
           as P;
@@ -3901,6 +4667,14 @@ const _DraftLinelineTypeValueEnumMap = {
   r'adjustment': LineType.adjustment,
   r'deposit': LineType.deposit,
   r'fee': LineType.fee,
+};
+const _DraftLinepriceSourceEnumValueMap = {
+  r'estimate': r'estimate',
+  r'web': r'web',
+};
+const _DraftLinepriceSourceValueEnumMap = {
+  r'estimate': PriceSource.estimate,
+  r'web': PriceSource.web,
 };
 const _DraftLineqtySourceEnumValueMap = {
   r'printed': r'printed',
@@ -5019,6 +5793,562 @@ extension DraftLineQueryFilter
     });
   }
 
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  priceConfirmedEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'priceConfirmed', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  priceLinksLengthEqualTo(int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'priceLinks', length, true, length, true);
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  priceLinksIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'priceLinks', 0, true, 0, true);
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  priceLinksIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'priceLinks', 0, false, 999999, true);
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  priceLinksLengthLessThan(int length, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'priceLinks', 0, true, length, include);
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  priceLinksLengthGreaterThan(int length, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'priceLinks', length, include, 999999, true);
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  priceLinksLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'priceLinks',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> priceNoteIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'priceNote'),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  priceNoteIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'priceNote'),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> priceNoteEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'priceNote',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  priceNoteGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'priceNote',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> priceNoteLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'priceNote',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> priceNoteBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'priceNote',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> priceNoteStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'priceNote',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> priceNoteEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'priceNote',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> priceNoteContains(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'priceNote',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> priceNoteMatches(
+    String pattern, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'priceNote',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> priceNoteIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'priceNote', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  priceNoteIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'priceNote', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  priceSourceIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'priceSource'),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  priceSourceIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'priceSource'),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> priceSourceEqualTo(
+    PriceSource? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'priceSource',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  priceSourceGreaterThan(
+    PriceSource? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'priceSource',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> priceSourceLessThan(
+    PriceSource? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'priceSource',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> priceSourceBetween(
+    PriceSource? lower,
+    PriceSource? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'priceSource',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  priceSourceStartsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'priceSource',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> priceSourceEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'priceSource',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> priceSourceContains(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'priceSource',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> priceSourceMatches(
+    String pattern, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'priceSource',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  priceSourceIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'priceSource', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  priceSourceIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'priceSource', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> priceStoreIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'priceStore'),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  priceStoreIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'priceStore'),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> priceStoreEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'priceStore',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  priceStoreGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'priceStore',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> priceStoreLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'priceStore',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> priceStoreBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'priceStore',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  priceStoreStartsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'priceStore',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> priceStoreEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'priceStore',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> priceStoreContains(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'priceStore',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> priceStoreMatches(
+    String pattern, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'priceStore',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  priceStoreIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'priceStore', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  priceStoreIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'priceStore', value: ''),
+      );
+    });
+  }
+
   QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> productIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
@@ -6115,6 +7445,14 @@ extension DraftLineQueryFilter
 
 extension DraftLineQueryObject
     on QueryBuilder<DraftLine, DraftLine, QFilterCondition> {
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> priceLinksElement(
+    FilterQuery<WebLink> q,
+  ) {
+    return QueryBuilder.apply(this, (query) {
+      return query.object(q, r'priceLinks');
+    });
+  }
+
   QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> profile(
     FilterQuery<NewIngredientProfile> q,
   ) {
@@ -6123,6 +7461,370 @@ extension DraftLineQueryObject
     });
   }
 }
+
+// coverage:ignore-file
+// ignore_for_file: duplicate_ignore, non_constant_identifier_names, constant_identifier_names, invalid_use_of_protected_member, unnecessary_cast, prefer_const_constructors, lines_longer_than_80_chars, require_trailing_commas, inference_failure_on_function_invocation, unnecessary_parenthesis, unnecessary_raw_strings, unnecessary_null_checks, join_return_with_assignment, prefer_final_locals, avoid_js_rounded_ints, avoid_positional_boolean_parameters, always_specify_types
+
+const WebLinkSchema = Schema(
+  name: r'WebLink',
+  id: -1030747596938756465,
+  properties: {
+    r'title': PropertySchema(id: 0, name: r'title', type: IsarType.string),
+    r'uri': PropertySchema(id: 1, name: r'uri', type: IsarType.string),
+  },
+
+  estimateSize: _webLinkEstimateSize,
+  serialize: _webLinkSerialize,
+  deserialize: _webLinkDeserialize,
+  deserializeProp: _webLinkDeserializeProp,
+);
+
+int _webLinkEstimateSize(
+  WebLink object,
+  List<int> offsets,
+  Map<Type, List<int>> allOffsets,
+) {
+  var bytesCount = offsets.last;
+  bytesCount += 3 + object.title.length * 3;
+  bytesCount += 3 + object.uri.length * 3;
+  return bytesCount;
+}
+
+void _webLinkSerialize(
+  WebLink object,
+  IsarWriter writer,
+  List<int> offsets,
+  Map<Type, List<int>> allOffsets,
+) {
+  writer.writeString(offsets[0], object.title);
+  writer.writeString(offsets[1], object.uri);
+}
+
+WebLink _webLinkDeserialize(
+  Id id,
+  IsarReader reader,
+  List<int> offsets,
+  Map<Type, List<int>> allOffsets,
+) {
+  final object = WebLink();
+  object.title = reader.readString(offsets[0]);
+  object.uri = reader.readString(offsets[1]);
+  return object;
+}
+
+P _webLinkDeserializeProp<P>(
+  IsarReader reader,
+  int propertyId,
+  int offset,
+  Map<Type, List<int>> allOffsets,
+) {
+  switch (propertyId) {
+    case 0:
+      return (reader.readString(offset)) as P;
+    case 1:
+      return (reader.readString(offset)) as P;
+    default:
+      throw IsarError('Unknown property with id $propertyId');
+  }
+}
+
+extension WebLinkQueryFilter
+    on QueryBuilder<WebLink, WebLink, QFilterCondition> {
+  QueryBuilder<WebLink, WebLink, QAfterFilterCondition> titleEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'title',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<WebLink, WebLink, QAfterFilterCondition> titleGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'title',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<WebLink, WebLink, QAfterFilterCondition> titleLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'title',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<WebLink, WebLink, QAfterFilterCondition> titleBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'title',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<WebLink, WebLink, QAfterFilterCondition> titleStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'title',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<WebLink, WebLink, QAfterFilterCondition> titleEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'title',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<WebLink, WebLink, QAfterFilterCondition> titleContains(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'title',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<WebLink, WebLink, QAfterFilterCondition> titleMatches(
+    String pattern, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'title',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<WebLink, WebLink, QAfterFilterCondition> titleIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'title', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<WebLink, WebLink, QAfterFilterCondition> titleIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'title', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<WebLink, WebLink, QAfterFilterCondition> uriEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'uri',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<WebLink, WebLink, QAfterFilterCondition> uriGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'uri',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<WebLink, WebLink, QAfterFilterCondition> uriLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'uri',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<WebLink, WebLink, QAfterFilterCondition> uriBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'uri',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<WebLink, WebLink, QAfterFilterCondition> uriStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'uri',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<WebLink, WebLink, QAfterFilterCondition> uriEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'uri',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<WebLink, WebLink, QAfterFilterCondition> uriContains(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'uri',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<WebLink, WebLink, QAfterFilterCondition> uriMatches(
+    String pattern, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'uri',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<WebLink, WebLink, QAfterFilterCondition> uriIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'uri', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<WebLink, WebLink, QAfterFilterCondition> uriIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'uri', value: ''),
+      );
+    });
+  }
+}
+
+extension WebLinkQueryObject
+    on QueryBuilder<WebLink, WebLink, QFilterCondition> {}
 
 // coverage:ignore-file
 // ignore_for_file: duplicate_ignore, non_constant_identifier_names, constant_identifier_names, invalid_use_of_protected_member, unnecessary_cast, prefer_const_constructors, lines_longer_than_80_chars, require_trailing_commas, inference_failure_on_function_invocation, unnecessary_parenthesis, unnecessary_raw_strings, unnecessary_null_checks, join_return_with_assignment, prefer_final_locals, avoid_js_rounded_ints, avoid_positional_boolean_parameters, always_specify_types

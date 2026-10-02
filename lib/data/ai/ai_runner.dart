@@ -15,8 +15,12 @@ class AiOutcome<T> {
     this.raw = '',
     this.repaired = false,
     this.transient = false,
+    this.grounding,
   });
   final T? value;
+
+  /// What Google Search contributed, for requests that let the model search.
+  final Grounding? grounding;
 
   /// True when the failure was network/quota related and worth retrying later.
   final bool transient;
@@ -52,12 +56,15 @@ class AiRunner {
     String? fatal;
     var transient = false;
     var inTok = 0, outTok = 0;
+    Grounding? grounding;
     try {
       for (var round = 0; round < 2; round++) {
         res = await client.generate(req);
         if (res.truncated) {
           res = await client.generate(req.copyWith(maxOutputTokens: req.maxOutputTokens * 2));
         }
+        // A repair answer may not search again; the first round's searches still back it.
+        grounding = res.grounding ?? grounding;
         inTok += res.inputTokens ?? 0;
         outTok += res.outputTokens ?? 0;
         final parsed = _decodeAndParse(res.text, parse);
@@ -101,7 +108,7 @@ class AiRunner {
         transient: transient,
       );
     }
-    return AiOutcome(value: value, logId: logId, raw: res!.text, repaired: repaired);
+    return AiOutcome(value: value, logId: logId, raw: res!.text, repaired: repaired, grounding: grounding);
   }
 
   static ParseResult<T> _decodeAndParse<T>(String text, ParseResult<T> Function(Map<String, dynamic>) parse) {

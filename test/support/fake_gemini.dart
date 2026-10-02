@@ -4,8 +4,9 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
-/// Wraps model text in a generateContent response body.
-http.Response geminiOk(String text, {String finish = 'STOP'}) => http.Response(
+/// Wraps model text in a generateContent response body. [grounding] is the candidate's
+/// groundingMetadata, as an answer that searched Google carries it.
+http.Response geminiOk(String text, {String finish = 'STOP', Map<String, dynamic>? grounding}) => http.Response(
   jsonEncode({
     'candidates': [
       {
@@ -17,6 +18,7 @@ http.Response geminiOk(String text, {String finish = 'STOP'}) => http.Response(
           ],
         },
         'finishReason': finish,
+        'groundingMetadata': ?grounding,
       },
     ],
     'usageMetadata': {'promptTokenCount': 1200, 'candidatesTokenCount': 300},
@@ -31,8 +33,9 @@ class FakeGemini {
   final requests = <Map<String, dynamic>>[];
   final requestedUris = <Uri>[];
 
-  void reply(String text) => responses.add((_) => geminiOk(text));
-  void replyJson(Object json) => reply(jsonEncode(json));
+  void reply(String text, {Map<String, dynamic>? grounding}) =>
+      responses.add((_) => geminiOk(text, grounding: grounding));
+  void replyJson(Object json, {Map<String, dynamic>? grounding}) => reply(jsonEncode(json), grounding: grounding);
   void status(int code, String message, {List<Object>? details}) => responses.add(
     (_) => http.Response(
       jsonEncode({
@@ -61,3 +64,19 @@ List<String> promptExamples(String file) {
 String promptExample(String file) => promptExamples(file).first;
 
 Future<String> loadPromptAsset(String path) => File(path).readAsString();
+
+/// groundingMetadata as the API returns it for an answer that searched Google.
+Map<String, dynamic> groundingMetadata({
+  List<String> queries = const ['Barilla Spaghetti n.5 500 g Preis'],
+  Map<String, String> pages = const {'lidl.de': 'https://vertexaisearch.cloud.google.com/grounding-api-redirect/a1'},
+  String? html = '<div class="container"><a class="chip" href="https://www.google.com/search?q=x">x</a></div>',
+}) => {
+  'webSearchQueries': queries,
+  'groundingChunks': [
+    for (final e in pages.entries)
+      {
+        'web': {'uri': e.value, 'title': e.key},
+      },
+  ],
+  if (html != null) 'searchEntryPoint': {'renderedContent': html},
+};

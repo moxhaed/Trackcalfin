@@ -168,6 +168,18 @@ void main() {
     expect(find.textContaining('Already in your pantry: 900 g'), findsOneWidget);
     await tester.tap(find.textContaining('Extra ·'));
     await settle(tester);
+    // The new item's shop price was looked up on Google: is it right?
+    expect(find.textContaining('Google found'), findsOneWidget, reason: 'spaghetti has a price paid: no question');
+    expect(find.textContaining('for 350 g at REWE. Is that the price?'), findsOneWidget);
+    expect(find.text('Ültje Erdnussbutter crunchy 350 g Preis'), findsOneWidget, reason: 'the search behind it');
+    await tester.tap(find.text('Change'));
+    await settle(tester);
+    await tester.enterText(find.widgetWithText(TextField, 'Price'), '2.99');
+    await settle(tester);
+    await tester.tap(find.text('Save'));
+    await settle(tester);
+    expect(find.textContaining('Is that the price?'), findsNothing);
+    expect(find.text('Peanut butter'), findsOneWidget, reason: 'an answered line stays where it was');
     await tester.tap(find.text('Update pantry'));
     await settle(tester);
     final pasta = (await isar.ingredients.getByKey('dry_pasta'))!;
@@ -175,8 +187,50 @@ void main() {
     expect(pasta.avgCostPerUnitMinor, 0.18, reason: 'a price paid is kept over an estimate');
     final peanut = (await isar.ingredients.getByKey('peanut_butter'))!;
     expect(peanut.qtyOnHand, 300);
-    expect(peanut.avgCostPerUnitMinor, closeTo(349 / 350, 1e-9));
-    expect(peanut.costIsEstimate, isTrue);
+    expect(peanut.avgCostPerUnitMinor, closeTo(299 / 350, 1e-9));
+    expect(peanut.costIsEstimate, isFalse, reason: 'the user set the price');
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  testWidgets('pantry photo review: "All correct" confirms every price; a failed lookup says why', (tester) async {
+    await DemoSeed.run(isar);
+    final id = await isar.writeTxn(
+      () => isar.scanJobs.put(
+        ScanJob()
+          ..status = ScanStatus.needsReview
+          ..kind = ScanKind.pantry
+          ..capturedAt = DateTime.now()
+          ..priceLookupError = 'Timed out after 90s'
+          ..lines = [
+            for (final (name, key, price) in [('Tahini', 'tahini', 349), ('Buckwheat', 'buckwheat', 229)])
+              DraftLine()
+                ..name = name
+                ..ingredientKey = key
+                ..isNewIngredient = true
+                ..qty = 400
+                ..qtySource = QtySource.estimated
+                ..packageQty = 500
+                ..packagePriceMinor = price
+                ..priceSource = PriceSource.estimate
+                ..profile = (NewIngredientProfile()
+                  ..name = name
+                  ..category = IngredientCategory.legumesNuts),
+          ],
+      ),
+    );
+    await pumpApp(tester, initial: '/inbox/$id');
+    expect(find.textContaining("Couldn't look prices up on Google (Timed out after 90s)"), findsOneWidget);
+    expect(find.text('Try again'), findsOneWidget);
+    expect(find.textContaining('2 prices are estimates'), findsOneWidget);
+    final asks = find.textContaining('Is that about what it costs?', skipOffstage: false);
+    expect(asks, findsNWidgets(2));
+    await tester.tap(find.text('All correct'));
+    await settle(tester);
+    expect(asks, findsNothing);
+    await tester.tap(find.text('Update pantry'));
+    await settle(tester);
+    final tahini = (await isar.ingredients.getByKey('tahini'))!;
+    expect(tahini.avgCostPerUnitMinor, closeTo(349 / 500, 1e-9));
+    expect(tahini.costIsEstimate, isFalse);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   testWidgets('an old receipt shows its date and a possible duplicate', (tester) async {

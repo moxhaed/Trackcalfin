@@ -44,12 +44,19 @@ class CostingEngine {
   }
 
   /// A shelf-price estimate from a pantry photo. Used only while no price paid is known.
-  static void applyEstimate(Ingredient ing, double unitCostMinor) {
+  static void applyEstimate(Ingredient ing, double unitCostMinor) => _shelfPrice(ing, unitCostMinor, estimate: true);
+
+  /// A shop price the user confirmed (or typed) on a pantry photo. It counts as a real price
+  /// from then on, but still never overrides a price paid.
+  static void applyCheckedPrice(Ingredient ing, double unitCostMinor) =>
+      _shelfPrice(ing, unitCostMinor, estimate: false);
+
+  static void _shelfPrice(Ingredient ing, double unitCostMinor, {required bool estimate}) {
     if (unitCostMinor <= 0) return;
     if (ing.avgCostPerUnitMinor > 0 && !ing.costIsEstimate) return;
     ing
       ..avgCostPerUnitMinor = unitCostMinor
-      ..costIsEstimate = true;
+      ..costIsEstimate = estimate;
   }
 }
 

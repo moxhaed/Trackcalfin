@@ -204,6 +204,7 @@ const _AiCallLogtaskEnumValueMap = {
   r'spontaneousRecipe': r'spontaneousRecipe',
   r'nutritionEstimate': r'nutritionEstimate',
   r'nutritionLabel': r'nutritionLabel',
+  r'priceLookup': r'priceLookup',
 };
 const _AiCallLogtaskValueEnumMap = {
   r'receipt': AiTask.receipt,
@@ -211,6 +212,7 @@ const _AiCallLogtaskValueEnumMap = {
   r'spontaneousRecipe': AiTask.spontaneousRecipe,
   r'nutritionEstimate': AiTask.nutritionEstimate,
   r'nutritionLabel': AiTask.nutritionLabel,
+  r'priceLookup': AiTask.priceLookup,
 };
 
 Id _aiCallLogGetId(AiCallLog object) {

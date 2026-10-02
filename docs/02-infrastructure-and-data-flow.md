@@ -121,6 +121,7 @@ test/
 | A | User captures a receipt or pantry photo (⊕, quick action, share sheet, onboarding) | [`receipt_extraction.v3`](../assets/prompts/receipt_extraction.v3.md) | 1–3 images + locale + `known_ingredients` (key, name, unit) | Extraction JSON → `ScanJob.lines` (draft) → `Transaction` + `Ingredient` on commit | **low** (extraction that Dart verifies) | `ScanJob` stays `queued`. Retried on reconnect and app resume. | 2–5 per week |
 | B | Evening before (primary), WorkManager morning window (fallback), app open with no pick (last resort), *Swap* button | [`daily_recipe.v2`](../assets/prompts/daily_recipe.v2.md) | Compact inventory (salt and oil included) + targets + profile + recent titles | Recipe JSON → `Recipe(origin: dailyAuto, suggestedForDateKey)` | **medium** | Best "ready" saved recipe, picked by `FeasibilityChecker` + expiry score | 1 per day + ≤ 2 swaps |
 | C | User types or speaks a request on the Cook tab | [`spontaneous_recipe.v2`](../assets/prompts/spontaneous_recipe.v2.md) | Request text + parsed portions + inventory + profile | Feasibility + recipe JSON → `Recipe(origin: spontaneous)` | **medium** | Message "Needs a connection" + local title search over saved recipes | On demand, ~0–2 per day |
+| F | A pantry photo was read (Prompt A), and some items have no price paid yet | [`price_lookup.v1`](../assets/prompts/price_lookup.v1.md) with **Google Search** | The products (exact name, unit, pack size) + country and currency | Shop price per pack, store, site → `DraftLine` price fields, asked about in review | **low** | Prompt A's estimates stand; review says why and offers **Try again** | With each pantry photo (off in Settings) |
 
 ### Never AI (pure Dart / Isar)
 
@@ -159,7 +160,7 @@ sequenceDiagram
 
 Before that, the validator checks the receipt against what the app already knows ([03 §3.16](03-algorithms.md#316-scan-checks-the-receipts-date-pantry-questions-duplicates)): an old date keeps perishables that have spoiled since out of the pantry, a pantry count made after the purchase may already include an item, and a receipt matching one already filed is flagged. Each of these holds the scan for review instead of auto-committing.
 
-Pantry-photo scans (`stock_mode: set`) take the same pipeline but commit through `ApplyPantrySnapshot`. The user sees a diff (current vs detected). For an item already on hand, the review asks "Same one or extra?": the same one means the detected quantity replaces `qtyOnHand`, extra means it is added. Either way `lastVerifiedAt` and `lastCountedAt` are set to the photo's time. The model also names the exact product and its usual shop price, which prices items that have no price paid yet (marked as an estimate). No `Transaction` is written.
+Pantry-photo scans (`stock_mode: set`) take the same pipeline but commit through `ApplyPantrySnapshot`. The user sees a diff (current vs detected). For an item already on hand, the review asks "Same one or extra?": the same one means the detected quantity replaces `qtyOnHand`, extra means it is added. Either way `lastVerifiedAt` and `lastCountedAt` are set to the photo's time. The model also names the exact product and estimates its usual shop price. Prompt F then looks the price of each item without a price paid up on Google, and review asks "Is that the price?" for each one ([05 §5.10](05-ai-layer-and-prompts.md#510-exact-products-and-shop-prices-prompts-a-v3-and-f)). A confirmed price counts as real; an unanswered one is kept as an estimate. No `Transaction` is written.
 
 ### Flow 2: Daily pick ("plan tonight, notify tomorrow")
 
@@ -277,6 +278,7 @@ The aggregation handles a few hundred objects, which takes microseconds, so no c
 | Semantic validation flags (unknown key, over-quantity, divergence) | Auto-fixed where safe (remap, clamp portions), otherwise surfaced as amber UI flags. See [05](05-ai-layer-and-prompts.md#55-validation-pipeline). |
 | Allergen detected by the Dart screen | Output rejected, then a repair retry with an explicit error. It is never shown to the user. |
 | `image_type: unreadable` | `ScanJob.failed` with a reason, and an Inbox card with a **Retake** button. |
+| Price lookup (F) fails | The pantry photo still goes to review with Prompt A's estimates. `ScanJob.priceLookupError` says why, and **Try again** reruns the lookup. A 400 from a model without Google Search doesn't change the request config of other calls. |
 
 ## 2.9 Security, privacy, and the SDK choice
 

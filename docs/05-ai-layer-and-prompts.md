@@ -9,6 +9,7 @@ The master prompts are **runtime assets**. The app loads them verbatim as the `s
 | **C** | [`assets/prompts/spontaneous_recipe.v2.md`](../assets/prompts/spontaneous_recipe.v2.md) | User text/voice + inventory JSON → feasibility verdict + adapted recipe + shopping list JSON |
 | **D** | [`assets/prompts/nutrition_estimate.v1.md`](../assets/prompts/nutrition_estimate.v1.md) | Ingredients with unknown macros → typical values per 100 g, density, piece weight |
 | **E** | [`assets/prompts/nutrition_label.v1.md`](../assets/prompts/nutrition_label.v1.md) | Photo of a nutrition facts panel → the printed values, unconverted |
+| **F** | [`assets/prompts/price_lookup.v1.md`](../assets/prompts/price_lookup.v1.md) | Products from a pantry photo → their shop price, searched with Google (one pack, its size, the store and the site) |
 
 Those files are the single source of truth. This document covers how they're called, fed, and verified.
 
@@ -198,16 +199,33 @@ Every number in a recipe comes from `Ingredient.per100`, so an ingredient with n
 
 Confirmation lives in `Ingredient.nutritionConfirmedAt`: set by a saved label (`nutritionSource: label`), by typed numbers (`user`) or by *Confirm* on an AI estimate. Changing an ingredient's macros, unit or piece weight refreshes the stored numbers of every non-archived recipe that uses it (`RecipeService.refreshUsing`). Cook sessions keep their snapshot.
 
-## 5.10 Exact products and shelf prices (Prompt A v3)
+## 5.10 Exact products and shop prices (Prompts A v3 and F)
 
-Every grocery line names the exact product the model recognized (`product`: brand, name, variant and pack size, such as "Barilla Spaghetti n.5, 500 g"), read from the packaging or decoded from the receipt line. On a receipt this helps the quantity, because the identified product's pack size replaces a guessed one. A pantry photo has no prices, so each item also gets a `shelf_price`: the usual price of one pack at a typical supermarket in `country`, in the home currency, plus the pack size. It comes from the model's own knowledge of products and prices, not a live web search.
+Every grocery line names the exact product the model recognized (`product`: brand, name, variant and pack size, such as "Barilla Spaghetti n.5, 500 g"), read from the packaging or decoded from the receipt line. On a receipt this helps the quantity, because the identified product's pack size replaces a guessed one. A pantry photo has no prices, so Prompt A also gives each item a `shelf_price`: the usual price of one pack at a typical supermarket in `country`, in the home currency, plus the pack size, from the model's own knowledge.
+
+**Prompt F looks those prices up on Google.** Right after a pantry photo is read, `ScanService` sends the items that still need a price (none paid yet: `ReceiptValidator.needsPrice`) to [`price_lookup.v1`](../assets/prompts/price_lookup.v1.md) with Grounding with Google Search on. The model searches the shops of `country` and returns, per item, the regular price of one pack, the pack's size in the item's unit, the store and the site (`found: false` when no result shows a price). Up to 20 items per call, `thinkingLevel: low`, a 90 s timeout. *Settings → AI → Look up prices on Google* (`UserProfile.lookUpPrices`) turns it off.
+
+The request differs from the others:
+```json
+{
+  "tools": [{ "google_search": {} }],
+  "systemInstruction": { "parts": [{ "text": "<contents of price_lookup.v1.md>" }] },
+  "contents": [{ "role": "user", "parts": [{ "text": "{\"country\":\"DE\",\"currency\":\"EUR\",\"items\":[...]}" }] }],
+  "generationConfig": { "thinkingConfig": { "thinkingLevel": "low" }, "maxOutputTokens": 4096 }
+}
+```
+- No `responseMimeType` or `responseJsonSchema`: in JSON mode the API leaves out the grounding sources. The prompt asks for the bare JSON object, `GeminiClient.stripFences` cuts away any text around it, and `PriceLookup.parse` checks it as strictly as the other DTOs: every input id exactly once, a found price of 1 to 100 000 minor units for one pack, a plausible pack size. A failed check gets the usual repair round, and the first round's searches still back the repaired answer.
+- A 400 on a search request (a model or key without Google Search) goes to the fallback model but never steps down `compatLevel`: it says nothing about the other calls.
+
+The answer's `groundingMetadata` is kept with the scan: `webSearchQueries` (`ScanJob.priceQueries`), the pages read (`groundingChunks[].web`, kept on a line as `priceLinks` when the site matches the `source` the model named) and `searchEntryPoint.renderedContent` (`ScanJob.priceSearchHtml`). Google requires showing these search suggestions, unmodified, next to anything taken from the search, and a tap must lead to the Google results page. The review screen renders the HTML in a web view on Android and iOS (`SearchSuggestions`: JavaScript off, a tapped chip opens the browser) and shows one chip per search where there is no web view (Linux desktop, tests).
 
 Dart keeps the decisions:
-- The review screen shows the product and "~€1.99 a pack". The pack price can be edited there.
-- Filing turns it into a unit cost and applies it only where no price was paid (`CostingEngine.applyEstimate`, `Ingredient.costIsEstimate`). The pantry marks such values with "~", and recipes list the items whose prices are estimates. The next receipt for the item replaces the estimate instead of averaging with it.
-- Receipt lines never take a shelf price.
+- Review asks about every shop price that will be used (`DraftLine.priceToConfirm`): "Google found €1.79 for 500 g at Lidl. Is that the price?" with **Yes**, **Change** (price and pack size) and a link to the page. Where nothing was found it asks about the photo's estimate ("Estimated at €8.99 for 750 ml. Is that about what it costs?"). With several, **All correct** confirms them at once.
+- Filing turns the pack price into a unit cost and applies it only where no price was paid. A confirmed or typed price counts as a real one (`CostingEngine.applyCheckedPrice`, `costIsEstimate: false`). An unanswered one stays an estimate (`applyEstimate`): the pantry marks it with "~", and recipes list the items whose prices are estimates. The next receipt for the item replaces either, instead of averaging with it.
+- When the lookup fails (quota, timeout, no search support, an answer that fails the checks twice), the photo's estimates stand, `ScanJob.priceLookupError` says why, and review offers **Try again** (`ScanService.retryPrices`). Prices already found or confirmed are left alone.
+- Receipt lines never get a shop price: the receipt prints what was paid.
 
-Gemini's Grounding with Google Search could look prices up live instead. It isn't used: it is billed per request on top of the model call, and its results come with display requirements for Google's search suggestions.
+Cost: one lookup is one model call plus the searches the model runs, usually one per item. Grounding with Google Search is billed per search query beyond a free monthly allowance (see Google's pricing page for the current numbers). At a few pantry photos a month that stays small, and the switch turns it off.
 
 ## 5.11 References
 
@@ -215,3 +233,4 @@ Gemini's Grounding with Google Search could look prices up live instead. It isn'
 - Structured output (`responseMimeType`, `responseJsonSchema` / `responseSchema`): [Gemini API structured outputs](https://ai.google.dev/gemini-api/docs/generate-content/structured-output), [Improving structured outputs in the Gemini API](https://blog.google/technology/developers/gemini-api-structured-outputs/)
 - Dart SDK status: [deprecated-generative-ai-dart](https://github.com/google-gemini/deprecated-generative-ai-dart) → [Firebase AI Logic](https://firebase.google.com/docs/ai-logic/generate-structured-output)
 - Isar community fork: [isar_community on pub.dev](https://pub.dev/packages/isar_community)
+- Grounding with Google Search (`google_search` tool, `groundingMetadata`, search suggestion display requirements): [Gemini API: Grounding with Google Search](https://ai.google.dev/gemini-api/docs/google-search)

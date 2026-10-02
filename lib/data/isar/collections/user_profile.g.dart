@@ -108,70 +108,75 @@ const UserProfileSchema = CollectionSchema(
 
       target: r'KeywordCategory',
     ),
-    r'maxActiveMinutes': PropertySchema(
+    r'lookUpPrices': PropertySchema(
       id: 19,
+      name: r'lookUpPrices',
+      type: IsarType.bool,
+    ),
+    r'maxActiveMinutes': PropertySchema(
+      id: 20,
       name: r'maxActiveMinutes',
       type: IsarType.long,
     ),
     r'mealReminderMinutes': PropertySchema(
-      id: 20,
+      id: 21,
       name: r'mealReminderMinutes',
       type: IsarType.longList,
     ),
     r'mealsPerDay': PropertySchema(
-      id: 21,
+      id: 22,
       name: r'mealsPerDay',
       type: IsarType.long,
     ),
     r'monthlyCategoryLimits': PropertySchema(
-      id: 22,
+      id: 23,
       name: r'monthlyCategoryLimits',
       type: IsarType.objectList,
 
       target: r'CategoryLimit',
     ),
     r'monthlyFoodBudgetMinor': PropertySchema(
-      id: 23,
+      id: 24,
       name: r'monthlyFoodBudgetMinor',
       type: IsarType.long,
     ),
     r'notificationsEnabled': PropertySchema(
-      id: 24,
+      id: 25,
       name: r'notificationsEnabled',
       type: IsarType.bool,
     ),
     r'onboardingDone': PropertySchema(
-      id: 25,
+      id: 26,
       name: r'onboardingDone',
       type: IsarType.bool,
     ),
     r'outputLanguage': PropertySchema(
-      id: 26,
+      id: 27,
       name: r'outputLanguage',
       type: IsarType.string,
     ),
     r'schemaVersion': PropertySchema(
-      id: 27,
+      id: 28,
       name: r'schemaVersion',
       type: IsarType.long,
     ),
     r'targetCostPerPortionMinor': PropertySchema(
-      id: 28,
+      id: 29,
       name: r'targetCostPerPortionMinor',
       type: IsarType.long,
     ),
     r'themeMode': PropertySchema(
-      id: 29,
+      id: 30,
       name: r'themeMode',
       type: IsarType.string,
     ),
     r'weekStartsOn': PropertySchema(
-      id: 30,
+      id: 31,
       name: r'weekStartsOn',
       type: IsarType.long,
     ),
     r'weeklyRecapEnabled': PropertySchema(
-      id: 31,
+      id: 32,
       name: r'weeklyRecapEnabled',
       type: IsarType.bool,
     ),
@@ -313,24 +318,25 @@ void _userProfileSerialize(
     KeywordCategorySchema.serialize,
     object.learnedKeywords,
   );
-  writer.writeLong(offsets[19], object.maxActiveMinutes);
-  writer.writeLongList(offsets[20], object.mealReminderMinutes);
-  writer.writeLong(offsets[21], object.mealsPerDay);
+  writer.writeBool(offsets[19], object.lookUpPrices);
+  writer.writeLong(offsets[20], object.maxActiveMinutes);
+  writer.writeLongList(offsets[21], object.mealReminderMinutes);
+  writer.writeLong(offsets[22], object.mealsPerDay);
   writer.writeObjectList<CategoryLimit>(
-    offsets[22],
+    offsets[23],
     allOffsets,
     CategoryLimitSchema.serialize,
     object.monthlyCategoryLimits,
   );
-  writer.writeLong(offsets[23], object.monthlyFoodBudgetMinor);
-  writer.writeBool(offsets[24], object.notificationsEnabled);
-  writer.writeBool(offsets[25], object.onboardingDone);
-  writer.writeString(offsets[26], object.outputLanguage);
-  writer.writeLong(offsets[27], object.schemaVersion);
-  writer.writeLong(offsets[28], object.targetCostPerPortionMinor);
-  writer.writeString(offsets[29], object.themeMode);
-  writer.writeLong(offsets[30], object.weekStartsOn);
-  writer.writeBool(offsets[31], object.weeklyRecapEnabled);
+  writer.writeLong(offsets[24], object.monthlyFoodBudgetMinor);
+  writer.writeBool(offsets[25], object.notificationsEnabled);
+  writer.writeBool(offsets[26], object.onboardingDone);
+  writer.writeString(offsets[27], object.outputLanguage);
+  writer.writeLong(offsets[28], object.schemaVersion);
+  writer.writeLong(offsets[29], object.targetCostPerPortionMinor);
+  writer.writeString(offsets[30], object.themeMode);
+  writer.writeLong(offsets[31], object.weekStartsOn);
+  writer.writeBool(offsets[32], object.weeklyRecapEnabled);
 }
 
 UserProfile _userProfileDeserialize(
@@ -374,26 +380,27 @@ UserProfile _userProfileDeserialize(
         KeywordCategory(),
       ) ??
       [];
-  object.maxActiveMinutes = reader.readLong(offsets[19]);
-  object.mealReminderMinutes = reader.readLongList(offsets[20]) ?? [];
-  object.mealsPerDay = reader.readLong(offsets[21]);
+  object.lookUpPrices = reader.readBool(offsets[19]);
+  object.maxActiveMinutes = reader.readLong(offsets[20]);
+  object.mealReminderMinutes = reader.readLongList(offsets[21]) ?? [];
+  object.mealsPerDay = reader.readLong(offsets[22]);
   object.monthlyCategoryLimits =
       reader.readObjectList<CategoryLimit>(
-        offsets[22],
+        offsets[23],
         CategoryLimitSchema.deserialize,
         allOffsets,
         CategoryLimit(),
       ) ??
       [];
-  object.monthlyFoodBudgetMinor = reader.readLong(offsets[23]);
-  object.notificationsEnabled = reader.readBool(offsets[24]);
-  object.onboardingDone = reader.readBool(offsets[25]);
-  object.outputLanguage = reader.readString(offsets[26]);
-  object.schemaVersion = reader.readLong(offsets[27]);
-  object.targetCostPerPortionMinor = reader.readLong(offsets[28]);
-  object.themeMode = reader.readString(offsets[29]);
-  object.weekStartsOn = reader.readLong(offsets[30]);
-  object.weeklyRecapEnabled = reader.readBool(offsets[31]);
+  object.monthlyFoodBudgetMinor = reader.readLong(offsets[24]);
+  object.notificationsEnabled = reader.readBool(offsets[25]);
+  object.onboardingDone = reader.readBool(offsets[26]);
+  object.outputLanguage = reader.readString(offsets[27]);
+  object.schemaVersion = reader.readLong(offsets[28]);
+  object.targetCostPerPortionMinor = reader.readLong(offsets[29]);
+  object.themeMode = reader.readString(offsets[30]);
+  object.weekStartsOn = reader.readLong(offsets[31]);
+  object.weeklyRecapEnabled = reader.readBool(offsets[32]);
   return object;
 }
 
@@ -457,12 +464,14 @@ P _userProfileDeserializeProp<P>(
               [])
           as P;
     case 19:
-      return (reader.readLong(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 20:
-      return (reader.readLongList(offset) ?? []) as P;
-    case 21:
       return (reader.readLong(offset)) as P;
+    case 21:
+      return (reader.readLongList(offset) ?? []) as P;
     case 22:
+      return (reader.readLong(offset)) as P;
+    case 23:
       return (reader.readObjectList<CategoryLimit>(
                 offset,
                 CategoryLimitSchema.deserialize,
@@ -471,23 +480,23 @@ P _userProfileDeserializeProp<P>(
               ) ??
               [])
           as P;
-    case 23:
-      return (reader.readLong(offset)) as P;
     case 24:
-      return (reader.readBool(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 25:
       return (reader.readBool(offset)) as P;
     case 26:
-      return (reader.readString(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 27:
-      return (reader.readLong(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 28:
       return (reader.readLong(offset)) as P;
     case 29:
-      return (reader.readString(offset)) as P;
-    case 30:
       return (reader.readLong(offset)) as P;
+    case 30:
+      return (reader.readString(offset)) as P;
     case 31:
+      return (reader.readLong(offset)) as P;
+    case 32:
       return (reader.readBool(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -2619,6 +2628,15 @@ extension UserProfileQueryFilter
   }
 
   QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
+  lookUpPricesEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'lookUpPrices', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
   maxActiveMinutesEqualTo(int value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
@@ -3647,6 +3665,19 @@ extension UserProfileQuerySortBy
     });
   }
 
+  QueryBuilder<UserProfile, UserProfile, QAfterSortBy> sortByLookUpPrices() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lookUpPrices', Sort.asc);
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterSortBy>
+  sortByLookUpPricesDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lookUpPrices', Sort.desc);
+    });
+  }
+
   QueryBuilder<UserProfile, UserProfile, QAfterSortBy>
   sortByMaxActiveMinutes() {
     return QueryBuilder.apply(this, (query) {
@@ -3967,6 +3998,19 @@ extension UserProfileQuerySortThenBy
     });
   }
 
+  QueryBuilder<UserProfile, UserProfile, QAfterSortBy> thenByLookUpPrices() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lookUpPrices', Sort.asc);
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterSortBy>
+  thenByLookUpPricesDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lookUpPrices', Sort.desc);
+    });
+  }
+
   QueryBuilder<UserProfile, UserProfile, QAfterSortBy>
   thenByMaxActiveMinutes() {
     return QueryBuilder.apply(this, (query) {
@@ -4233,6 +4277,12 @@ extension UserProfileQueryWhereDistinct
     });
   }
 
+  QueryBuilder<UserProfile, UserProfile, QDistinct> distinctByLookUpPrices() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'lookUpPrices');
+    });
+  }
+
   QueryBuilder<UserProfile, UserProfile, QDistinct>
   distinctByMaxActiveMinutes() {
     return QueryBuilder.apply(this, (query) {
@@ -4449,6 +4499,12 @@ extension UserProfileQueryProperty
   learnedKeywordsProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'learnedKeywords');
+    });
+  }
+
+  QueryBuilder<UserProfile, bool, QQueryOperations> lookUpPricesProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'lookUpPrices');
     });
   }
 

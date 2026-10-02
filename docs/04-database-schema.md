@@ -60,7 +60,8 @@ enum ScanStatus { queued, processing, needsReview, committed, failed, discarded 
 enum ScanKind { unknown, receipt, pantry, unreadable }
 enum StockEffect { add, replace, none }             // what filing a scan line does to the pantry
 enum StockCheck { onHand, counted, usedUp }         // why a scan line asks about it
-enum AiTask { receipt, dailyRecipe, spontaneousRecipe, nutritionEstimate, nutritionLabel }
+enum PriceSource { estimate, web }                  // a pantry photo's shop price: the model's idea, or Google
+enum AiTask { receipt, dailyRecipe, spontaneousRecipe, nutritionEstimate, nutritionLabel, priceLookup }
 ```
 AI JSON uses snake_case (`meat_fish`, `eating_out`). The DTO layer maps with an explicit `switch` and never uses `EnumType.name` on AI strings directly.
 
@@ -393,6 +394,11 @@ class ScanJob {
   // A receipt that looks like this one (same store, day and total): filed, or still in the Inbox.
   int? duplicateOfTxId;
   int? duplicateOfJobId;
+
+  // Pantry photos: the Google price lookup (Prompt F, docs/05 §5.10).
+  List<String> priceSearchHtml = [];   // Google's search suggestions, shown unmodified in review
+  List<String> priceQueries = [];      // the searches behind the prices
+  String? priceLookupError;            // why the lookup failed; the photo's estimates stand
 }
 
 @embedded
@@ -436,6 +442,19 @@ class DraftLine {
 
   @Enumerated(EnumType.name)
   StockCheck? stockCheck;              // set when the user is asked (docs/03 §3.16)
+
+  @Enumerated(EnumType.name)
+  PriceSource? priceSource;            // null when the item has a price paid: nothing to ask
+  bool priceConfirmed = false;         // "Yes", or typed by the user: counts as a real price
+  String? priceStore;                  // from the lookup: the shop,
+  String? priceNote;                   // ... the model's note ("comparable store brand"),
+  List<WebLink> priceLinks = [];       // ... and the page the price was read on
+}
+
+@embedded
+class WebLink {                        // a grounding source: site (usually its domain) + link
+  String title = '';
+  String uri = '';
 }
 
 @embedded
@@ -500,6 +519,7 @@ class UserProfile {
   int dailyPickMinuteOfDay = 450;      // 07:30
   List<int> mealReminderMinutes = [750, 1140]; // 12:30, 19:00
   bool autoCommitCleanScans = true;
+  bool lookUpPrices = true;            // pantry photos: shop prices from Google (Prompt F)
   int eatingOutAvgMealMinor = 1500;    // fallback for "saved vs eating out"
 
   // Parser memory
@@ -508,7 +528,7 @@ class UserProfile {
   // AI
   String geminiModel = 'gemini-3.8-flash';
 
-  int schemaVersion = 3;               // for data migrations; new profiles start at the current version
+  int schemaVersion = 4;               // for data migrations; new profiles start at the current version
 }
 
 @embedded
@@ -600,3 +620,4 @@ Isar adds new fields with their defaults automatically, and removed fields are i
 |---|---|
 | 2 | Ingredients with all-zero macros (onboarding staples, blank manual items) get `nutritionSource = none`, so the AI fills them in. Label-sourced zeros are kept. |
 | 3 | Staples are removed. Former staples become regular items. The ones showing stock were never deducted, so `lastVerifiedAt` is cleared and Quick Check asks about them. Recipe rows stored with role `staple` load as `stock` and are written back that way. A backup import runs the same migrations. |
+| 4 | `lookUpPrices` is set to true. Isar reads a new bool as false on a stored profile, so without this the price lookup would start switched off after an upgrade. |

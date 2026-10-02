@@ -54,6 +54,16 @@ class ScanJob {
   int? duplicateOfTxId;
   int? duplicateOfJobId;
 
+  /// Pantry photos: Google's search-suggestion chips (HTML) from the price lookup. Review shows
+  /// them unmodified next to the prices, as Google requires.
+  List<String> priceSearchHtml = [];
+
+  /// The searches behind those prices.
+  List<String> priceQueries = [];
+
+  /// Why prices couldn't be looked up online; the photo's own estimates stand in.
+  String? priceLookupError;
+
   @ignore
   bool get maybeDuplicate => duplicateOfTxId != null || duplicateOfJobId != null;
 }
@@ -113,6 +123,21 @@ class DraftLine {
   @Enumerated(EnumType.name)
   StockCheck? stockCheck;
 
+  /// Where the shelf price comes from. null when the item already has a price paid: the shelf
+  /// price isn't used then, so there's nothing to confirm.
+  @Enumerated(EnumType.name)
+  PriceSource? priceSource;
+
+  /// The user said the shelf price is right, or typed their own. Unconfirmed prices are kept
+  /// as estimates.
+  bool priceConfirmed = false;
+
+  /// From the Google lookup: the shop, the model's note ("comparable store brand") and the
+  /// pages the price was read on.
+  String? priceStore;
+  String? priceNote;
+  List<WebLink> priceLinks = [];
+
   /// [stock], or the default: a receipt adds, a pantry photo counts what is there.
   StockEffect effectFor(ScanKind kind) => stock ?? (kind == ScanKind.pantry ? StockEffect.replace : StockEffect.add);
 
@@ -125,12 +150,24 @@ class DraftLine {
     return p / q;
   }
 
+  /// A shelf price that will be used and that the user hasn't confirmed yet.
+  @ignore
+  bool get priceToConfirm => priceSource != null && estUnitCostMinor != null && !priceConfirmed;
+
   @ignore
   bool get needsAttention =>
       confidence == Confidence.low ||
       mergeCandidateId != null ||
       stockCheck != null ||
+      priceToConfirm ||
       (ingredientKey != null && qtySource == QtySource.unknown);
+}
+
+/// A web page, as Google Search grounding reports it: the site (usually its domain) and a link.
+@embedded
+class WebLink {
+  String title = '';
+  String uri = '';
 }
 
 @embedded

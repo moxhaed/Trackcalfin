@@ -4,7 +4,9 @@ import 'package:isar_community/isar.dart';
 
 import '../core/day_clock.dart';
 import '../core/enums.dart';
+import '../data/ai/ai_runner.dart';
 import '../data/ai/context_builders.dart';
+import '../data/ai/dto/price_dto.dart';
 import '../data/ai/dto/receipt_dto.dart';
 import '../data/ai/gemini_client.dart';
 import '../data/ai/prompt_repository.dart';
@@ -57,6 +59,9 @@ class ScanService {
   final Now now;
 
   static const maxAttempts = 3;
+
+  /// Items per price lookup call: each one may cost a Google search.
+  static const priceBatch = 20;
   bool _busy = false;
 
   Future<int> enqueue(List<String> sourcePaths, {String? hint}) async {
@@ -174,6 +179,9 @@ class ScanService {
       ..flags = draft.flags
       ..lastError = null
       ..status = ScanStatus.needsReview;
+    if (job.kind == ScanKind.pantry && profile.lookUpPrices) {
+      await _lookUpPrices(job, runner, profile, StockIndex(ingredients));
+    }
     await _findDuplicate(job);
     if (isForeign(job, profile.currency) && fx != null) {
       final q = await fx!.quote(job.currency!, profile.currency, job.purchasedAt ?? job.capturedAt);
@@ -187,6 +195,76 @@ class ScanService {
       return ScanResult(fresh, autoCommitted: true, transactionId: txId, clean: true);
     }
     return ScanResult(job, clean: draft.clean);
+  }
+
+  /// Pantry photos: asks Gemini, searching Google, what each item without a price paid costs in
+  /// the shops. A found price replaces the photo's own estimate; review asks about every one.
+  /// When the lookup fails the estimates stand, and [ScanJob.priceLookupError] says why.
+  /// Prices already found or confirmed are left alone, so it can run again after a failure.
+  Future<void> _lookUpPrices(ScanJob job, AiRunner runner, UserProfile profile, StockIndex pantry) async {
+    job.priceLookupError = null;
+    final todo = <String, DraftLine>{
+      for (final (i, l) in job.lines.indexed)
+        if (l.include &&
+            l.ingredientKey != null &&
+            !l.priceConfirmed &&
+            l.priceSource != PriceSource.web &&
+            ReceiptValidator.needsPrice(pantry.byId[l.matchedIngredientId]))
+          '$i': l,
+    };
+    if (todo.isEmpty) return;
+    final prompt = await ai.prompts.load(PromptRepository.priceLookup);
+    final ids = todo.keys.toList();
+    for (var start = 0; start < ids.length; start += priceBatch) {
+      final batch = {for (final id in ids.skip(start).take(priceBatch)) id: todo[id]!};
+      final outcome = await runner.run<PriceLookup>(
+        task: AiTask.priceLookup,
+        promptVersion: PromptRepository.priceLookup,
+        request: GeminiRequest(
+          systemPrompt: prompt,
+          turns: [Turn.user(jsonEncode(ContextBuilders.priceLookup(profile: profile, now: now(), items: batch)))],
+          thinkingLevel: 'low',
+          googleSearch: true,
+          maxOutputTokens: 4096,
+          timeout: const Duration(seconds: 90),
+        ),
+        parse: (m) => PriceLookup.parse(m, units: {for (final e in batch.entries) e.key: e.value.unit}),
+      );
+      if (!outcome.ok) {
+        job.priceLookupError = outcome.errors.firstOrNull ?? 'Unknown error';
+        return;
+      }
+      final g = outcome.grounding;
+      job
+        ..priceSearchHtml = [...job.priceSearchHtml, ?g?.searchEntryHtml]
+        ..priceQueries = [...job.priceQueries, ...?g?.queries];
+      for (final f in outcome.value!.items) {
+        final l = batch[f.id]!..priceNote = f.note;
+        if (!f.found) continue;
+        final page = g?.sources.where((s) => _sameSite(s.title, f.source)).firstOrNull;
+        l
+          ..packageQty = f.packageQty
+          ..packagePriceMinor = f.priceMinor
+          ..priceSource = PriceSource.web
+          ..priceConfirmed = false
+          ..priceStore = f.store
+          ..priceLinks = [
+            if (page != null)
+              WebLink()
+                ..title = page.title
+                ..uri = page.uri,
+          ];
+      }
+    }
+  }
+
+  /// "www.REWE.de", "rewe.de" and "shop.rewe.de" are the same site.
+  static bool _sameSite(String title, String? domain) {
+    String bare(String s) => s.trim().toLowerCase().replaceFirst(RegExp(r'^(https?://)?(www\.)?'), '').split('/').first;
+    if (domain == null) return false;
+    final a = bare(title);
+    final b = bare(domain);
+    return a.isNotEmpty && b.isNotEmpty && (a == b || a.endsWith('.$b') || b.endsWith('.$a'));
   }
 
   static int _lineSum(ScanJob job) => job.lines.where((l) => l.include).fold(0, (a, l) => a + l.totalMinor);
@@ -264,6 +342,17 @@ class ScanService {
       final q = await fx!.quote(job.currency!, home, date);
       if (q != null) _setRate(job, q);
     }
+    await _save(job);
+  }
+
+  /// Review's "Try again" after the price lookup failed.
+  Future<void> retryPrices(int jobId) async {
+    final job = await isar.scanJobs.get(jobId);
+    final profile = await isar.userProfiles.get(1);
+    if (job == null || profile == null || job.kind != ScanKind.pantry || job.status != ScanStatus.needsReview) return;
+    final runner = await ai.runner();
+    if (runner == null) return;
+    await _lookUpPrices(job, runner, profile, StockIndex(await isar.ingredients.where().findAll()));
     await _save(job);
   }
 
@@ -357,8 +446,13 @@ class ScanService {
               ..lastPurchasedAt = seen
               ..lastPurchaseQty = l.qty!;
           }
+          // A shop price the user confirmed counts as real; otherwise it's kept as an estimate.
           final shelfPrice = l.estUnitCostMinor;
-          if (shelfPrice != null) CostingEngine.applyEstimate(ing, shelfPrice);
+          if (shelfPrice != null) {
+            l.priceConfirmed
+                ? CostingEngine.applyCheckedPrice(ing, shelfPrice)
+                : CostingEngine.applyEstimate(ing, shelfPrice);
+          }
           ing
             ..lastVerifiedAt = seen
             ..lastCountedAt = seen

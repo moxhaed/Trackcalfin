@@ -144,6 +144,7 @@ class ReceiptValidator {
         }
         if (line.qty == null) line.qtySource = QtySource.unknown;
         checkStock(line, kind: x.imageType, existing: existing, purchasedAt: date, capturedAt: capturedAt);
+        if (pantry) checkPrice(line, existing: existing);
       }
       lines.add(line);
     }
@@ -216,6 +217,18 @@ class ReceiptValidator {
         ..stockCheck = StockCheck.usedUp
         ..stock = StockEffect.none;
     }
+  }
+
+  /// Whether a pantry item still needs a shop price: it has none, or only an estimate.
+  static bool needsPrice(Ingredient? existing) =>
+      existing == null || existing.avgCostPerUnitMinor <= 0 || existing.costIsEstimate;
+
+  /// Pantry photos: a shelf price is used, and so asked about, only while the item has no price
+  /// paid. [existing] is the pantry item the line maps to.
+  static void checkPrice(DraftLine line, {required Ingredient? existing}) {
+    line.priceSource = needsPrice(existing) && line.estUnitCostMinor != null
+        ? (line.priceSource ?? PriceSource.estimate)
+        : null;
   }
 
   /// Whether two receipts look like the same piece of paper: same day and total, and the

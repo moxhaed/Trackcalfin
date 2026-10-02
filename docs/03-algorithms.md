@@ -342,4 +342,14 @@ Any question holds the scan for review, and the review screen offers "All the sa
 
 **Duplicate receipts (R10).** `sameReceipt`: same calendar day, same total (printed total or line sum), and the same store when both name one ("Migros" matches "Migros Zürich"). `ScanService` checks the transactions of that day (compared in the receipt's own currency, including the printed total of the scan they came from) and the receipts waiting in the Inbox. A match sets `duplicateOfTxId` or `duplicateOfJobId` and holds the scan for review, with **Discard this one** and **It's a different one**.
 
-**Shelf price (pantry photos).** Prompt A names the exact product and the usual price of one pack, from the model's own knowledge (no web search). Dart turns that into a unit cost (`packagePriceMinor / packageQty`) and applies it only where no price was paid (§3.3). The pantry list marks such values with "~".
+**Shop price (pantry photos).** Prompt A names the exact product and estimates the usual price of one pack; Prompt F then looks the price up on Google for every item without a price paid ([05 §5.10](05-ai-layer-and-prompts.md#510-exact-products-and-shop-prices-prompts-a-v3-and-f)). Dart decides what is used and asked:
+```
+needsPrice(item)   = no item yet, or avgCostPerUnitMinor = 0, or costIsEstimate
+priceSource        = web (Google found it) | estimate (Prompt A) | null when !needsPrice: not used, not asked
+priceToConfirm     = priceSource != null && packagePriceMinor / packageQty usable && !priceConfirmed
+on commit          → unit cost = packagePriceMinor / packageQty
+                     confirmed or typed → applyCheckedPrice (a real price, costIsEstimate = false)
+                     unanswered         → applyEstimate     (marked "~" until a receipt replaces it)
+                     neither overrides a price paid (§3.3)
+```
+Every price to confirm holds the photo for review (pantry photos never auto-commit anyway). Merging a line into an existing item in review re-runs `checkPrice` against that item.

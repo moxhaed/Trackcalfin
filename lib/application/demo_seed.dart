@@ -601,6 +601,9 @@ class DemoSeed {
           ..kind = ScanKind.pantry
           ..userHint = 'pantry'
           ..capturedAt = t.subtract(const Duration(minutes: 20))
+          // Prices of new items are looked up on Google (Prompt F). The demo shows the searches
+          // as plain chips: Google's own suggestion HTML only comes with a real answer.
+          ..priceQueries = ['Ültje Erdnussbutter crunchy 350 g Preis']
           ..lines = [
             DraftLine()
               ..name = 'Spaghetti'
@@ -621,6 +624,8 @@ class DemoSeed {
               ..product = 'Ültje crunchy peanut butter, 350 g'
               ..packageQty = 350
               ..packagePriceMinor = 349
+              ..priceSource = PriceSource.web
+              ..priceStore = 'REWE'
               ..profile = (NewIngredientProfile()
                 ..name = 'Peanut butter'
                 ..category = IngredientCategory.legumesNuts
