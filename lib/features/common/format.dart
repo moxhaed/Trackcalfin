@@ -21,6 +21,14 @@ String timeOf(DateTime d) => DateFormat.Hm().format(d);
 /// "Sat 26 Sep", with the year when it isn't this year: "3 Mar 2025".
 String dateLabel(DateTime d, DateTime now) => d.year == now.year ? shortDate(d) : DateFormat('d MMM yyyy').format(d);
 
+/// For a message about something filed on [d]: "" when that's today, else " · yesterday",
+/// " · Wednesday" or " · Wed 23 Sep".
+String dayNote(DateTime d, DateTime now) => switch (dayLabel(d, now)) {
+  'Today' => '',
+  'Yesterday' => ' · yesterday',
+  final day => ' · $day',
+};
+
 /// "today", "yesterday", "6 days ago".
 String daysAgoLabel(int days) => switch (days) {
   <= 0 => 'today',

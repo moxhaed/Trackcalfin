@@ -108,10 +108,11 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
     final original = tx?.originalCurrency != null
         ? ' (${moneyFor(tx!.originalCurrency!).format(tx.originalTotalMinor ?? 0)})'
         : '';
+    final when = tx == null ? '' : dayNote(tx.occurredAt, DateTime.now());
     notifyApp(
       job.kind == ScanKind.pantry
           ? 'Pantry updated · $stocked items verified'
-          : '${job.merchant ?? 'Receipt'} ${money.format(tx?.totalMinor ?? _sum)}$original · $stocked items stocked',
+          : '${job.merchant ?? 'Receipt'} ${money.format(tx?.totalMinor ?? _sum)}$original$when · $stocked items stocked',
     );
   }
 

@@ -55,12 +55,7 @@ void reportScan(ScanResult r, String Function(int) fmt) {
     final items = job.lines.where((l) => l.ingredientKey != null).length;
     final total = job.lines.where((l) => l.include).fold(0, (a, l) => a + l.totalMinor);
     // An older receipt is filed on its own day: say which.
-    final day = job.purchasedAt == null ? 'Today' : dayLabel(job.purchasedAt!, DateTime.now());
-    final when = switch (day) {
-      'Today' => '',
-      'Yesterday' => ' · yesterday',
-      _ => ' · $day',
-    };
+    final when = job.purchasedAt == null ? '' : dayNote(job.purchasedAt!, DateTime.now());
     msg = '${job.merchant ?? 'Receipt'} ${fmt(total)}$when · $items items stocked';
   } else if (job.status == ScanStatus.needsReview) {
     msg = job.kind == ScanKind.pantry ? 'Pantry photo ready to review' : 'Receipt needs a quick look';
