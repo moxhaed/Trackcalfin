@@ -160,6 +160,18 @@ void main() {
     await pantry.setUseKind(useId, UseKind.thrownAway);
     expect((await isar.foodUses.get(useId))!.kind, UseKind.thrownAway);
     expect(await pantry.setQuantity(oats, 400), isNull, reason: 'more than before: nothing went');
+    // Right after the count, going back up is a correction: the use shrinks by as much.
+    expect(((await isar.foodUses.get(useId))!.qtyBase, (await isar.foodUses.get(useId))!.costMinor), (600.0, 120));
+
+    // Marked out by mistake and undone: nothing counts as eaten.
+    final outId = await pantry.markOut(oats);
+    await pantry.setQuantity(oats, 400);
+    expect(await isar.foodUses.get(outId!), isNull);
+
+    // Later on, more is just more: what went before stays eaten.
+    clockNow = DateTime(2026, 10, 5, 9, 10);
+    await pantry.setQuantity(oats, 900);
+    expect((await isar.foodUses.get(useId))!.qtyBase, 600);
   });
 
   test('slugify and unique keys', () async {

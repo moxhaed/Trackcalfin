@@ -67,6 +67,10 @@ class PantryService {
     });
   }
 
+  /// A count that goes back up this soon after one that found less (Undo, a mis-tap on −)
+  /// takes back what that count recorded as used.
+  static const undoWindow = Duration(minutes: 2);
+
   /// Sets the on-hand quantity (Quick Check, adjust). Counts as verified and counted. Less
   /// than the pantry had means the rest was used up without a logged meal: it is recorded
   /// as eaten (or [kind]) since the last count or purchase. Returns that use's id.
@@ -75,11 +79,40 @@ class PantryService {
     return isar.writeTxn(() async {
       final ing = await isar.ingredients.get(id);
       if (ing == null) return null;
-      final use = UsedUp.fromCount(ing, before: ing.qtyOnHand, after: qty, at: t, kind: kind);
+      final before = ing.qtyOnHand;
+      if (qty > before) await _takeBack(ing.key, qty - before, t);
+      final use = UsedUp.fromCount(ing, before: before, after: qty, at: t, kind: kind);
       ExpiryEstimator.onCount(ing, qty, t);
       await isar.ingredients.put(ing);
       return use == null ? null : isar.foodUses.put(use);
     });
+  }
+
+  /// Shrinks the uses counts of [key] recorded in the last [undoWindow] by [qty], newest
+  /// first, deleting those that reach nothing.
+  Future<void> _takeBack(String key, double qty, DateTime t) async {
+    final recent = await isar.foodUses
+        .filter()
+        .ingredientKeyEqualTo(key)
+        .transactionIdIsNull()
+        .createdAtGreaterThan(t.subtract(undoWindow))
+        .findAll();
+    recent.sort((a, b) => b.createdAt == a.createdAt ? b.id.compareTo(a.id) : b.createdAt.compareTo(a.createdAt));
+    var left = qty;
+    for (final u in recent) {
+      if (left <= 1e-9) break;
+      if (u.qtyBase <= left + 1e-9) {
+        left -= u.qtyBase;
+        await isar.foodUses.delete(u.id);
+      } else {
+        final keep = u.qtyBase - left;
+        u
+          ..costMinor = (u.costMinor * keep / u.qtyBase).round()
+          ..qtyBase = keep;
+        left = 0;
+        await isar.foodUses.put(u);
+      }
+    }
   }
 
   Future<int?> markOut(int id, {UseKind kind = UseKind.eaten}) => setQuantity(id, 0, kind: kind);
