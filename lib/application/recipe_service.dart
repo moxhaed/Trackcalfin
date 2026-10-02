@@ -28,6 +28,19 @@ class RecipeService {
     r.costPerPortionMinor = n.costPerPortionMinor;
   }
 
+  /// Recomputes the stored numbers of every recipe that uses one of [ingredientIds]
+  /// (after its macros, unit or piece weight changed). Call inside a write transaction.
+  static Future<void> refreshUsing(Isar isar, Set<int> ingredientIds) async {
+    if (ingredientIds.isEmpty) return;
+    final stock = StockIndex(await isar.ingredients.where().findAll());
+    final recipes = await isar.recipes.filter().not().statusEqualTo(RecipeStatus.archived).findAll();
+    final hit = recipes.where((r) => r.ingredients.any((ri) => ingredientIds.contains(stock.resolve(ri)?.id))).toList();
+    for (final r in hit) {
+      refreshNumbers(r, stock);
+    }
+    await isar.recipes.putAll(hit);
+  }
+
   Future<int> save(Recipe r, {bool markSaved = true}) async {
     return isar.writeTxn(() async {
       final stock = StockIndex(await isar.ingredients.where().findAll());

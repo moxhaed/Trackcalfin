@@ -1,6 +1,6 @@
 # Trackcalfin: notes for coding sessions
 
-Flutter app (Android/iOS; Linux desktop for local UI checks) with a local Isar database and Gemini for three tasks. The architecture docs live in `docs/`, and the three system prompts in `assets/prompts/`.
+Flutter app (Android/iOS; Linux desktop for local UI checks) with a local Isar database and Gemini for five tasks: receipts, Today's Pick, Ask, and ingredient macros (estimates and label reading). The architecture docs live in `docs/`, and the system prompts in `assets/prompts/`.
 
 ## Commands
 - `flutter pub get`
@@ -8,6 +8,7 @@ Flutter app (Android/iOS; Linux desktop for local UI checks) with a local Isar d
 - `flutter test` (all green; widget smoke tests use the live binding and take ~20 s)
 - `dart run build_runner build` after editing `lib/data/isar/collections/*.dart`
 - `flutter run -d linux --dart-define=DEMO=true` seeds demo data into an empty DB. Add `--dart-define=THEME=dark` for dark mode.
+- `GEMINI_API_KEY=... EVAL_BACKUP=backup.json flutter test tool/model_eval_test.dart` compares Gemini models on real data (Today's Pick and receipts) and writes `build/model_eval/*/report.md`. It spends real quota; options are in the file header.
 
 ## Gotchas
 - `build_runner` is pinned to 2.15.1 because `isar_community_generator` 3.3.2 needs `analyzer < 11`. Don't bump it on its own.

@@ -56,7 +56,7 @@ class _DashboardBody extends ConsumerWidget {
     final money = ref.watch(moneyProvider);
     final s = view.state;
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 110),
+      padding: EdgeInsets.fromLTRB(16, 4, 16, MediaQuery.paddingOf(context).bottom + 24),
       children: [
         _VibeCard(vibe: view.vibe),
         const SizedBox(height: 12),
@@ -152,6 +152,7 @@ class _VibeCard extends StatelessWidget {
     };
     showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       builder: (_) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
@@ -214,7 +215,7 @@ class _TodayCard extends StatelessWidget {
             stroke: 7,
             center: Text('${target <= 0 ? 0 : (v / target * 100).round()}%', style: context.text.labelMedium),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Flexible(
             child: Metric(value: '${v.round()}$unit', label: '$label / ${target.round()}$unit', dotColor: color),
           ),
@@ -235,8 +236,8 @@ class _TodayCard extends StatelessWidget {
           Row(
             children: [
               ring('kcal', t.kcal, kcalTarget, c.kcal, ''),
-              const SizedBox(width: 12),
-              ring('protein', t.proteinG, proteinTarget, c.protein, ' g'),
+              const SizedBox(width: 8),
+              ring('protein', t.proteinG, proteinTarget, c.protein, '\u00a0g'),
             ],
           ),
           if (state.todayMeals == 0)

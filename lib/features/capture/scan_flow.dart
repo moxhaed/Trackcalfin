@@ -43,6 +43,8 @@ Future<void> processScansInBackground(WidgetRef ref) async {
   for (final r in results) {
     reportScan(r, money.format);
   }
+  // Pantry photos can add items without a nutrition profile.
+  if (results.isNotEmpty) unawaited(ref.read(nutritionServiceProvider).fillMissing());
 }
 
 void reportScan(ScanResult r, String Function(int) fmt) {

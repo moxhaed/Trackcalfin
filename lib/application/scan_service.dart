@@ -347,7 +347,7 @@ class ScanService {
       ..gramsPerPiece = p.gramsPerPiece ?? (l.unit == BaseUnit.pc ? 50 : null)
       ..densityGPerMl = p.densityGPerMl
       ..per100 = p.per100
-      ..nutritionSource = DataSource.aiEstimate
+      ..nutritionSource = l.profile == null ? DataSource.none : DataSource.aiEstimate
       ..shelfLifeDays = p.shelfLifeDays
       ..trackingMode = p.suggestStaple ? TrackingMode.staple : TrackingMode.exact
       ..lastVerifiedAt = t

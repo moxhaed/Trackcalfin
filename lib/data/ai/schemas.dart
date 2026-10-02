@@ -118,6 +118,79 @@ class AiSchemas {
     ],
   };
 
+  static Map<String, dynamic> get nutritionEstimate => {
+    'type': 'object',
+    'properties': {
+      'schema_version': {'type': 'integer'},
+      'items': {
+        'type': 'array',
+        'items': {
+          'type': 'object',
+          'properties': {
+            'key': {'type': 'string'},
+            'per_100g': {
+              'type': 'object',
+              'properties': {
+                'kcal': {'type': 'number'},
+                'protein_g': {'type': 'number'},
+                'carbs_g': {'type': 'number'},
+                'fat_g': {'type': 'number'},
+                'fiber_g': {'type': 'number'},
+              },
+              'required': ['kcal', 'protein_g', 'carbs_g', 'fat_g', 'fiber_g'],
+            },
+            'density_g_per_ml': _nullable('number'),
+            'grams_per_piece': _nullable('number'),
+          },
+          'required': ['key', 'per_100g', 'density_g_per_ml', 'grams_per_piece'],
+        },
+      },
+    },
+    'required': ['schema_version', 'items'],
+  };
+
+  static Map<String, dynamic> get nutritionLabel => {
+    'type': 'object',
+    'properties': {
+      'schema_version': {'type': 'integer'},
+      'image_type': _enum(['label', 'unreadable']),
+      'product_name': _nullable('string'),
+      'basis': {
+        'type': ['string', 'null'],
+        'enum': ['per_100g', 'per_100ml', 'per_serving', null],
+      },
+      'serving_size_g': _nullable('number'),
+      'serving_size_ml': _nullable('number'),
+      'energy_kcal': _nullable('number'),
+      'energy_kj': _nullable('number'),
+      'protein_g': _nullable('number'),
+      'carbs_g': _nullable('number'),
+      'fat_g': _nullable('number'),
+      'fiber_g': _nullable('number'),
+      'carbs_include_fiber': {'type': 'boolean'},
+      'warnings': {
+        'type': 'array',
+        'items': {'type': 'string'},
+      },
+    },
+    'required': [
+      'schema_version',
+      'image_type',
+      'product_name',
+      'basis',
+      'serving_size_g',
+      'serving_size_ml',
+      'energy_kcal',
+      'energy_kj',
+      'protein_g',
+      'carbs_g',
+      'fat_g',
+      'fiber_g',
+      'carbs_include_fiber',
+      'warnings',
+    ],
+  };
+
   static Map<String, dynamic> _recipe({required bool allowMissing}) => {
     'type': 'object',
     'properties': {

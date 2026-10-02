@@ -4,6 +4,7 @@ import '../core/enums.dart';
 import '../data/isar/collections/schemas.dart';
 import '../domain/costing.dart';
 import 'clock.dart';
+import 'recipe_service.dart';
 
 /// Hand edits to the pantry.
 class PantryService {
@@ -42,10 +43,12 @@ class PantryService {
   }
 
   /// Creates or updates an ingredient. New ones get a unique key and count as verified.
+  /// Updates refresh the numbers of recipes that use it.
   Future<int> upsert(Ingredient ing) async {
     final t = now();
     return isar.writeTxn(() async {
-      if (ing.id == Isar.autoIncrement || ing.key.isEmpty) {
+      final isNew = ing.id == Isar.autoIncrement || ing.key.isEmpty;
+      if (isNew) {
         ing.key = await uniqueKey(ing.key.isEmpty ? slugify(ing.name) : ing.key);
         ing.lastVerifiedAt ??= t;
         if (ing.qtyOnHand > 0 && ing.expiresAt == null && ing.shelfLifeDays > 0) {
@@ -55,7 +58,9 @@ class PantryService {
         }
       }
       ing.updatedAt = t;
-      return isar.ingredients.put(ing);
+      final id = await isar.ingredients.put(ing);
+      if (!isNew) await RecipeService.refreshUsing(isar, {id});
+      return id;
     });
   }
 
@@ -112,7 +117,8 @@ class PantryService {
     await isar.writeTxn(() => isar.ingredients.put(ing));
   }
 
-  /// Onboarding staples: creates missing staple ingredients by name.
+  /// Onboarding staples: creates missing staple ingredients by name. Their macros
+  /// start unknown; NutritionService.fillMissing asks the AI.
   Future<void> ensureStaples(List<String> names) async {
     await isar.writeTxn(() async {
       for (final name in names) {

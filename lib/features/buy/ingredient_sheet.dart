@@ -1,24 +1,43 @@
+import 'dart:async';
+import 'dart:io';
+
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
 import '../../app/theme.dart';
+import '../../application/nutrition_service.dart';
 import '../../core/enums.dart';
 import '../../data/isar/collections/schemas.dart';
 import '../../domain/units.dart';
+import '../../platform/photo_capture.dart';
 import '../common/format.dart';
 import '../common/widgets.dart';
 
-Future<void> showIngredientSheet(BuildContext context, {Ingredient? ingredient}) => showModalBottomSheet(
-  context: context,
-  isScrollControlled: true,
-  builder: (_) => IngredientSheet(ingredient: ingredient),
-);
+/// In review mode ([review] set) the sheet pops `true` to move on to the next item.
+Future<bool?> showIngredientSheet(BuildContext context, {Ingredient? ingredient, ({int index, int total})? review}) =>
+    showModalBottomSheet<bool>(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      builder: (_) => IngredientSheet(ingredient: ingredient, review: review),
+    );
 
-/// Quick adjust (stepper) plus full edit of one pantry item.
+/// Steps through [items] one sheet at a time; dismissing a sheet stops the review.
+Future<void> reviewMacros(BuildContext context, List<Ingredient> items) async {
+  for (final (i, ing) in items.indexed) {
+    if (!context.mounted) return;
+    final next = await showIngredientSheet(context, ingredient: ing, review: (index: i + 1, total: items.length));
+    if (next != true) return;
+  }
+}
+
+/// Quick adjust (stepper), macros (confirm, scan label, edit) and full edit of one pantry item.
 class IngredientSheet extends ConsumerStatefulWidget {
-  const IngredientSheet({super.key, this.ingredient});
+  const IngredientSheet({super.key, this.ingredient, this.review});
   final Ingredient? ingredient;
+  final ({int index, int total})? review;
 
   @override
   ConsumerState<IngredientSheet> createState() => _IngredientSheetState();
@@ -34,6 +53,7 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
   late final _protein = TextEditingController(text: _fmt(_ing.per100.proteinG));
   late final _carbs = TextEditingController(text: _fmt(_ing.per100.carbsG));
   late final _fat = TextEditingController(text: _fmt(_ing.per100.fatG));
+  late final _fiber = TextEditingController(text: _fmt(_ing.per100.fiberG));
   late final _gpp = TextEditingController(text: _ing.gramsPerPiece == null ? '' : _fmt(_ing.gramsPerPiece!));
   late final _shelf = TextEditingController(text: '${_ing.shelfLifeDays}');
   late final _low = TextEditingController(text: _ing.lowStockThreshold > 0 ? _fmt(_ing.lowStockThreshold) : '');
@@ -41,15 +61,113 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
   late IngredientCategory _category = _ing.category;
   late bool _staple = _ing.isStaple;
 
+  bool _macroEditing = false;
+
+  /// Reading a label or asking the AI.
+  bool _busy = false;
+  String? _macroError;
+  LabelDraft? _label;
+
   static String _fmt(double v) => v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
   static double? _num(TextEditingController c) => double.tryParse(c.text.replaceAll(',', '.').trim());
 
   @override
   void dispose() {
-    for (final c in [_name, _qty, _price, _kcal, _protein, _carbs, _fat, _gpp, _shelf, _low]) {
+    for (final c in [_name, _qty, _price, _kcal, _protein, _carbs, _fat, _fiber, _gpp, _shelf, _low]) {
       c.dispose();
     }
     super.dispose();
+  }
+
+  /// The item as stored now: the AI or a label scan may have changed it since the sheet opened.
+  Ingredient _liveIn(List<Ingredient>? all) => all?.firstWhereOrNull((i) => i.id == _ing.id) ?? _ing;
+
+  Nutrition _typedMacros() => Nutrition(
+    kcal: _num(_kcal) ?? 0,
+    proteinG: _num(_protein) ?? 0,
+    carbsG: _num(_carbs) ?? 0,
+    fatG: _num(_fat) ?? 0,
+    fiberG: _num(_fiber) ?? 0,
+  );
+
+  void _showMacros(Nutrition n) {
+    _kcal.text = _fmt(n.kcal);
+    _protein.text = _fmt(n.proteinG);
+    _carbs.text = _fmt(n.carbsG);
+    _fat.text = _fmt(n.fatG);
+    _fiber.text = _fmt(n.fiberG);
+  }
+
+  void _next() {
+    if (widget.review != null && mounted) Navigator.of(context).pop(true);
+  }
+
+  Future<void> _confirmMacros() async {
+    await ref.read(nutritionServiceProvider).confirm(_ing.id);
+    tick();
+    _next();
+  }
+
+  Future<void> _askAi() async {
+    setState(() {
+      _busy = true;
+      _macroError = null;
+    });
+    final r = await ref.read(nutritionServiceProvider).fillMissing();
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      _macroError = r.error;
+    });
+  }
+
+  Future<void> _scanLabel() async {
+    List<String> paths;
+    try {
+      paths = await PhotoCapture.pick(camera: true);
+    } catch (e) {
+      setState(() => _macroError = 'Could not open the camera: $e');
+      return;
+    }
+    if (paths.isEmpty || !mounted) return;
+    setState(() {
+      _busy = true;
+      _macroError = null;
+    });
+    final images = [for (final p in paths) await File(p).readAsBytes()];
+    final draft = await ref.read(nutritionServiceProvider).readLabel(_ing.id, images);
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      _macroError = draft.error;
+      if (draft.ok) {
+        _label = draft;
+        _showMacros(draft.numbers!.per100);
+        _macroEditing = true;
+      }
+    });
+  }
+
+  void _editMacros(Nutrition current) => setState(() {
+    _showMacros(current);
+    _label = null;
+    _macroError = null;
+    _macroEditing = true;
+  });
+
+  Future<void> _saveMacros() async {
+    final n = _typedMacros();
+    final read = _label?.numbers?.per100;
+    // Label numbers the user corrected are their own numbers.
+    final source = read != null && n.sameAs(read) ? DataSource.label : DataSource.user;
+    await ref.read(nutritionServiceProvider).setNutrition(_ing.id, n, source);
+    tick();
+    if (!mounted) return;
+    setState(() {
+      _macroEditing = false;
+      _label = null;
+    });
+    _next();
   }
 
   double get _step => switch (_unit) {
@@ -73,18 +191,33 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
     final isNew = widget.ingredient == null;
     final newQty = _num(_qty) ?? 0;
     final pantry = ref.read(pantryServiceProvider);
+    if (isNew) {
+      // Blank macros stay unknown so the AI fills them in; typed ones are the user's own.
+      final typed = _typedMacros();
+      _ing
+        ..per100 = typed
+        ..nutritionSource = typed.isZero ? DataSource.none : DataSource.user
+        ..nutritionConfirmedAt = typed.isZero ? null : DateTime.now();
+    } else {
+      // Macros are edited in their own card; keep what is stored now.
+      final live = _liveIn(ref.read(ingredientsProvider).value);
+      _ing
+        ..per100 = live.per100
+        ..nutritionSource = live.nutritionSource
+        ..nutritionConfirmedAt = live.nutritionConfirmedAt
+        ..densityGPerMl = live.densityGPerMl;
+      // Per 100 g and per 100 ml differ: switching to or from ml needs new numbers.
+      if ((_ing.baseUnit == BaseUnit.ml) != (_unit == BaseUnit.ml)) {
+        _ing
+          ..nutritionSource = DataSource.none
+          ..nutritionConfirmedAt = null;
+      }
+    }
     _ing
       ..name = _name.text.trim()
       ..baseUnit = _unit
       ..category = _category
       ..trackingMode = _staple ? TrackingMode.staple : TrackingMode.exact
-      ..per100 = Nutrition(
-        kcal: _num(_kcal) ?? 0,
-        proteinG: _num(_protein) ?? 0,
-        carbsG: _num(_carbs) ?? 0,
-        fatG: _num(_fat) ?? 0,
-      )
-      ..nutritionSource = DataSource.user
       ..gramsPerPiece = _unit == BaseUnit.pc ? (_num(_gpp) ?? 50) : null
       ..shelfLifeDays = int.tryParse(_shelf.text) ?? 7
       ..lowStockThreshold = _num(_low) ?? 0;
@@ -111,6 +244,7 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
       await pantry.upsert(_ing);
       if ((newQty - widget.ingredient!.qtyOnHand).abs() > 1e-9) await pantry.setQuantity(_ing.id, newQty);
     }
+    if (_ing.needsNutrition) unawaited(ref.read(nutritionServiceProvider).fillMissing());
     if (mounted) Navigator.of(context).pop();
   }
 
@@ -118,6 +252,7 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
   Widget build(BuildContext context) {
     final money = ref.watch(moneyProvider);
     final existing = widget.ingredient != null;
+    final review = widget.review;
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: SafeArea(
@@ -128,8 +263,22 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
             children: [
               Row(
                 children: [
-                  Expanded(child: Text(existing ? _ing.name : 'New pantry item', style: context.text.titleLarge)),
-                  if (existing)
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(existing ? _ing.name : 'New pantry item', style: context.text.titleLarge),
+                        if (review != null)
+                          Text(
+                            'Check macros · ${review.index} of ${review.total}',
+                            style: context.text.bodySmall?.copyWith(color: context.scheme.onSurfaceVariant),
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (review != null)
+                    TextButton(onPressed: _busy ? null : _next, child: const Text('Skip'))
+                  else if (existing)
                     IconButton(
                       tooltip: _editing ? 'Done editing' : 'Edit details',
                       onPressed: () => setState(() => _editing = !_editing),
@@ -137,7 +286,7 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
                     ),
                 ],
               ),
-              if (existing && !_ing.isStaple) ...[
+              if (existing && !_ing.isStaple && review == null) ...[
                 const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -186,12 +335,14 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
                     if (_ing.avgCostPerUnitMinor > 0)
                       'Avg cost ${money.format((_ing.avgCostPerUnitMinor * (_ing.baseUnit == BaseUnit.pc ? 1 : 1000)).round())}'
                           ' per ${_ing.baseUnit == BaseUnit.pc ? 'piece' : (_ing.baseUnit == BaseUnit.g ? 'kg' : 'l')}',
-                    if (_ing.per100.kcal > 0)
-                      '${_ing.per100.kcal.round()} kcal · ${_ing.per100.proteinG.toStringAsFixed(1)} g protein per 100 ${_ing.baseUnit == BaseUnit.ml ? 'ml' : 'g'}',
                   ].join('\n'),
                   textAlign: TextAlign.center,
                   style: context.text.bodySmall?.copyWith(color: context.scheme.onSurfaceVariant),
                 ),
+              ],
+              if (existing) ...[
+                const SizedBox(height: 12),
+                _nutritionCard(context, _liveIn(ref.watch(ingredientsProvider).value)),
               ],
               if (_editing) ...[
                 const SizedBox(height: 12),
@@ -247,28 +398,16 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
                   items: [for (final c in IngredientCategory.values) DropdownMenuItem(value: c, child: Text(c.label))],
                   onChanged: (v) => setState(() => _category = v ?? _category),
                 ),
-                const SizedBox(height: 12),
-                Text('Nutrition per 100 ${_unit == BaseUnit.ml ? 'ml' : 'g'}', style: context.text.titleSmall),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    for (final (c, l) in [
-                      (_kcal, 'kcal'),
-                      (_protein, 'Protein'),
-                      (_carbs, 'Carbs'),
-                      (_fat, 'Fat'),
-                    ]) ...[
-                      Expanded(
-                        child: TextField(
-                          controller: c,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          decoration: InputDecoration(labelText: l),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                    ],
-                  ],
-                ),
+                if (!existing) ...[
+                  const SizedBox(height: 12),
+                  Text('Nutrition per 100 ${_unit == BaseUnit.ml ? 'ml' : 'g'}', style: context.text.titleSmall),
+                  Text(
+                    'Leave empty and the AI fills it in. You can scan the label later.',
+                    style: context.text.bodySmall?.copyWith(color: context.scheme.onSurfaceVariant),
+                  ),
+                  const SizedBox(height: 6),
+                  _macroFields(),
+                ],
                 const SizedBox(height: 10),
                 Row(
                   children: [
@@ -322,6 +461,136 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _macroFields() => Row(
+    children: [
+      for (final (i, (c, l)) in [
+        (_kcal, 'kcal'),
+        (_protein, 'Protein'),
+        (_carbs, 'Carbs'),
+        (_fat, 'Fat'),
+        (_fiber, 'Fiber'),
+      ].indexed) ...[
+        if (i > 0) const SizedBox(width: 6),
+        Expanded(
+          child: TextField(
+            controller: c,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(labelText: l),
+          ),
+        ),
+      ],
+    ],
+  );
+
+  /// Macros with where they came from, and the three ways to confirm them.
+  Widget _nutritionCard(BuildContext context, Ingredient cur) {
+    final c = context.colors;
+    final n = cur.per100;
+    final confirmed = cur.nutritionConfirmedAt != null;
+    final pill = cur.needsNutrition
+        ? StatusPill(label: 'Unknown', color: c.warning, icon: Icons.help_outline)
+        : confirmed
+        ? StatusPill(
+            label: cur.nutritionSource == DataSource.label ? 'From label' : 'Confirmed',
+            color: c.good,
+            icon: Icons.verified_outlined,
+          )
+        : StatusPill(label: 'AI estimate', color: c.kcal, icon: Icons.auto_awesome_outlined);
+    final flags = _label?.numbers?.flags ?? const <String>[];
+    final muted = context.text.bodySmall?.copyWith(color: context.scheme.onSurfaceVariant);
+    return SectionCard(
+      title: 'Nutrition per 100 ${cur.baseUnit == BaseUnit.ml ? 'ml' : 'g'}',
+      trailing: pill,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_macroEditing) ...[
+            if (_label != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  'Read from ${_label!.productName ?? 'the label'}. Check the numbers, then save.',
+                  style: muted,
+                ),
+              ),
+            for (final f in flags)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(switch (f) {
+                  'energy_mismatch' => "The calories don't match the macros. Check the photo.",
+                  'too_dense' => 'These numbers are higher than any food per gram. Check the photo.',
+                  _ => f,
+                }, style: context.text.bodySmall?.copyWith(color: c.serious)),
+              ),
+            _macroFields(),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                TextButton(onPressed: () => setState(() => _macroEditing = false), child: const Text('Cancel')),
+                const Spacer(),
+                FilledButton(onPressed: _saveMacros, child: const Text('Save macros')),
+              ],
+            ),
+          ] else ...[
+            if (cur.needsNutrition)
+              Text(_busy ? 'Asking the AI…' : 'Recipes count this as 0 kcal until it has numbers.', style: muted)
+            else
+              Row(
+                children: [
+                  Expanded(
+                    child: Metric(value: '${n.kcal.round()}', label: 'kcal', dotColor: c.kcal),
+                  ),
+                  Expanded(
+                    child: Metric(value: '${_fmt(n.proteinG)} g', label: 'protein', dotColor: c.protein),
+                  ),
+                  Expanded(
+                    child: Metric(value: '${_fmt(n.carbsG)} g', label: 'carbs'),
+                  ),
+                  Expanded(
+                    child: Metric(value: '${_fmt(n.fatG)} g', label: 'fat'),
+                  ),
+                ],
+              ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if (!cur.needsNutrition && !confirmed)
+                  ActionChip(
+                    avatar: const Icon(Icons.check, size: 18),
+                    label: const Text('Confirm'),
+                    onPressed: _busy ? null : _confirmMacros,
+                  ),
+                if (cur.needsNutrition)
+                  ActionChip(
+                    avatar: const Icon(Icons.auto_awesome_outlined, size: 18),
+                    label: const Text('Ask AI'),
+                    onPressed: _busy ? null : _askAi,
+                  ),
+                ActionChip(
+                  avatar: const Icon(Icons.document_scanner_outlined, size: 18),
+                  label: const Text('Scan label'),
+                  onPressed: _busy ? null : _scanLabel,
+                ),
+                ActionChip(
+                  avatar: const Icon(Icons.edit_outlined, size: 18),
+                  label: Text(cur.needsNutrition ? 'Enter' : 'Edit'),
+                  onPressed: _busy ? null : () => _editMacros(cur.per100),
+                ),
+              ],
+            ),
+          ],
+          if (_busy) ...[const SizedBox(height: 12), const LinearProgressIndicator()],
+          if (_macroError != null) ...[
+            const SizedBox(height: 8),
+            Text(_macroError!, style: context.text.bodySmall?.copyWith(color: context.scheme.error)),
+          ],
+        ],
       ),
     );
   }

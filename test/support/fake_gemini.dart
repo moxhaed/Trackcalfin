@@ -29,13 +29,14 @@ http.Response geminiOk(String text, {String finish = 'STOP'}) => http.Response(
 class FakeGemini {
   final responses = <http.Response Function(Map<String, dynamic> body)>[];
   final requests = <Map<String, dynamic>>[];
+  final requestedUris = <Uri>[];
 
   void reply(String text) => responses.add((_) => geminiOk(text));
   void replyJson(Object json) => reply(jsonEncode(json));
-  void status(int code, String message) => responses.add(
+  void status(int code, String message, {List<Object>? details}) => responses.add(
     (_) => http.Response(
       jsonEncode({
-        'error': {'code': code, 'message': message},
+        'error': {'code': code, 'message': message, 'details': ?details},
       }),
       code,
     ),
@@ -44,6 +45,7 @@ class FakeGemini {
   late final client = MockClient((req) async {
     final body = jsonDecode(req.body) as Map<String, dynamic>;
     requests.add(body);
+    requestedUris.add(req.url);
     if (responses.isEmpty) return http.Response('{"error":{"message":"no scripted response"}}', 500);
     return responses.removeAt(0)(body);
   });

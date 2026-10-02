@@ -5,6 +5,7 @@ import '../../core/enums.dart';
 import '../isar/collections/ingredient.dart';
 import '../isar/collections/user_profile.dart';
 import '../../domain/costing.dart';
+import 'dto/enum_codec.dart';
 
 /// Builds the JSON input envelopes for prompts A, B and C from Isar data.
 class ContextBuilders {
@@ -133,6 +134,21 @@ class ContextBuilders {
     'inventory': inventory(ingredients, now),
     'staples': staples(ingredients),
   };
+
+  static Map<String, dynamic> nutritionEstimate({required UserProfile profile, required List<Ingredient> items}) => {
+    'country': profile.country,
+    'items': [
+      for (final i in items)
+        {
+          'key': i.key,
+          'name': i.name,
+          'category': EnumCodec.ingredientCategory.entries.firstWhere((e) => e.value == i.category).key,
+          'unit': i.baseUnit.label,
+        },
+    ],
+  };
+
+  static Map<String, dynamic> nutritionLabel(Ingredient i) => {'name': i.name, 'unit': i.baseUnit.label};
 
   static const _words = {'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5, 'six': 6, 'seven': 7, 'eight': 8};
 

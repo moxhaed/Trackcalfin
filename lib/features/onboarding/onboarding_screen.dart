@@ -156,6 +156,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       if (_index == 3 && _key.text.trim().isNotEmpty) {
                         await ref.read(secretStoreProvider).writeApiKey(_key.text.trim());
                         ref.invalidate(hasApiKeyProvider);
+                        // Staples from the previous page get their macros while the user carries on.
+                        unawaited(ref.read(nutritionServiceProvider).fillMissing());
                       }
                       _next();
                     },

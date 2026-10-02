@@ -113,6 +113,7 @@ Future<FxQuote?> showRateSheet(
   FxQuote? remembered,
 }) => showModalBottomSheet<FxQuote>(
   context: context,
+  useRootNavigator: true,
   isScrollControlled: true,
   builder: (_) =>
       _RateSheet(from: from, to: to, foreignTotal: foreignTotal, currentRate: currentRate, remembered: remembered),
@@ -158,9 +159,9 @@ class _RateSheetState extends State<_RateSheet> {
     return r == null || !FxMath.plausible(r) ? null : r;
   }
 
-  void _done(double rate, FxSource source) =>
-      Navigator.of(context)
-          .pop(FxQuote(from: widget.from, to: widget.to, rate: rate, date: DateTime.now(), source: source));
+  void _done(double rate, FxSource source) => Navigator.of(
+    context,
+  ).pop(FxQuote(from: widget.from, to: widget.to, rate: rate, date: DateTime.now(), source: source));
 
   @override
   Widget build(BuildContext context) {
@@ -270,6 +271,7 @@ const commonCurrencies = [
 /// Pick the currency the receipt is actually in.
 Future<String?> showCurrencySheet(BuildContext context, {required String current}) => showModalBottomSheet<String>(
   context: context,
+  useRootNavigator: true,
   isScrollControlled: true,
   builder: (context) {
     final ctrl = TextEditingController();

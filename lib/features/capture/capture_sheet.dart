@@ -10,6 +10,7 @@ import 'scan_flow.dart';
 
 Future<void> showCaptureSheet(BuildContext context, WidgetRef ref) => showModalBottomSheet(
   context: context,
+  useRootNavigator: true,
   builder: (_) => CaptureSheet(outer: context, outerRef: ref),
 );
 

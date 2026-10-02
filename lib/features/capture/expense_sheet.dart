@@ -10,8 +10,12 @@ import '../../domain/quick_text_parser.dart';
 import '../common/category_style.dart';
 import '../common/widgets.dart';
 
-Future<void> showExpenseSheet(BuildContext context) =>
-    showModalBottomSheet(context: context, isScrollControlled: true, builder: (_) => const ExpenseSheet());
+Future<void> showExpenseSheet(BuildContext context) => showModalBottomSheet(
+  context: context,
+  useRootNavigator: true,
+  isScrollControlled: true,
+  builder: (_) => const ExpenseSheet(),
+);
 
 /// Amount, then tap a category chip: the chip IS the save (rule R2).
 class ExpenseSheet extends ConsumerStatefulWidget {

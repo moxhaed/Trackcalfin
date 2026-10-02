@@ -1,12 +1,14 @@
 # 05 · AI Layer & Master System Prompts
 
-The three master prompts are **runtime assets**. The app loads them verbatim as the `systemInstruction`:
+The master prompts are **runtime assets**. The app loads them verbatim as the `systemInstruction`:
 
 | Prompt | File | Task |
 |---|---|---|
 | **A** | [`assets/prompts/receipt_extraction.v2.md`](../assets/prompts/receipt_extraction.v2.md) | Receipt or pantry image → structured JSON (expenses, categories, stock quantities, new-ingredient profiles) |
 | **B** | [`assets/prompts/daily_recipe.v1.md`](../assets/prompts/daily_recipe.v1.md) | Inventory JSON → one stock-only recipe JSON (quantities per portion, estimates, hook line) |
 | **C** | [`assets/prompts/spontaneous_recipe.v1.md`](../assets/prompts/spontaneous_recipe.v1.md) | User text/voice + inventory JSON → feasibility verdict + adapted recipe + shopping list JSON |
+| **D** | [`assets/prompts/nutrition_estimate.v1.md`](../assets/prompts/nutrition_estimate.v1.md) | Ingredients with unknown macros → typical values per 100 g, density, piece weight |
+| **E** | [`assets/prompts/nutrition_label.v1.md`](../assets/prompts/nutrition_label.v1.md) | Photo of a nutrition facts panel → the printed values, unconverted |
 
 Those files are the single source of truth. This document covers how they're called, fed, and verified.
 
@@ -24,7 +26,8 @@ Those files are the single source of truth. This document covers how they're cal
 
 | | Prompt A | Prompt B | Prompt C |
 |---|---|---|---|
-| Model | `gemini-3.8-flash` | `gemini-3.8-flash` | `gemini-3.8-flash` |
+| Model | `gemini-3.5-flash-lite` | `gemini-3.5-flash-lite` | `gemini-3.5-flash-lite` |
+| Fallback (any API error from the main model) | `gemini-3.8-flash` | `gemini-3.8-flash` | `gemini-3.8-flash` |
 | Thinking level | `low` (raise to `medium` if long or crumpled receipts misread) | `medium` | `medium` |
 | Media resolution | `high` (small receipt fonts) | — | — |
 | `responseMimeType` | `application/json` | `application/json` | `application/json` |
@@ -40,7 +43,7 @@ Multiply by the current per-token price of the model to budget. At ~1 pick a day
 ### Request anatomy (REST, `generateContent`)
 
 ```http
-POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent
+POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent
 x-goog-api-key: <from flutter_secure_storage>
 Content-Type: application/json
 ```
@@ -184,7 +187,16 @@ Prompt A v2 returns amounts in the receipt's own currency and minor units (¥1,2
 3. **Changing the rate**: *Amount charged* (type what the bank charged, which includes card fees so the ledger matches the statement) or *Exchange rate*. Rates you enter are remembered for the next receipt in that currency. *Wrong currency?* re-picks the currency and fetches a new rate.
 4. **Filing** converts every line with `FxMath.convertLines` (rounding drift goes on the largest line, so the lines add up to the converted total), costs stock in the home currency, and keeps `originalCurrency`, `originalTotalMinor` and `fxRate` on the `Transaction`. The ledger shows the printed amount next to the converted one.
 
-## 5.9 References
+## 5.9 Ingredient macros (Prompts D and E)
+
+Every number in a recipe comes from `Ingredient.per100`, so an ingredient with no macros silently counts as 0 kcal. `nutritionSource == none` marks that state. Onboarding staples, items added by hand with empty macro fields, and scanned items without a profile all start there.
+
+- **D, estimate** (`NutritionService.fillMissing`): batches of up to 40 unknown items, `thinkingLevel: low`, no images. It runs on app resume, after the API key is saved, after onboarding, after a scan is filed, and from *Fill with AI* in the pantry. The model returns food-table values **per 100 g** plus `density_g_per_ml`, and Dart converts ml items to per 100 ml (`NutritionEngine.per100For`). The DTO rejects missing or unknown keys, macros over 100 g per 100 g, and ml or pc items without a density or piece weight, which triggers the usual repair retry. Items the user filled in while the call was running are left alone.
+- **E, label** (`NutritionService.readLabel`): one or more photos, `mediaResolution: high`. The model only transcribes one column (per 100 g, per 100 ml or per serving with its size) and the energy in kcal and/or kJ. Dart does the conversion (`NutritionEngine.fromLabel`): kJ → kcal, per serving → per 100, g ↔ ml by the ingredient's density, and fiber taken out of US-style total carbohydrate. It flags `energy_mismatch` (Atwater) and `too_dense` (more than 9.1 kcal or 1.05 g of macros per gram). Nothing is saved until the user checks the numbers in the ingredient sheet and taps *Save macros*.
+
+Confirmation lives in `Ingredient.nutritionConfirmedAt`: set by a saved label (`nutritionSource: label`), by typed numbers (`user`) or by *Confirm* on an AI estimate. Changing an ingredient's macros, unit or piece weight refreshes the stored numbers of every non-archived recipe that uses it (`RecipeService.refreshUsing`). Cook sessions keep their snapshot.
+
+## 5.10 References
 
 - Gemini 3.8 Flash announcement and model ID: [Introducing Gemini 3.8 Flash](https://blog.google/innovation-and-ai/models-and-research/gemini-models/3-8-flash-and-3-8-flash-cyber/), [Gemini API: What's new in Gemini 3.8 Flash](https://ai.google.dev/gemini-api/docs/latest-model)
 - Structured output (`responseMimeType`, `responseJsonSchema` / `responseSchema`): [Gemini API structured outputs](https://ai.google.dev/gemini-api/docs/generate-content/structured-output), [Improving structured outputs in the Gemini API](https://blog.google/technology/developers/gemini-api-structured-outputs/)

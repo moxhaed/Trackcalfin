@@ -286,6 +286,7 @@ class _IngredientRow extends ConsumerWidget {
           ? null
           : () => showModalBottomSheet<void>(
               context: context,
+              useRootNavigator: true,
               builder: (_) => SafeArea(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,

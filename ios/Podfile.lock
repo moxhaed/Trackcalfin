@@ -1,0 +1,22 @@
+PODS:
+  - Flutter (1.0.0)
+  - isar_community_flutter_libs (1.0.0):
+    - Flutter
+
+DEPENDENCIES:
+  - Flutter (from `Flutter`)
+  - isar_community_flutter_libs (from `.symlinks/plugins/isar_community_flutter_libs/ios`)
+
+EXTERNAL SOURCES:
+  Flutter:
+    :path: Flutter
+  isar_community_flutter_libs:
+    :path: ".symlinks/plugins/isar_community_flutter_libs/ios"
+
+SPEC CHECKSUMS:
+  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  isar_community_flutter_libs: bede843185a61a05ff364a05c9b23209523f7e0d
+
+PODFILE CHECKSUM: ec5eaf50c560d4349158137cc05d3fb26cce107a
+
+COCOAPODS: 1.17.0

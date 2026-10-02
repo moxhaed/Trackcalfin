@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:trackcalfin/core/enums.dart';
 import 'package:trackcalfin/data/ai/ai_runner.dart';
 import 'package:trackcalfin/data/ai/context_builders.dart';
+import 'package:trackcalfin/data/ai/dto/nutrition_dto.dart';
 import 'package:trackcalfin/data/ai/dto/receipt_dto.dart';
 import 'package:trackcalfin/data/ai/dto/recipe_dto.dart';
 import 'package:trackcalfin/data/ai/gemini_client.dart';
@@ -33,6 +34,21 @@ void main() {
       expect(r.ok, isTrue, reason: r.errors.join('\n'));
       expect(r.value!.recipe!.ingredients.where((i) => i.substitutesFor != null).length, 3);
     });
+    test('Prompt D example', () {
+      final r = NutritionEstimates.parse(
+        jsonDecode(promptExample('nutrition_estimate.v1.md')),
+        units: const {'olive_oil': BaseUnit.ml, 'flour': BaseUnit.g, 'salt': BaseUnit.g, 'stock_cube': BaseUnit.pc},
+      );
+      expect(r.ok, isTrue, reason: r.errors.join('\n'));
+      expect(r.value!.items.first.per100g.fatG, 100);
+      expect(r.value!.items.first.densityGPerMl, 0.91);
+    });
+    test('Prompt E example', () {
+      final r = LabelReading.parse(jsonDecode(promptExample('nutrition_label.v1.md')));
+      expect(r.ok, isTrue, reason: r.errors.join('\n'));
+      expect(r.value!.basis, LabelBasis.per100g);
+      expect(r.value!.energyKcal, 348);
+    });
   });
 
   group('DTO strictness', () {
@@ -48,6 +64,29 @@ void main() {
       expect(r.errors.any((e) => e.contains(r"$.items[2].spend_category 'toiletries'")), isTrue);
       expect(r.errors, contains(r'$.items[1].new_ingredient is required when is_new_ingredient is true'));
     });
+    test('nutrition estimates must cover every requested key with sane values', () {
+      final json = jsonDecode(promptExample('nutrition_estimate.v1.md')) as Map<String, dynamic>;
+      final items = json['items'] as List;
+      (items[0] as Map)['density_g_per_ml'] = null;
+      ((items[1] as Map)['per_100g'] as Map)['carbs_g'] = 720;
+      (items[2] as Map)['key'] = 'sea_salt';
+      final r = NutritionEstimates.parse(
+        json,
+        units: const {'olive_oil': BaseUnit.ml, 'flour': BaseUnit.g, 'salt': BaseUnit.g, 'stock_cube': BaseUnit.pc},
+      );
+      expect(r.ok, isFalse);
+      expect(r.errors.any((e) => e.startsWith(r'$.items[0].density_g_per_ml is required')), isTrue);
+      expect(r.errors, contains(r'$.items[1].per_100g.carbs_g must be between 0 and 100 per 100 g'));
+      expect(r.errors, contains(r"$.items[2].key 'sea_salt' was not in the input; copy input keys exactly"));
+      expect(r.errors, contains(r'$.items is missing keys: salt'));
+    });
+    test('a per-serving label needs a serving size', () {
+      final json = jsonDecode(promptExample('nutrition_label.v1.md')) as Map<String, dynamic>;
+      json['basis'] = 'per_serving';
+      expect(LabelReading.parse(json).ok, isFalse);
+      json['serving_size_g'] = 30;
+      expect(LabelReading.parse(json).ok, isTrue);
+    });
     test('daily recipe may not contain missing items', () {
       final json = jsonDecode(promptExample('daily_recipe.v1.md')) as Map<String, dynamic>;
       ((json['recipe'] as Map)['ingredients'] as List)[0]['role'] = 'missing';
@@ -59,7 +98,7 @@ void main() {
   group('GeminiClient', () {
     test('builds the documented body and skips thought parts', () async {
       final fake = FakeGemini()..reply('{"ok":true}');
-      final c = GeminiClient(httpClient: fake.client, apiKey: () async => 'k', model: 'gemini-3.8-flash');
+      final c = GeminiClient(httpClient: fake.client, apiKey: () async => 'k', model: 'gemini-3.5-flash-lite');
       final res = await c.generate(
         GeminiRequest(
           systemPrompt: 'sys',
@@ -79,9 +118,9 @@ void main() {
       expect(body['generationConfig']['mediaResolution'], 'MEDIA_RESOLUTION_HIGH');
     });
 
-    test('retries 429 then succeeds', () async {
+    test('retries a 503 then succeeds', () async {
       final fake = FakeGemini()
-        ..status(429, 'quota')
+        ..status(503, 'overloaded')
         ..reply('{}');
       final waits = <Duration>[];
       final c = GeminiClient(
@@ -111,6 +150,123 @@ void main() {
       expect(
         () => c.generate(GeminiRequest(systemPrompt: 's', turns: const [Turn.user('x')])),
         throwsA(isA<GeminiException>()),
+      );
+    });
+
+    test('defaults to gemini-3.5-flash-lite primary and gemini-3.8-flash fallback', () async {
+      final fake = FakeGemini()..reply('{"ok":true}');
+      final c = GeminiClient(httpClient: fake.client, apiKey: () async => 'k');
+      expect(c.model, 'gemini-3.5-flash-lite');
+      expect(c.fallbackModel, 'gemini-3.8-flash');
+      final res = await c.generate(GeminiRequest(systemPrompt: 's', turns: const [Turn.user('x')]));
+      expect(res.model, 'gemini-3.5-flash-lite');
+      expect(fake.requestedUris.single.path, contains('gemini-3.5-flash-lite'));
+    });
+
+    test('falls back to gemini-3.8-flash when primary model fails', () async {
+      final fake = FakeGemini()
+        ..status(404, 'model not found')
+        ..reply('{"fallback":true}');
+      final c = GeminiClient(
+        httpClient: fake.client,
+        apiKey: () async => 'k',
+        model: 'gemini-3.5-flash-lite',
+        fallbackModel: 'gemini-3.8-flash',
+      );
+      final res = await c.generate(GeminiRequest(systemPrompt: 's', turns: const [Turn.user('x')]));
+      expect(res.text, '{"fallback":true}');
+      expect(res.model, 'gemini-3.8-flash');
+      expect(fake.requestedUris[0].path, contains('gemini-3.5-flash-lite'));
+      expect(fake.requestedUris[1].path, contains('gemini-3.8-flash'));
+    });
+
+    test('falls back to gemini-3.8-flash after primary retries are exhausted', () async {
+      final fake = FakeGemini()
+        ..status(503, 'overloaded')
+        ..status(503, 'overloaded')
+        ..status(503, 'overloaded')
+        ..reply('{"fallback":true}');
+      final waits = <Duration>[];
+      final c = GeminiClient(
+        httpClient: fake.client,
+        apiKey: () async => 'k',
+        model: 'gemini-3.5-flash-lite',
+        fallbackModel: 'gemini-3.8-flash',
+        delay: (d) async => waits.add(d),
+      );
+      final res = await c.generate(GeminiRequest(systemPrompt: 's', turns: const [Turn.user('x')]));
+      expect(res.text, '{"fallback":true}');
+      expect(res.model, 'gemini-3.8-flash');
+      expect(fake.requestedUris.where((u) => u.path.contains('gemini-3.5-flash-lite')).length, 3);
+      expect(fake.requestedUris.where((u) => u.path.contains('gemini-3.8-flash')).length, 1);
+    });
+
+    test('a 429 goes straight to the fallback without backing off', () async {
+      final fake = FakeGemini()
+        ..status(429, 'Quota exceeded')
+        ..reply('{"fallback":true}');
+      final waits = <Duration>[];
+      final c = GeminiClient(httpClient: fake.client, apiKey: () async => 'k', delay: (d) async => waits.add(d));
+      final res = await c.generate(GeminiRequest(systemPrompt: 's', turns: const [Turn.user('x')]));
+      expect(res.model, 'gemini-3.8-flash');
+      expect(fake.requestedUris.length, 2);
+      expect(waits, isEmpty);
+    });
+
+    test('a daily-quota 429 reads as a daily limit, not "retry in 47s"', () async {
+      final fake = FakeGemini()
+        ..status(
+          429,
+          'You exceeded your current quota... Please retry in 46.96s.',
+          details: [
+            {
+              '@type': 'type.googleapis.com/google.rpc.QuotaFailure',
+              'violations': [
+                {
+                  'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests',
+                  'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier',
+                  'quotaValue': '500',
+                },
+              ],
+            },
+            {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '46s'},
+          ],
+        )
+        ..status(503, 'overloaded');
+      final c = GeminiClient(httpClient: fake.client, apiKey: () async => 'k', fallbackModel: null);
+      expect(
+        () => c.generate(GeminiRequest(systemPrompt: 's', turns: const [Turn.user('x')])),
+        throwsA(
+          isA<GeminiException>()
+              .having((e) => e.status, 'status', 429)
+              .having(
+                (e) => e.message,
+                'message',
+                'Daily free-tier limit reached for gemini-3.5-flash-lite (500 requests). It resets at midnight Pacific time.',
+              ),
+        ),
+      );
+    });
+
+    test('throws when both primary and fallback fail', () async {
+      final fake = FakeGemini()
+        ..status(404, 'primary missing')
+        ..status(404, 'fallback missing');
+      final c = GeminiClient(
+        httpClient: fake.client,
+        apiKey: () async => 'k',
+        model: 'gemini-3.5-flash-lite',
+        fallbackModel: 'gemini-3.8-flash',
+      );
+      expect(
+        () => c.generate(GeminiRequest(systemPrompt: 's', turns: const [Turn.user('x')])),
+        throwsA(
+          isA<GeminiException>().having(
+            (e) => e.message,
+            'message',
+            allOf(contains('gemini-3.5-flash-lite'), contains('gemini-3.8-flash')),
+          ),
+        ),
       );
     });
 
@@ -155,6 +311,28 @@ void main() {
       );
       expect(out.ok, isFalse);
       expect(out.errors.first, startsWith('Response is not valid JSON'));
+    });
+
+    test('AiRunner uses fallback model when primary fails', () async {
+      final fake = FakeGemini()
+        ..status(404, 'primary unavailable')
+        ..reply(promptExample('daily_recipe.v1.md'));
+      final client = GeminiClient(
+        httpClient: fake.client,
+        apiKey: () async => 'k',
+        model: 'gemini-3.5-flash-lite',
+        fallbackModel: 'gemini-3.8-flash',
+      );
+      final runner = AiRunner(null, client);
+      final out = await runner.run(
+        task: AiTask.dailyRecipe,
+        promptVersion: 'daily_recipe.v1',
+        request: GeminiRequest(systemPrompt: 's', turns: const [Turn.user('{}')]),
+        parse: DailyRecipeOutput.parse,
+      );
+      expect(out.ok, isTrue);
+      expect(fake.requestedUris[0].path, contains('gemini-3.5-flash-lite'));
+      expect(fake.requestedUris[1].path, contains('gemini-3.8-flash'));
     });
   });
 

@@ -9,8 +9,12 @@ import '../../domain/stock_index.dart';
 import '../common/widgets.dart';
 import '../cook/cook_actions.dart';
 
-Future<void> showCookedSheet(BuildContext context) =>
-    showModalBottomSheet(context: context, isScrollControlled: true, builder: (_) => const CookedSheet());
+Future<void> showCookedSheet(BuildContext context) => showModalBottomSheet(
+  context: context,
+  useRootNavigator: true,
+  isScrollControlled: true,
+  builder: (_) => const CookedSheet(),
+);
 
 /// Set portions once, then one tap on a recipe logs the cook.
 class CookedSheet extends ConsumerStatefulWidget {

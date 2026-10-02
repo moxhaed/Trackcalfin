@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -64,6 +66,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
       return _setRate();
     }
     final tx = txId == null ? null : await ref.read(isarProvider).transactions.get(txId);
+    unawaited(ref.read(nutritionServiceProvider).fillMissing());
     celebrate();
     if (!mounted) return;
     Navigator.of(context).pop();

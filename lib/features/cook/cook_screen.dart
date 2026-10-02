@@ -39,7 +39,7 @@ class CookScreen extends ConsumerWidget {
             child: RefreshIndicator(
               onRefresh: () => ref.read(todayPickProvider.notifier).refresh(),
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 110),
+                padding: EdgeInsets.fromLTRB(16, 4, 16, MediaQuery.paddingOf(context).bottom + 24),
                 children: const [_TodayPickCard(), SizedBox(height: 12), _FridgeStrip(), _CookAgain()],
               ),
             ),

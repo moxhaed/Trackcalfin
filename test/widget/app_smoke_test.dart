@@ -8,6 +8,7 @@ import 'package:trackcalfin/app/app.dart';
 import 'package:trackcalfin/app/providers.dart';
 import 'package:trackcalfin/app/router.dart';
 import 'package:trackcalfin/application/demo_seed.dart';
+import 'package:trackcalfin/core/enums.dart';
 import 'package:trackcalfin/data/ai/prompt_repository.dart';
 import 'package:trackcalfin/data/isar/collections/schemas.dart';
 import 'package:trackcalfin/platform/image_store.dart';
@@ -113,6 +114,50 @@ void main() {
     expect(tx!.currency, 'EUR');
     expect(tx.originalTotalMinor, 2310);
     expect(tx.totalMinor, 2474);
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  testWidgets('floating nav switches tabs and opens capture', (tester) async {
+    await pumpApp(tester);
+    await tester.tap(find.text('Cook'));
+    await settle(tester);
+    expect(find.text('IN THE FRIDGE'), findsOneWidget);
+    await tester.tap(find.byTooltip('Log something'));
+    await settle(tester);
+    expect(find.text('I cooked'), findsOneWidget);
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  testWidgets('pantry macros: unknown banner, confirm and edit a staple', (tester) async {
+    await pumpApp(tester, initial: '/buy');
+    final salt = (await isar.ingredients.getByKey('salt'))!..nutritionSource = DataSource.none;
+    await isar.writeTxn(() => isar.ingredients.put(salt));
+    await settle(tester);
+    expect(find.text('1 item has no macros'), findsOneWidget);
+    await tester.tap(find.text('Fill with AI'));
+    await settle(tester);
+    expect(find.text('Add a Gemini API key in Settings first.'), findsOneWidget);
+
+    await tester.dragUntilVisible(find.text('Cumin'), find.byType(ListView).first, const Offset(0, -300));
+    await settle(tester);
+    expect(find.textContaining('Review macros ·'), findsOneWidget);
+    await tester.tap(find.text('Cumin'));
+    await settle(tester);
+    expect(find.text('NUTRITION PER 100 G'), findsOneWidget);
+    expect(find.text('AI estimate'), findsOneWidget);
+
+    await tester.tap(find.text('Confirm'));
+    await settle(tester);
+    expect((await isar.ingredients.getByKey('cumin'))!.nutritionConfirmedAt, isNotNull);
+    expect(find.text('Confirmed'), findsOneWidget);
+
+    await tester.tap(find.text('Edit'));
+    await settle(tester);
+    await tester.enterText(find.widgetWithText(TextField, 'kcal'), '380');
+    await tester.tap(find.text('Save macros'));
+    await settle(tester);
+    final cumin = (await isar.ingredients.getByKey('cumin'))!;
+    expect(cumin.per100.kcal, 380);
+    expect(cumin.per100.proteinG, 18, reason: 'untouched fields keep their values');
+    expect(cumin.nutritionSource, DataSource.user);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   testWidgets('settings and onboarding render', (tester) async {

@@ -104,6 +104,8 @@ class StatsScreen extends ConsumerWidget {
                                     AiTask.receipt => 'Receipts & pantry (Prompt A)',
                                     AiTask.dailyRecipe => 'Daily pick (Prompt B)',
                                     AiTask.spontaneousRecipe => 'Ask (Prompt C)',
+                                    AiTask.nutritionEstimate => 'Macro estimates (Prompt D)',
+                                    AiTask.nutritionLabel => 'Nutrition labels (Prompt E)',
                                   }, style: context.text.titleSmall),
                                   Text(
                                     '${e.value.length} calls · ${e.value.where((l) => !l.parsedOk).length} failed · '
@@ -127,7 +129,9 @@ class StatsScreen extends ConsumerWidget {
                       for (final l in s.logs.take(15))
                         ExpansionTile(
                           tilePadding: EdgeInsets.zero,
-                          title: Text('${l.promptVersion} · ${l.parsedOk ? 'ok' : 'failed'}'),
+                          title: Text(
+                            '${l.promptVersion} · ${l.model.isNotEmpty ? '${l.model} · ' : ''}${l.parsedOk ? 'ok' : 'failed'}',
+                          ),
                           subtitle: Text('${l.at.toLocal()}'.substring(0, 16)),
                           children: [
                             if (l.error != null) Text(l.error!, style: TextStyle(color: context.colors.critical)),

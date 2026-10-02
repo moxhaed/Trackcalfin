@@ -29,5 +29,9 @@ import workmanager_apple
       GeneratedPluginRegistrant.register(with: registry)
     }
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+    // Liquid Glass bottom nav. Older iOS versions get the Flutter pill instead.
+    if #available(iOS 26.0, *), let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "GlassNav") {
+      registrar.register(GlassNavFactory(messenger: registrar.messenger()), withId: GlassNavFactory.viewType)
+    }
   }
 }

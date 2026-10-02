@@ -405,7 +405,8 @@ class EmptyState extends StatelessWidget {
   }
 }
 
-/// Small label/value pair used in stat rows.
+/// Small label/value pair used in stat rows. The label wraps when space is tight;
+/// keep a number and its unit together with a non-breaking space.
 class Metric extends StatelessWidget {
   const Metric({super.key, required this.value, required this.label, this.dotColor});
   final String value;
@@ -419,19 +420,23 @@ class Metric extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(value, style: context.text.titleMedium),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (dotColor != null) ...[
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
-              ),
-              const SizedBox(width: 4),
+        Text.rich(
+          TextSpan(
+            children: [
+              if (dotColor != null)
+                WidgetSpan(
+                  alignment: PlaceholderAlignment.middle,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    margin: const EdgeInsets.only(right: 4),
+                    decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+                  ),
+                ),
+              TextSpan(text: label),
             ],
-            Text(label, style: context.text.labelSmall?.copyWith(color: context.scheme.onSurfaceVariant)),
-          ],
+          ),
+          style: context.text.labelSmall?.copyWith(color: context.scheme.onSurfaceVariant),
         ),
       ],
     );

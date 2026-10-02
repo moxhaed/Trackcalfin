@@ -14,6 +14,7 @@ import '../application/daily_pick_service.dart';
 import '../application/fx_service.dart';
 import '../application/ledger_service.dart';
 import '../application/metrics_service.dart';
+import '../application/nutrition_service.dart';
 import '../application/pantry_service.dart';
 import '../application/profile_service.dart';
 import '../application/recipe_service.dart';
@@ -68,6 +69,10 @@ final scanServiceProvider = Provider(
     fx: ref.watch(fxServiceProvider),
     now: ref.watch(nowProvider),
   ),
+);
+final nutritionServiceProvider = Provider(
+  (ref) =>
+      NutritionService(isar: ref.watch(isarProvider), ai: ref.watch(aiGatewayProvider), now: ref.watch(nowProvider)),
 );
 final dailyPickServiceProvider = Provider(
   (ref) =>

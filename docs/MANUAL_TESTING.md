@@ -96,6 +96,21 @@ When something goes wrong, note the **test ID** (e.g. `R3`), what you expected, 
 - [ ] **C8 · "I'm out".** On a recipe, long-press an ingredient → **I'm out of …**.
   *Expect:* the pantry shows it as out. If it was in today's pick, the pick refreshes.
 
+## 4b · Macros on pantry items (new)
+
+- [ ] **M1 · Staples get macros.** On an install that finished onboarding before this update, open **Buy → Pantry** once with a key set.
+  *Expect:* within a few seconds, tapping **Olive oil** shows about 800 kcal per 100 ml and **Flour** about 350 kcal per 100 g, both marked "AI estimate". If the "items have no macros" card shows, tap **Fill with AI**.
+- [ ] **M2 · Recipes count them.** Open a saved recipe that uses oil or flour.
+  *Expect:* its kcal went up compared with before the update (10 ml oil adds about 80 kcal per portion).
+- [ ] **M3 · Scan a label.** Open an item you have the package for → **Scan label** → photograph the nutrition table.
+  *Expect:* the fields fill with the per-100 g (or per-100 ml) values from the package, with the product name above. **Save macros** marks it "From label". Try a US-style per-serving label too: the numbers should be scaled to 100 g.
+- [ ] **M4 · Confirm or edit.** On an "AI estimate" item, tap **Confirm**, and on another tap **Edit**, change the kcal, and save.
+  *Expect:* both show "Confirmed".
+- [ ] **M5 · Review queue.** At the bottom of the pantry, tap **Review macros**.
+  *Expect:* one sheet per unconfirmed item ("Check macros · 1 of N"). **Confirm** or **Skip** moves to the next one; swiping the sheet down stops.
+- [ ] **M6 · New item without numbers.** **Add an item** named `Tahini`, leave the nutrition fields empty, and save.
+  *Expect:* a moment later its sheet shows about 600 kcal per 100 g as an AI estimate.
+
 ## 5 · Ask ("What do you want to cook?")
 
 - [ ] **Q1 · Typed request.** Type `carbonara for two but lighter` and send.

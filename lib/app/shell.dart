@@ -1,72 +1,37 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/capture/capture_sheet.dart';
+import 'floating_nav.dart';
 import 'providers.dart';
-import 'theme.dart';
 
-/// Bottom bar with the global capture ⊕ in the middle.
+/// Floating tab pill with the global capture ⊕ beside it. Tab bodies scroll
+/// behind the bar, so their lists pad by `MediaQuery.paddingOf(context).bottom`.
 class AppShell extends ConsumerWidget {
-  const AppShell({super.key, required this.shell});
+  const AppShell({super.key, required this.shell, required this.popupOpen});
   final StatefulNavigationShell shell;
+  final ValueListenable<bool> popupOpen;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final inbox = ref.watch(inboxCountProvider);
-    Widget item(int index, IconData icon, IconData active, String label, {int badge = 0}) {
-      final selected = shell.currentIndex == index;
-      final color = selected ? context.scheme.primary : context.scheme.onSurfaceVariant;
-      return Expanded(
-        child: InkResponse(
-          onTap: () => shell.goBranch(index, initialLocation: index == shell.currentIndex),
-          child: Semantics(
-            selected: selected,
-            button: true,
-            label: label,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Badge(
-                  isLabelVisible: badge > 0,
-                  label: Text('$badge'),
-                  child: Icon(selected ? active : icon, color: color),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  label,
-                  style: context.text.labelSmall?.copyWith(color: color, fontWeight: selected ? FontWeight.w700 : null),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
     return Scaffold(
+      extendBody: true,
       body: shell,
-      floatingActionButton: FloatingActionButton(
-        tooltip: 'Log something',
-        shape: const CircleBorder(),
-        onPressed: () => showCaptureSheet(context, ref),
-        child: const Icon(Icons.add, size: 30),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: BottomAppBar(
-        height: 68,
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        shape: const CircularNotchedRectangle(),
-        notchMargin: 6,
-        child: Row(
-          children: [
-            item(0, Icons.insights_outlined, Icons.insights, 'Dashboard'),
-            item(1, Icons.shopping_basket_outlined, Icons.shopping_basket, 'Buy', badge: inbox),
-            const SizedBox(width: 64),
-            item(2, Icons.soup_kitchen_outlined, Icons.soup_kitchen, 'Cook'),
-            item(3, Icons.tune_outlined, Icons.tune, 'Settings'),
-          ],
-        ),
+      bottomNavigationBar: FloatingNav(
+        index: shell.currentIndex,
+        onSelect: (index) => shell.goBranch(index, initialLocation: index == shell.currentIndex),
+        onCapture: () => showCaptureSheet(context, ref),
+        captureLabel: 'Log something',
+        popupOpen: popupOpen,
+        tabs: [
+          const NavTab('Dashboard', Icons.insights_outlined, Icons.insights, 'chart.xyaxis.line', 'chart.xyaxis.line'),
+          NavTab('Buy', Icons.shopping_basket_outlined, Icons.shopping_basket, 'basket', 'basket.fill', badge: inbox),
+          const NavTab('Cook', Icons.soup_kitchen_outlined, Icons.soup_kitchen, 'frying.pan', 'frying.pan.fill'),
+          const NavTab('Settings', Icons.tune_outlined, Icons.tune, 'slider.horizontal.3', 'slider.horizontal.3'),
+        ],
       ),
     );
   }

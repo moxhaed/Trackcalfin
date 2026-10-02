@@ -46,7 +46,7 @@ enum IngredientCategory {
 }
 enum SpendCategory { groceries, household, clothes, eatingOut, entertainment, other }
 enum LineType { product, adjustment, deposit, fee }
-enum DataSource { aiEstimate, user, label }
+enum DataSource { none, aiEstimate, user, label }   // none = macros unknown, the AI fills them in
 enum Confidence { high, medium, low }
 enum QtySource { printed, inferred, estimated, unknown }
 enum TxSource { receiptScan, manual, quickText }
@@ -57,7 +57,7 @@ enum CookStatus { active, finished, discarded, undone }
 enum MealSource { cookedNow, fridge, quickAdd }
 enum ScanStatus { queued, processing, needsReview, committed, failed, discarded }
 enum ScanKind { unknown, receipt, pantry, unreadable }
-enum AiTask { receipt, dailyRecipe, spontaneousRecipe }
+enum AiTask { receipt, dailyRecipe, spontaneousRecipe, nutritionEstimate, nutritionLabel }
 ```
 AI JSON uses snake_case (`meat_fish`, `eating_out`). The DTO layer maps with an explicit `switch` and never uses `EnumType.name` on AI strings directly.
 
@@ -115,7 +115,10 @@ class Ingredient {
   Nutrition per100 = Nutrition();
 
   @Enumerated(EnumType.name)
-  DataSource nutritionSource = DataSource.aiEstimate;
+  DataSource nutritionSource = DataSource.none;
+
+  /// When the user confirmed per100 (label scan, own numbers, "Confirm"); null = unconfirmed.
+  DateTime? nutritionConfirmedAt;
 
   int shelfLifeDays = 7;
 
@@ -483,7 +486,7 @@ class UserProfile {
   // AI
   String geminiModel = 'gemini-3.8-flash';
 
-  int schemaVersion = 1;               // for data migrations
+  int schemaVersion = 2;               // for data migrations; new profiles start at the current version
 }
 
 @embedded
@@ -568,3 +571,9 @@ Background isolates (WorkManager, notification actions) call `Isar.getInstance()
 ## 4.16 Migrations
 
 Isar adds new fields with their defaults automatically, and removed fields are ignored. For **data** migrations (e.g. backfilling `lastPurchaseQty`), bump `UserProfile.schemaVersion` and run a one-off migrator at startup before `runApp`. Never rename `Ingredient.key` values, because they are the AI-facing identifiers.
+
+`Migrations.run` (called from `main` after the profile loads) applies them:
+
+| Version | Change |
+|---|---|
+| 2 | Ingredients with all-zero macros (onboarding staples, blank manual items) get `nutritionSource = none`, so the AI fills them in. Label-sourced zeros are kept. |

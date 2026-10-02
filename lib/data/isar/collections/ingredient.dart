@@ -45,8 +45,13 @@ class Ingredient {
   /// Per 100 g (g and pc items) or per 100 ml (ml items).
   Nutrition per100 = Nutrition();
 
+  /// [DataSource.none] until something fills [per100] (NutritionService.fillMissing).
   @Enumerated(EnumType.name)
-  DataSource nutritionSource = DataSource.aiEstimate;
+  DataSource nutritionSource = DataSource.none;
+
+  /// When the user confirmed [per100]: a label scan, their own numbers or "Confirm".
+  /// null = unconfirmed estimate.
+  DateTime? nutritionConfirmedAt;
 
   int shelfLifeDays = 7;
 
@@ -65,6 +70,9 @@ class Ingredient {
 
   @ignore
   bool get isStaple => trackingMode == TrackingMode.staple;
+
+  @ignore
+  bool get needsNutrition => nutritionSource == DataSource.none;
 
   @ignore
   bool get isLow => !isStaple && qtyOnHand > 0 && lowStockThreshold > 0 && qtyOnHand <= lowStockThreshold;

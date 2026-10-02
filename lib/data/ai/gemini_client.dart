@@ -59,12 +59,14 @@ class GeminiResponse {
     required this.latencyMs,
     this.inputTokens,
     this.outputTokens,
+    this.model,
   });
   final String text;
   final String? finishReason;
   final int latencyMs;
   final int? inputTokens;
   final int? outputTokens;
+  final String? model;
 
   bool get truncated => finishReason == 'MAX_TOKENS';
 }
@@ -74,11 +76,20 @@ class GeminiResponse {
 /// Sends the full config first (JSON schema, thinking level, media resolution).
 /// If the API rejects a field with HTTP 400, it steps down to a simpler body and
 /// remembers the level that works, so a renamed field never breaks the app.
+///
+/// Runs on `gemini-3.5-flash-lite` and falls back to `gemini-3.8-flash`.
+/// On the free tier they have separate quotas (Flash-Lite: 500 requests/day, Flash: 20), so the
+/// scarce Flash requests are only spent when Flash-Lite is rate limited or down. Both accept
+/// `thinkingLevel` low and medium, so neither trips [compatLevel].
 class GeminiClient {
+  static const defaultPrimaryModel = 'gemini-3.5-flash-lite';
+  static const defaultFallbackModel = 'gemini-3.8-flash';
+
   GeminiClient({
     required this.httpClient,
     required this.apiKey,
-    required this.model,
+    this.model = defaultPrimaryModel,
+    this.fallbackModel = defaultFallbackModel,
     this.baseUrl = 'https://generativelanguage.googleapis.com/v1beta',
     Future<void> Function(Duration)? delay,
   }) : _delay = delay ?? Future.delayed;
@@ -86,6 +97,7 @@ class GeminiClient {
   final http.Client httpClient;
   final Future<String?> Function() apiKey;
   final String model;
+  final String? fallbackModel;
   final String baseUrl;
   final Future<void> Function(Duration) _delay;
 
@@ -128,16 +140,37 @@ class GeminiClient {
     if (key == null || key.trim().isEmpty) {
       throw GeminiException('No Gemini API key set. Add one in Settings → AI.');
     }
+    final trimmedKey = key.trim();
+    try {
+      return await _sendWithRetry(r, trimmedKey, model);
+    } on GeminiException catch (primaryError) {
+      if (fallbackModel != null && fallbackModel != model) {
+        try {
+          return await _sendWithRetry(r, trimmedKey, fallbackModel!);
+        } on GeminiException catch (fallbackError) {
+          throw GeminiException(
+            'Primary ($model) failed: ${primaryError.message}; Fallback ($fallbackModel) failed: ${fallbackError.message}',
+            status: fallbackError.status ?? primaryError.status,
+            retryable: fallbackError.retryable || primaryError.retryable,
+          );
+        }
+      }
+      rethrow;
+    }
+  }
+
+  Future<GeminiResponse> _sendWithRetry(GeminiRequest r, String key, String targetModel) async {
     var attempt = 0;
     while (true) {
       try {
-        return await _send(r, key.trim());
+        return await _send(r, key, targetModel);
       } on GeminiException catch (e) {
         if (e.status == 400 && compatLevel < 2 && _looksLikeFieldRejection(e.message)) {
           compatLevel++;
           continue;
         }
-        if (!e.retryable || attempt >= _backoff.length) rethrow;
+        // A 429 means this model's quota is spent: backing off 10 s won't bring it back, the fallback might.
+        if (!e.retryable || e.status == 429 || attempt >= _backoff.length) rethrow;
         await _delay(_backoff[attempt]);
         attempt++;
       }
@@ -155,8 +188,22 @@ class GeminiClient {
         m.contains('not supported');
   }
 
-  Future<GeminiResponse> _send(GeminiRequest r, String key) async {
-    final uri = Uri.parse('$baseUrl/models/$model:generateContent');
+  /// Google's 429 text says "retry in 40s" even when the daily cap is hit; the quotaId tells them apart.
+  static String? _dailyQuotaMessage(Map? error, String model) {
+    for (final d in (error?['details'] as List?) ?? const []) {
+      for (final v in (d is Map ? d['violations'] as List? : null) ?? const []) {
+        if (v is Map && '${v['quotaId']}'.contains('PerDay')) {
+          final limit = v['quotaValue'];
+          return 'Daily free-tier limit reached for $model${limit != null ? ' ($limit requests)' : ''}. '
+              'It resets at midnight Pacific time.';
+        }
+      }
+    }
+    return null;
+  }
+
+  Future<GeminiResponse> _send(GeminiRequest r, String key, String targetModel) async {
+    final uri = Uri.parse('$baseUrl/models/$targetModel:generateContent');
     final started = DateTime.now();
     http.Response res;
     try {
@@ -176,7 +223,9 @@ class GeminiClient {
     if (res.statusCode != 200) {
       var msg = res.body;
       try {
-        msg = (jsonDecode(res.body) as Map)['error']?['message']?.toString() ?? res.body;
+        final error = (jsonDecode(res.body) as Map)['error'] as Map?;
+        msg = error?['message']?.toString() ?? res.body;
+        if (res.statusCode == 429) msg = _dailyQuotaMessage(error, targetModel) ?? msg;
       } catch (_) {}
       throw GeminiException(msg, status: res.statusCode, retryable: res.statusCode == 429 || res.statusCode >= 500);
     }
@@ -200,6 +249,7 @@ class GeminiClient {
       latencyMs: latency,
       inputTokens: (usage?['promptTokenCount'] as num?)?.toInt(),
       outputTokens: (usage?['candidatesTokenCount'] as num?)?.toInt(),
+      model: targetModel,
     );
   }
 

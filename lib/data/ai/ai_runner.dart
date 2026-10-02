@@ -81,7 +81,7 @@ class AiRunner {
         ..at = started
         ..task = task
         ..promptVersion = promptVersion
-        ..model = client.model
+        ..model = res?.model ?? client.model
         ..latencyMs = DateTime.now().difference(started).inMilliseconds
         ..inputTokens = inTok == 0 ? null : inTok
         ..outputTokens = outTok == 0 ? null : outTok

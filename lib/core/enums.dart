@@ -28,7 +28,8 @@ enum SpendCategory { groceries, household, clothes, eatingOut, entertainment, ot
 
 enum LineType { product, adjustment, deposit, fee }
 
-enum DataSource { aiEstimate, user, label }
+/// Where an ingredient's macros came from. [none] = nothing known yet; the AI fills it in.
+enum DataSource { none, aiEstimate, user, label }
 
 enum Confidence { high, medium, low }
 
@@ -50,7 +51,7 @@ enum ScanStatus { queued, processing, needsReview, committed, failed, discarded 
 
 enum ScanKind { unknown, receipt, pantry, unreadable }
 
-enum AiTask { receipt, dailyRecipe, spontaneousRecipe }
+enum AiTask { receipt, dailyRecipe, spontaneousRecipe, nutritionEstimate, nutritionLabel }
 
 extension BaseUnitLabel on BaseUnit {
   String get label => switch (this) {

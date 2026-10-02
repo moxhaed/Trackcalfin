@@ -48,6 +48,7 @@ class DemoSeed {
       ..qtyOnHand = qty
       ..avgCostPerUnitMinor = cost
       ..per100 = Nutrition(kcal: n[0], proteinG: n[1], carbsG: n[2], fatG: n[3], fiberG: n.length > 4 ? n[4] : 0)
+      ..nutritionSource = DataSource.aiEstimate
       ..shelfLifeDays = shelf
       ..trackingMode = staple ? TrackingMode.staple : TrackingMode.exact
       ..lastPurchasedAt = t.subtract(Duration(days: age))

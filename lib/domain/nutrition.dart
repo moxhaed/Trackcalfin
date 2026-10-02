@@ -1,9 +1,19 @@
 import '../core/enums.dart';
+import '../data/ai/dto/nutrition_dto.dart';
 import '../data/isar/collections/ingredient.dart';
 import '../data/isar/collections/nutrition.dart';
 import '../data/isar/collections/recipe.dart';
 import 'stock_index.dart';
 import 'units.dart';
+
+/// A nutrition label converted to an ingredient's per-100 basis, with what looked off.
+class LabelNumbers {
+  LabelNumbers(this.per100, this.flags);
+  final Nutrition per100;
+
+  /// "energy_mismatch": kcal disagree with the macros. "too_dense": more than any food per gram.
+  final List<String> flags;
+}
 
 class RecipeNumbers {
   RecipeNumbers(this.perPortion, this.costPerPortionMinor, this.flags);
@@ -55,6 +65,50 @@ class NutritionEngine {
       cost += qty * ing.avgCostPerUnitMinor;
     }
     return RecipeNumbers(n, cost.round(), flags);
+  }
+
+  /// [per100g] (food-table basis) as the ingredient stores it: per 100 ml for ml items.
+  static Nutrition per100For(Nutrition per100g, BaseUnit unit, double? densityGPerMl) =>
+      (unit == BaseUnit.ml ? per100g.scale(densityGPerMl ?? 1) : per100g).rounded();
+
+  /// Converts a label to [ing]'s basis (per 100 g, or per 100 ml for ml items).
+  /// Null when the label has no energy value or no usable basis.
+  static LabelNumbers? fromLabel(LabelReading r, Ingredient ing) {
+    final kcal = r.energyKcal ?? (r.energyKj == null ? null : r.energyKj! / 4.184);
+    if (!r.readable || kcal == null) return null;
+    double? grams, ml;
+    switch (r.basis) {
+      case LabelBasis.per100g:
+        grams = 100;
+      case LabelBasis.per100ml:
+        ml = 100;
+      case LabelBasis.perServing:
+        grams = r.servingSizeG;
+        ml = grams == null ? r.servingSizeMl : null;
+      case null:
+        return null;
+    }
+    if ((grams ?? ml ?? 0) <= 0) return null;
+    final density = ing.densityGPerMl ?? 1;
+    // Grams the label column describes, and the factor to the ingredient's basis.
+    final labelGrams = grams ?? ml! * density;
+    final factor = ing.baseUnit == BaseUnit.ml ? 100 * density / labelGrams : 100 / labelGrams;
+    final fiber = r.fiberG ?? 0;
+    final carbs = r.carbsIncludeFiber ? (r.carbsG ?? 0) - fiber : (r.carbsG ?? 0);
+    final raw = Nutrition(
+      kcal: kcal,
+      proteinG: r.proteinG ?? 0,
+      carbsG: carbs < 0 ? 0 : carbs,
+      fatG: r.fatG ?? 0,
+      fiberG: fiber,
+    );
+    final flags = <String>[];
+    final perGram = raw.scale(1 / labelGrams);
+    if (perGram.kcal > 9.1 || perGram.proteinG + perGram.carbsG + perGram.fatG + perGram.fiberG > 1.05) {
+      flags.add('too_dense');
+    }
+    if (!atwaterPlausible(raw.scale(100 / labelGrams))) flags.add('energy_mismatch');
+    return LabelNumbers(raw.scale(factor).rounded(), flags);
   }
 
   /// Atwater check: kcal should be close to 4p + 4c + 9f.

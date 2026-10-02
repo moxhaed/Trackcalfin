@@ -10,6 +10,7 @@ import '../cook/cook_actions.dart';
 
 Future<void> showAteSheet(BuildContext context, {bool quickAddFirst = false}) => showModalBottomSheet(
   context: context,
+  useRootNavigator: true,
   isScrollControlled: true,
   builder: (_) => AteSheet(quickAddFirst: quickAddFirst),
 );

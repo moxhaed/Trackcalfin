@@ -22,7 +22,7 @@
 | UI / state | Flutter + `flutter_riverpod` | `StreamProvider`s wrap Isar watchers. `Notifier`s drive screen controllers. |
 | Routing | `go_router` | `StatefulShellRoute` for the 3 tabs. Deep links from notifications (`/cook`, `/buy/inbox`). |
 | Database | **`isar_community`** (+ `isar_community_flutter_libs`, `isar_community_generator`, `build_runner`) | Community-maintained fork of Isar 3.x with the same API. It exists to keep Isar 3 building on current Flutter and Android toolchains, so prefer it over the original `isar` package. |
-| AI | Gemini **`gemini-3.8-flash`** via REST (`http`) | Thin in-house client. See §2.9 for why not an SDK. |
+| AI | Gemini **`gemini-3.5-flash-lite`** (fallback `gemini-3.8-flash`) via REST (`http`) | Thin in-house client. See §2.9 for why not an SDK. |
 | Secrets | `flutter_secure_storage` | Gemini API key only. Never stored in Isar, exports or logs. |
 | AI DTOs | `freezed` + `json_serializable` | Only for AI request and response payloads. Isar classes stay plain. |
 | Camera | Document-scanner plugin (e.g. `cunning_document_scanner`), fallback `image_picker` | Auto edge detection and auto-capture, multi-page for long receipts. |
@@ -74,7 +74,7 @@ flowchart TB
     SEC["SecretStore · API key"]
   end
   BG["Background isolates · WorkManager + notification actions"]
-  GEM[("Gemini API · gemini-3.8-flash")]
+  GEM[("Gemini API · gemini-3.5-flash-lite")]
 
   UI --> APP
   APP --> DOM

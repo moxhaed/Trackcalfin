@@ -4,28 +4,37 @@ import 'package:isar_community/isar.dart';
 import '../data/ai/ai_runner.dart';
 import '../data/ai/gemini_client.dart';
 import '../data/ai/prompt_repository.dart';
-import '../data/isar/collections/schemas.dart';
 import '../platform/secret_store.dart';
 
 /// Builds an [AiRunner] when an API key is available.
 class AiGateway {
-  AiGateway({required this.isar, required this.secrets, required this.prompts, http.Client? httpClient})
-    : httpClient = httpClient ?? http.Client();
+  AiGateway({
+    required this.isar,
+    required this.secrets,
+    required this.prompts,
+    http.Client? httpClient,
+    this.model = GeminiClient.defaultPrimaryModel,
+    this.fallbackModel = GeminiClient.defaultFallbackModel,
+  }) : httpClient = httpClient ?? http.Client();
 
   final Isar isar;
   final SecretStore secrets;
   final PromptRepository prompts;
   final http.Client httpClient;
+  final String model;
+
+  /// Null pins every call to [model] (the model eval does this).
+  final String? fallbackModel;
 
   Future<bool> get hasKey async => ((await secrets.readApiKey()) ?? '').trim().isNotEmpty;
 
   Future<AiRunner?> runner() async {
     if (!await hasKey) return null;
-    final profile = await isar.userProfiles.get(1);
     final client = GeminiClient(
       httpClient: httpClient,
       apiKey: secrets.readApiKey,
-      model: profile?.geminiModel ?? 'gemini-3.8-flash',
+      model: model,
+      fallbackModel: fallbackModel,
     );
     return AiRunner(isar, client);
   }

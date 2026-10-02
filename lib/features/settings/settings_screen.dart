@@ -43,7 +43,7 @@ class SettingsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
-        padding: const EdgeInsets.only(bottom: 110),
+        padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom + 24),
         children: [
           const _Section('Goals'),
           _MoneyTile(
@@ -165,10 +165,10 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const _Section('AI'),
           const _ApiKeyTile(),
-          _TextTile(
-            title: 'Model',
-            value: p.geminiModel,
-            onSave: (v) => update((x) => x.geminiModel = v.trim().isEmpty ? 'gemini-3.8-flash' : v.trim()),
+          ListTile(
+            title: const Text('Model'),
+            subtitle: const Text('gemini-3.5-flash-lite (fallback: gemini-3.8-flash)'),
+            trailing: const Icon(Icons.lock_outline, size: 20),
           ),
           const _Section('Appearance & region'),
           Padding(
@@ -568,6 +568,7 @@ class _ApiKeyTile extends ConsumerWidget {
             ref.invalidate(hasApiKeyProvider);
             if (v.trim().isNotEmpty) {
               unawaited(ref.read(scanServiceProvider).processQueue());
+              unawaited(ref.read(nutritionServiceProvider).fillMissing());
               unawaited(ref.read(todayPickProvider.notifier).refresh());
             }
           },

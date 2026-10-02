@@ -11,6 +11,7 @@ import 'fx_widgets.dart';
 
 Future<void> showTransactionSheet(BuildContext context, Transaction tx) => showModalBottomSheet(
   context: context,
+  useRootNavigator: true,
   isScrollControlled: true,
   builder: (_) => TransactionSheet(tx: tx),
 );

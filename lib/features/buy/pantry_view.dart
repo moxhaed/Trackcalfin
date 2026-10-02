@@ -22,6 +22,22 @@ class PantryView extends ConsumerStatefulWidget {
 class _PantryViewState extends ConsumerState<PantryView> {
   String _query = '';
   bool _showEmpty = false;
+  bool _filling = false;
+
+  Future<void> _fillMacros() async {
+    setState(() => _filling = true);
+    final r = await ref.read(nutritionServiceProvider).fillMissing();
+    if (!mounted) return;
+    setState(() => _filling = false);
+    // 0 without an error: a background lookup is already on it.
+    showInfo(
+      context,
+      r.error ??
+          (r.filled == 0
+              ? 'Already looking them up…'
+              : 'Macros added for ${r.filled} ${r.filled == 1 ? 'item' : 'items'}'),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,6 +53,12 @@ class _PantryViewState extends ConsumerState<PantryView> {
     final low = inStock.where((i) => i.isLow).toList();
     final empty = exact.where((i) => i.qtyOnHand <= 0).toList();
     final staples = matches.where((i) => i.isStaple).toList();
+    final unknownMacros = all.where((i) => i.needsNutrition).length;
+    // Unknown first: they're the ones that count as 0 kcal.
+    final toReview = all.where((i) => i.nutritionConfirmedAt == null).sorted((a, b) {
+      if (a.needsNutrition != b.needsNutrition) return a.needsNutrition ? -1 : 1;
+      return a.name.compareTo(b.name);
+    });
     final groups = groupBy(inStock, (Ingredient i) => i.category);
     final cats = groups.keys.toList()..sort((a, b) => a.index.compareTo(b.index));
 
@@ -50,7 +72,7 @@ class _PantryViewState extends ConsumerState<PantryView> {
     }
 
     return ListView(
-      padding: const EdgeInsets.only(bottom: 110),
+      padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom + 24),
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -59,6 +81,21 @@ class _PantryViewState extends ConsumerState<PantryView> {
             onChanged: (v) => setState(() => _query = v),
           ),
         ),
+        if (unknownMacros > 0 && q.isEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+            child: Card(
+              child: ListTile(
+                leading: Icon(Icons.help_outline, color: context.colors.warning),
+                title: Text('$unknownMacros ${unknownMacros == 1 ? 'item has' : 'items have'} no macros'),
+                subtitle: const Text('Recipes count them as 0 kcal'),
+                trailing: _filling
+                    ? const SizedBox.square(dimension: 24, child: CircularProgressIndicator(strokeWidth: 2))
+                    : TextButton(onPressed: _fillMacros, child: const Text('Fill with AI')),
+                onTap: () => reviewMacros(context, toReview),
+              ),
+            ),
+          ),
         if (soon.isNotEmpty && q.isEmpty) ...[
           const _Header('Use soon'),
           SizedBox(
@@ -126,6 +163,7 @@ class _PantryViewState extends ConsumerState<PantryView> {
               children: [
                 for (final s in staples)
                   ActionChip(
+                    avatar: s.needsNutrition ? Icon(Icons.help_outline, size: 16, color: context.colors.warning) : null,
                     label: Text(s.name),
                     onPressed: () => showIngredientSheet(context, ingredient: s),
                   ),
@@ -133,6 +171,18 @@ class _PantryViewState extends ConsumerState<PantryView> {
             ),
           ),
         ],
+        if (toReview.isNotEmpty && q.isEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 12, 8, 0),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                icon: const Icon(Icons.fact_check_outlined, size: 18),
+                label: Text('Review macros · ${toReview.length} unconfirmed'),
+                onPressed: () => reviewMacros(context, toReview),
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -200,6 +250,7 @@ class _IngredientTile extends ConsumerWidget {
             if (value > 0) money.compact(value),
             if (d != null) '${daysLeftLabel(d)} left'.replaceAll('use today left', 'use today'),
             if (unverified) 'check',
+            if (ing.needsNutrition) 'no macros',
           ].join(' · '),
         ),
         trailing: Text(qty(ing.qtyOnHand, ing.baseUnit), style: context.text.titleSmall),

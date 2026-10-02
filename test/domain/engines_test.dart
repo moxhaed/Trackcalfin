@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:trackcalfin/core/enums.dart';
+import 'package:trackcalfin/data/ai/dto/nutrition_dto.dart';
 import 'package:trackcalfin/domain/costing.dart';
 import 'package:trackcalfin/domain/depletion.dart';
 import 'package:trackcalfin/domain/feasibility.dart';
@@ -92,6 +93,91 @@ void main() {
       expect(NutritionEngine.atwaterPlausible(Nutrition(kcal: 124, proteinG: 4.5, carbsG: 4, fatG: 10)), isTrue);
       expect(NutritionEngine.atwaterPlausible(Nutrition(kcal: 500, proteinG: 4.5, carbsG: 4, fatG: 10)), isFalse);
       expect(NutritionEngine.atwaterPlausible(Nutrition(kcal: 23, proteinG: 2.9, carbsG: 3.6, fatG: 0.4)), isTrue);
+    });
+    test('food-table values per 100 g become per 100 ml for ml items', () {
+      final oil = Nutrition(kcal: 884, fatG: 100);
+      expect(NutritionEngine.per100For(oil, BaseUnit.ml, 0.91).kcal, 804.4);
+      expect(NutritionEngine.per100For(oil, BaseUnit.ml, 0.91).fatG, 91);
+      expect(NutritionEngine.per100For(oil, BaseUnit.g, 0.91).kcal, 884);
+    });
+  });
+
+  group('NutritionEngine.fromLabel', () {
+    LabelReading label({
+      LabelBasis basis = LabelBasis.per100g,
+      double? servingG,
+      double? servingMl,
+      double? kcal,
+      double? kj,
+      double protein = 0,
+      double carbs = 0,
+      double fat = 0,
+      double fiber = 0,
+      bool carbsIncludeFiber = false,
+    }) => LabelReading(
+      readable: true,
+      basis: basis,
+      servingSizeG: servingG,
+      servingSizeMl: servingMl,
+      energyKcal: kcal,
+      energyKj: kj,
+      proteinG: protein,
+      carbsG: carbs,
+      fatG: fat,
+      fiberG: fiber,
+      carbsIncludeFiber: carbsIncludeFiber,
+    );
+
+    test('per 100 g label on a g item is taken as printed', () {
+      final flour = ingredient('flour');
+      final r = NutritionEngine.fromLabel(label(kcal: 348, protein: 10, carbs: 72, fat: 1, fiber: 4), flour)!;
+      expect(r.per100.sameAs(Nutrition(kcal: 348, proteinG: 10, carbsG: 72, fatG: 1, fiberG: 4)), isTrue);
+      expect(r.flags, isEmpty);
+    });
+    test('converts between g and ml with the density', () {
+      final oil = ingredient('olive_oil', unit: BaseUnit.ml)..densityGPerMl = 0.91;
+      final r = NutritionEngine.fromLabel(label(kcal: 884, fat: 100), oil)!;
+      expect(r.per100.kcal, 804.4);
+      expect(r.per100.fatG, 91);
+      final milk = ingredient('milk')..densityGPerMl = 1.03;
+      final m = NutritionEngine.fromLabel(label(basis: LabelBasis.per100ml, kcal: 64, protein: 3.4, fat: 3.5), milk)!;
+      expect(m.per100.kcal, 62.1);
+    });
+    test('per-serving US label: scaled to 100 g, fiber taken out of carbs', () {
+      final oats = ingredient('oats');
+      final r = NutritionEngine.fromLabel(
+        label(
+          basis: LabelBasis.perServing,
+          servingG: 30,
+          kcal: 110,
+          protein: 3,
+          carbs: 23,
+          fat: 1,
+          fiber: 3,
+          carbsIncludeFiber: true,
+        ),
+        oats,
+      )!;
+      expect(r.per100.kcal, 366.7);
+      expect(r.per100.proteinG, 10);
+      expect(r.per100.carbsG, 66.7);
+      expect(r.per100.fiberG, 10);
+    });
+    test('kJ-only energy is converted; missing energy or unreadable gives null', () {
+      final flour = ingredient('flour');
+      expect(NutritionEngine.fromLabel(label(kj: 1475, protein: 10, carbs: 72, fat: 1), flour)!.per100.kcal, 352.5);
+      expect(NutritionEngine.fromLabel(label(protein: 10), flour), isNull);
+      expect(NutritionEngine.fromLabel(LabelReading(readable: false), flour), isNull);
+    });
+    test('flags numbers that disagree or exceed what food can hold', () {
+      final x = ingredient('x');
+      expect(NutritionEngine.fromLabel(label(kcal: 500, protein: 10, carbs: 10, fat: 1), x)!.flags, [
+        'energy_mismatch',
+      ]);
+      expect(
+        NutritionEngine.fromLabel(label(basis: LabelBasis.perServing, servingG: 10, kcal: 150, fat: 15), x)!.flags,
+        contains('too_dense'),
+      );
     });
   });
 

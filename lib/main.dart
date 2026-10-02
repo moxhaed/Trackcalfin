@@ -12,6 +12,7 @@ import 'app/providers.dart';
 import 'app/router.dart';
 import 'application/cook_service.dart';
 import 'application/demo_seed.dart';
+import 'application/migrations.dart';
 import 'application/profile_service.dart';
 import 'platform/background.dart';
 import 'platform/image_store.dart';
@@ -23,6 +24,7 @@ Future<void> main() async {
   final isar = await openAppIsar();
   if (DemoSeed.enabled) await DemoSeed.run(isar);
   final profile = await ProfileService(isar).load();
+  await Migrations.run(isar);
   final secrets = SecureSecretStore(fallbackDir: await appSupportPath());
   final mobile = Platform.isAndroid || Platform.isIOS;
   final images = ImageStore(

@@ -55,6 +55,7 @@ class AppIntegrations {
 
   Future<void> onResume() async {
     unawaited(processScansInBackground(ref));
+    unawaited(ref.read(nutritionServiceProvider).fillMissing());
     final t = DateTime.now();
     if (_lastHousekeeping == null || t.difference(_lastHousekeeping!).inHours >= 20) {
       _lastHousekeeping = t;

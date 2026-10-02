@@ -73,7 +73,7 @@ class _LedgerViewState extends ConsumerState<LedgerView> {
                   message: 'Scan a receipt or log an expense with the + button.',
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.only(bottom: 110),
+                  padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom + 24),
                   itemCount: days.length,
                   itemBuilder: (context, i) {
                     final day = days[i];
