@@ -43,6 +43,7 @@ class _PantryViewState extends ConsumerState<PantryView> {
   Widget build(BuildContext context) {
     final all = ref.watch(ingredientsProvider).value;
     if (all == null) return const Center(child: CircularProgressIndicator());
+    final prices = ref.watch(priceBookProvider);
     final now = DateTime.now();
     final q = _query.toLowerCase();
     final matches = all.where((i) => q.isEmpty || i.name.toLowerCase().contains(q) || i.key.contains(q)).toList();
@@ -134,7 +135,14 @@ class _PantryViewState extends ConsumerState<PantryView> {
                 for (final ing in low)
                   InputChip(
                     avatar: Icon(Icons.trending_down, size: 16, color: context.colors.warning),
-                    label: Text('${ing.name} · ${qty(ing.qtyOnHand, ing.baseUnit)}'),
+                    label: Text(
+                      [
+                        ing.name,
+                        qty(ing.qtyOnHand, ing.baseUnit),
+                        // Where to buy it next: the store with the lowest last price.
+                        if (prices.cheapest(ing.key) case final p?) 'cheapest at ${p.store}',
+                      ].join(' · '),
+                    ),
                     onPressed: () => showIngredientSheet(context, ingredient: ing),
                   ),
               ],

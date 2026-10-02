@@ -4,14 +4,19 @@ import 'package:flutter/material.dart';
 /// after the originating screen is gone.
 final appMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
-void notifyApp(String message, {String? actionLabel, VoidCallback? onAction}) {
+void notifyApp(
+  String message, {
+  String? actionLabel,
+  VoidCallback? onAction,
+  Duration duration = const Duration(seconds: 4),
+}) {
   final m = appMessengerKey.currentState;
   if (m == null) return;
   m.hideCurrentSnackBar();
   m.showSnackBar(
     SnackBar(
       content: Text(message),
-      duration: const Duration(seconds: 4),
+      duration: duration,
       action: actionLabel == null ? null : SnackBarAction(label: actionLabel, onPressed: onAction ?? () {}),
     ),
   );

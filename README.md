@@ -103,7 +103,7 @@ test/             domain, application (Isar), data (AI layer), widget
 | D · Ingredient macros estimate (keys → per-100 g values) | [`assets/prompts/nutrition_estimate.v1.md`](assets/prompts/nutrition_estimate.v1.md) |
 | E · Nutrition label reading (photo → printed values) | [`assets/prompts/nutrition_label.v1.md`](assets/prompts/nutrition_label.v1.md) |
 | F · Shop price lookup with Google Search (products → price per pack) | [`assets/prompts/price_lookup.v1.md`](assets/prompts/price_lookup.v1.md) |
-| G · Say it: what the user did (sentence + pantry → actions) | [`assets/prompts/quick_log.v1.md`](assets/prompts/quick_log.v1.md) |
+| G · Say it: what the user did or asks about prices (sentence + pantry → actions) | [`assets/prompts/quick_log.v2.md`](assets/prompts/quick_log.v2.md) |
 
 ## Known limitations
 

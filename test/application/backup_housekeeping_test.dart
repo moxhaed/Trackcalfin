@@ -71,6 +71,32 @@ void main() {
     expect((await isar.userProfiles.get(1))!.lookUpPrices, isFalse, reason: "the user's choice");
   });
 
+  test('schema 5: receipt lines learn how much was bought; Say it buys are left out', () async {
+    LineItem stocked(int minor) => LineItem()
+      ..name = 'Rice'
+      ..ingredientKey = 'white_rice'
+      ..ingredientId = 1
+      ..qtyBase = 1000
+      ..totalMinor = minor;
+    await isar.writeTxn(() async {
+      await isar.userProfiles.put(UserProfile()..schemaVersion = 4);
+      await isar.transactions.putAll([
+        Transaction()
+          ..source = TxSource.receiptScan
+          ..merchant = 'Lidl'
+          ..lines = [stocked(149), LineItem()..name = 'Dish soap'],
+        Transaction()
+          ..source = TxSource.quickText
+          ..lines = [stocked(199)],
+      ]);
+    });
+    await Migrations.run(isar);
+    final txs = await isar.transactions.where().findAll();
+    expect(txs[0].lines.map((l) => l.qtyBought), [1000, null]);
+    expect(txs[1].lines.single.qtyBought, isNull, reason: 'its price may be an estimate');
+    expect((await isar.userProfiles.get(1))!.schemaVersion, Migrations.current);
+  });
+
   test('a backup from before schema 3 turns its staples into regular items', () async {
     final verified = DateTime(2026, 9, 20);
     await isar.writeTxn(() async {

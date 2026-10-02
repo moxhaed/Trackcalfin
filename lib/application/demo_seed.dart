@@ -359,44 +359,95 @@ class DemoSeed {
       String merchant,
       List<(String, SpendCategory, int)> lines, {
       TxSource source = TxSource.receiptScan,
+      List<LineItem> items = const [],
     }) {
       final at = DateTime(t.year, t.month, t.day - daysAgo, hour, 12);
+      final all = [
+        ...items,
+        for (final l in lines)
+          LineItem()
+            ..name = l.$1
+            ..category = l.$2
+            ..totalMinor = l.$3,
+      ];
       return Transaction()
         ..occurredAt = at
         ..merchant = merchant
         ..source = source
-        ..lines = [
-          for (final l in lines)
-            LineItem()
-              ..name = l.$1
-              ..category = l.$2
-              ..totalMinor = l.$3,
-        ]
-        ..totalMinor = lines.fold(0, (a, l) => a + l.$3)
-        ..primaryCategory = lines.first.$2;
+        ..lines = all
+        ..totalMinor = all.fold(0, (a, l) => a + l.totalMinor)
+        ..primaryCategory = all.first.category;
     }
+
+    // Items more than one store sells, so the price book has something to compare.
+    LineItem item(_Item i) => LineItem()
+      ..name = i.$1
+      ..category = SpendCategory.groceries
+      ..ingredientKey = i.$2
+      ..qtyBought = i.$3
+      ..unit = i.$2 == 'egg' ? BaseUnit.pc : BaseUnit.g
+      ..totalMinor = i.$4
+      ..product = i.$5;
+    const lidl = <_Item>[
+      ('Chicken breast', 'chicken_breast', 500, 499, 'Store-brand chicken breast fillet, 500 g'),
+      ('Spaghetti', 'dry_pasta', 500, 79, 'Combino Spaghetti, 500 g'),
+      ('Greek-style yogurt', 'greek_yogurt', 500, 179, 'Milbona Greek-style yogurt 10%, 500 g'),
+      ('Eggs', 'egg', 10, 279, 'Free-range eggs M, 10 pcs'),
+    ];
+    const rewe = <_Item>[
+      ('Chicken breast', 'chicken_breast', 400, 549, 'Rewe Beste Wahl chicken breast fillet, 400 g'),
+      ('Eggs', 'egg', 6, 219, 'Rewe Bio eggs M, 6 pcs'),
+      ('Greek-style yogurt', 'greek_yogurt', 500, 229, 'Rewe Bio Greek yogurt 10%, 500 g'),
+    ];
+    const aldi = <_Item>[
+      ('Chicken breast', 'chicken_breast', 500, 479, 'Store-brand chicken breast fillet, 500 g'),
+      ('Spaghetti', 'dry_pasta', 500, 99, 'Barilla Spaghetti n.5, 500 g'),
+    ];
+    int sum(List<_Item> items) => items.fold(0, (a, i) => a + i.$4);
 
     for (var w = 0; w < 5; w++) {
       final base = w * 7;
       txs.add(
-        tx(base + 2, 18, 'Lidl', [
-          ('Groceries', SpendCategory.groceries, 4200 + (w * 370) % 900),
-          ('Dish soap', SpendCategory.household, 119),
-          ('Bottle deposit', SpendCategory.other, 25),
-        ]),
+        tx(
+          base + 2,
+          18,
+          'Lidl',
+          [
+            ('Groceries', SpendCategory.groceries, 4200 + (w * 370) % 900 - sum(lidl)),
+            ('Dish soap', SpendCategory.household, 119),
+            ('Bottle deposit', SpendCategory.other, 25),
+          ],
+          items: [for (final i in lidl) item(i)],
+        ),
       );
-      txs.add(tx(base + 5, 13, 'Rewe', [('Top-up shop', SpendCategory.groceries, 1150 + (w * 210) % 500)]));
+      final top = w.isEven ? rewe.take(2).toList() : [rewe.last];
+      txs.add(
+        tx(
+          base + 5,
+          13,
+          'Rewe',
+          [('Top-up shop', SpendCategory.groceries, 1150 + (w * 210) % 500 - sum(top))],
+          items: [for (final i in top) item(i)],
+        ),
+      );
       txs.add(tx(base + 3, 13, 'Ramen place', [('Lunch', SpendCategory.eatingOut, 1450)], source: TxSource.manual));
     }
     // Older months, so Food by month has a history: a weekly shop, a top-up every other week
     // and one big stock-up, back about four months.
     for (var w = 5; w < 17; w++) {
       final base = w * 7;
+      final shop = w.isEven ? lidl : aldi;
       txs.add(
-        tx(base + 2, 18, w.isEven ? 'Lidl' : 'Aldi', [
-          ('Groceries', SpendCategory.groceries, w == 9 ? 9450 : 5200 + (w * 530) % 1400),
-          if (w % 3 == 0) ('Paper towels', SpendCategory.household, 245),
-        ]),
+        tx(
+          base + 2,
+          18,
+          w.isEven ? 'Lidl' : 'Aldi',
+          [
+            ('Groceries', SpendCategory.groceries, (w == 9 ? 9450 : 5200 + (w * 530) % 1400) - sum(shop)),
+            if (w % 3 == 0) ('Paper towels', SpendCategory.household, 245),
+          ],
+          items: [for (final i in shop) item(i)],
+        ),
       );
       if (w.isOdd) txs.add(tx(base + 5, 13, 'Rewe', [('Top-up shop', SpendCategory.groceries, 950 + (w * 170) % 600)]));
     }
@@ -695,3 +746,6 @@ class DemoSeed {
     });
   }
 }
+
+/// A demo receipt line: name, ingredient key, quantity, price, product.
+typedef _Item = (String, String, double, int, String);

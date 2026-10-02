@@ -370,6 +370,12 @@ void main() {
       final tx = (await isar.transactions.get(txId))!;
       expect(tx.totalMinor, 822, reason: 'the money is filed in full');
       expect(tx.lines[1].qtyBase, 200);
+      // Stocked or not, each line keeps what it was and how much, for store prices.
+      expect(
+        [for (final l in tx.lines.take(2)) (l.ingredientKey, l.qtyBought, l.ingredientId != null)],
+        [('chicken_breast', 500.0, false), ('greek_yogurt', 500.0, true)],
+      );
+      expect(tx.lines[1].product, 'Milbona Greek-style yogurt 10%, 500 g');
       final uses = await isar.foodUses.where().findAll();
       expect(uses.map((u) => (u.ingredientKey, u.qtyBase, u.costMinor, u.kind, u.transactionId)), [
         ('chicken_breast', 500.0, 499, UseKind.eaten, txId),

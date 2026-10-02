@@ -16,6 +16,7 @@ import '../application/ledger_service.dart';
 import '../application/metrics_service.dart';
 import '../application/nutrition_service.dart';
 import '../application/pantry_service.dart';
+import '../application/price_service.dart';
 import '../application/profile_service.dart';
 import '../application/quick_log_service.dart';
 import '../application/recipe_service.dart';
@@ -29,6 +30,7 @@ import '../data/fx/fx_rate_client.dart';
 import '../data/isar/collections/schemas.dart';
 import '../domain/dashboard.dart';
 import '../domain/food_history.dart';
+import '../domain/price_book.dart';
 import '../domain/quick_check.dart';
 import '../domain/streak.dart';
 import '../domain/vibe.dart';
@@ -54,6 +56,7 @@ final cookServiceProvider = Provider((ref) => CookService(ref.watch(isarProvider
 final recipeServiceProvider = Provider((ref) => RecipeService(ref.watch(isarProvider), now: ref.watch(nowProvider)));
 final metricsServiceProvider = Provider((ref) => MetricsService(ref.watch(isarProvider)));
 final backupServiceProvider = Provider((ref) => BackupService(ref.watch(isarProvider)));
+final priceServiceProvider = Provider((ref) => PriceService(ref.watch(isarProvider), now: ref.watch(nowProvider)));
 
 /// `--dart-define=GEMINI_BASE_URL=http://127.0.0.1:8765/v1beta` points the app at a local
 /// stand-in for Gemini, to check AI screens on the desktop without a key or quota.
@@ -152,6 +155,14 @@ final todayLogProvider = StreamProvider<DailyLog?>((ref) {
   final isar = ref.watch(isarProvider);
   final key = ref.watch(dayClockProvider).dateKey(ref.watch(nowProvider)());
   return isar.dailyLogs.where().dateKeyEqualTo(key).watch(fireImmediately: true).map((l) => l.firstOrNull);
+});
+
+/// Each store's latest price per item, from the ledger (the last 500 transactions are months
+/// of shopping), in the units the items use now.
+final priceBookProvider = Provider<PriceBook>((ref) {
+  final txs = ref.watch(transactionsProvider).value ?? const [];
+  final items = ref.watch(ingredientsProvider).value ?? const <Ingredient>[];
+  return PriceBook.from(txs, now: ref.watch(nowProvider)(), units: {for (final i in items) i.key: i.baseUnit});
 });
 
 final quickCheckProvider = Provider<List<Ingredient>>((ref) {

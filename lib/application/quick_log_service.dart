@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:isar_community/isar.dart';
 
+import '../core/day_clock.dart';
 import '../core/enums.dart';
 import '../data/ai/context_builders.dart';
 import '../data/ai/dto/quick_log_dto.dart';
@@ -9,6 +10,7 @@ import '../data/ai/gemini_client.dart';
 import '../data/ai/prompt_repository.dart';
 import '../data/ai/schemas.dart';
 import '../data/isar/collections/schemas.dart';
+import '../domain/price_book.dart';
 import '../domain/quick_log.dart';
 import 'ai_gateway.dart';
 import 'clock.dart';
@@ -224,8 +226,9 @@ class QuickLogService {
       for (final a in log.actions)
         if (a.type == QuickActionType.eat || a.type == QuickActionType.cook) clock.dateKey(a.when ?? t),
     };
+    final ingredients = await isar.ingredients.where().findAll();
     return QuickLogWorld(
-      ingredients: await isar.ingredients.where().findAll(),
+      ingredients: ingredients,
       fridge: await _fridge(),
       recipes: (await isar.recipes.getAll([
         for (final a in log.actions)
@@ -233,6 +236,13 @@ class QuickLogService {
       ])).whereType<Recipe>().toList(),
       logs: (await isar.dailyLogs.getAllByDateKey(days.toList())).whereType<DailyLog>().toList(),
       profile: profile,
+      prices: log.actions.any((a) => a.type == QuickActionType.priceCheck)
+          ? PriceBook.from(
+              await isar.transactions.where().occurredAtGreaterThan(DayClock.addDays(t, -PriceBook.maxDays)).findAll(),
+              now: t,
+              units: {for (final i in ingredients) i.key: i.baseUnit},
+            )
+          : null,
     );
   }
 }

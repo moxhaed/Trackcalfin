@@ -140,6 +140,8 @@ Three tabs plus a **global capture button (⊕)** beside the bottom bar. ⊕ ope
 
 **Past months** opens Food by month: a pair of columns per budget month (eaten, spent) against the budget, and a card per month with its weeks, what was thrown away, and whether more was bought than eaten. It answers "was last month really over, or did I just stock up?"
 
+**Where it's cheaper.** Every receipt line keeps its store and product, so the app knows what each store charged last. After a receipt is filed it says when another store sold something clearly cheaper ("Chicken breast: 26% cheaper at Aldi"), an item's sheet lists the stores cheapest first, Running low says where to buy, and Say it answers "where is it cheaper?". All from the user's own receipts, in Dart: no AI call except reading the question.
+
 ### Tab 2: Buy (Inventory & Ledger)
 ```
 ┌──────────────────────────────────────────┐

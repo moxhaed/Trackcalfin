@@ -7,7 +7,7 @@ import '../data/isar/collections/schemas.dart';
 class Migrations {
   const Migrations._();
 
-  static const current = 4;
+  static const current = 5;
 
   static Future<void> run(Isar isar) async {
     final p = await isar.userProfiles.get(1);
@@ -42,6 +42,27 @@ class Migrations {
       // v4: shop prices for pantry photos are looked up with Google. A stored profile reads
       // the new switch as false, so turn it on.
       if (p.schemaVersion < 4) p.lookUpPrices = true;
+      if (p.schemaVersion < 5) {
+        // v5: lines keep how much was bought (qtyBought) to compare store prices. Receipt and
+        // manual purchases stocked all of it, so it is their qtyBase. Say it buys are left
+        // out: their price may be an estimate, not what the store charged.
+        final units = {for (final i in await isar.ingredients.where().findAll()) i.key: i.baseUnit};
+        final txs = await isar.transactions.filter().not().sourceEqualTo(TxSource.quickText).findAll();
+        final changed = <Transaction>[];
+        for (final t in txs) {
+          var touched = false;
+          for (final l in t.lines) {
+            if (l.ingredientKey != null && l.qtyBase != null && l.qtyBought == null) {
+              l
+                ..qtyBought = l.qtyBase
+                ..unit = units[l.ingredientKey];
+              touched = true;
+            }
+          }
+          if (touched) changed.add(t);
+        }
+        await isar.transactions.putAll(changed);
+      }
       p.schemaVersion = current;
       await isar.userProfiles.put(p);
     });

@@ -14,6 +14,7 @@ import '../../data/isar/collections/schemas.dart';
 import '../../domain/units.dart';
 import '../../platform/photo_capture.dart';
 import '../common/format.dart';
+import '../common/store_prices.dart';
 import '../common/widgets.dart';
 
 /// In review mode ([review] set) the sheet pops `true` to move on to the next item.
@@ -381,6 +382,7 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
                   textAlign: TextAlign.center,
                   style: context.text.bodySmall?.copyWith(color: context.scheme.onSurfaceVariant),
                 ),
+                StorePricesCard(ing: _ing),
               ],
               if (existing) ...[
                 const SizedBox(height: 12),

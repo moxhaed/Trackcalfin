@@ -198,11 +198,16 @@ class LineItem {
   /// Net of discounts, including allocated basket adjustments.
   int totalMinor = 0;
 
-  int? ingredientId;           // set when the line was added to stock
-  String? ingredientKey;
+  int? ingredientId;           // set when the line added to stock (delete takes qtyBase back out)
+  String? ingredientKey;       // every grocery line that maps to a pantry item, stocked or not
   double? qtyBase;             // quantity added to stock, in the ingredient's base unit
+  double? qtyBought;           // quantity on the line, stocked or not: store prices (PriceBook)
+  @Enumerated(EnumType.name)
+  BaseUnit? unit;              // qtyBought's unit; a price in a unit the item no longer uses isn't compared
+  String? product;             // exact product from the receipt ("Barilla Spaghetti n.5, 500 g")
 }
 ```
+`qtyBought` is null on a Say it buy priced only at the usual price: an estimate is no store's price.
 > The name `Transaction` gives you `isar.transactions`. If it ever collides with another package's symbol, rename the Dart class to `LedgerTransaction` and keep the stored collection name with `@Name('Transaction')`.
 
 ## 4.7 Core collection · `Recipe`
@@ -640,7 +645,7 @@ Background isolates (WorkManager, notification actions) call `Isar.getInstance()
 3. `CookSession.portionsRemaining + portionsDiscarded + Σ portions of MealEntries referencing the session == portionsCooked` (while the session is not `undone`).
 4. A `ScanJob` commits **exactly once**. `transactionId != null` ⇔ `status == committed`, and stock is applied inside the same txn that sets it.
 5. `Transaction.totalMinor == Σ lines.totalMinor`.
-6. A receipt line filed with `StockEffect.none` (already counted, or used up) adds money and no stock: its `LineItem` has no `ingredientId` or `qtyBase`, so deleting the transaction takes nothing back out.
+6. A receipt line filed with `StockEffect.none` (already counted, or used up) adds money and no stock: its `LineItem` has no `ingredientId` or `qtyBase`, so deleting the transaction takes nothing back out. It still has `ingredientKey` and `qtyBought`, so its price counts for the store.
 7. Every use case that writes more than one object uses a single `isar.writeTxn`.
 
 ## 4.16 Migrations
@@ -654,3 +659,4 @@ Isar adds new fields with their defaults automatically, and removed fields are i
 | 2 | Ingredients with all-zero macros (onboarding staples, blank manual items) get `nutritionSource = none`, so the AI fills them in. Label-sourced zeros are kept. |
 | 3 | Staples are removed. Former staples become regular items. The ones showing stock were never deducted, so `lastVerifiedAt` is cleared and Quick Check asks about them. Recipe rows stored with role `staple` load as `stock` and are written back that way. A backup import runs the same migrations. |
 | 4 | `lookUpPrices` is set to true. Isar reads a new bool as false on a stored profile, so without this the price lookup would start switched off after an upgrade. |
+| 5 | Lines learn `qtyBought` (from `qtyBase`) and `unit` (the item's base unit), so receipts filed before store prices count in the price book. Say it purchases are skipped: their price may be an estimate. |

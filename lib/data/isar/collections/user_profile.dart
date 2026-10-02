@@ -73,7 +73,7 @@ class UserProfile {
   String themeMode = 'system';
 
   /// For data migrations (see Migrations). New profiles start at the current version.
-  int schemaVersion = 4;
+  int schemaVersion = 5;
 
   int limitFor(SpendCategory c) => monthlyCategoryLimits.where((l) => l.category == c).firstOrNull?.limitMinor ?? 0;
 }

@@ -55,10 +55,25 @@ class LineItem {
   /// Net of discounts, including allocated basket adjustments.
   int totalMinor = 0;
 
-  /// Set when the line was added to stock.
+  /// Set when the line added to stock: deleting the transaction takes [qtyBase] back out.
   int? ingredientId;
+
+  /// The pantry item the line is, set for every grocery line that maps to one (stocked or
+  /// not), so prices can be compared between stores.
   String? ingredientKey;
 
   /// Quantity added to stock, in the ingredient's base unit.
   double? qtyBase;
+
+  /// Quantity on the line, in the ingredient's base unit, whether or not it was stocked.
+  /// Prices per unit are worked out from it; older lines only have [qtyBase].
+  double? qtyBought;
+
+  /// The unit of [qtyBought]: the item's base unit when it was bought. A price in another
+  /// unit (the item was switched from ml to cans since) isn't compared.
+  @Enumerated(EnumType.name)
+  BaseUnit? unit;
+
+  /// The exact product: brand, name, variant and pack size ("Barilla Spaghetti n.5, 500 g").
+  String? product;
 }

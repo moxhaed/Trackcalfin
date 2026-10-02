@@ -509,10 +509,15 @@ class ScanService {
           if (l.rawText.isNotEmpty) IngredientMatcher.learnAlias(ing, l.rawText);
           final id = await isar.ingredients.put(ing);
           touched.add(id);
+          // What it is and how much, stocked or not: the store's price for it (PriceBook).
+          item
+            ..ingredientKey = ing.key
+            ..qtyBought = l.qty
+            ..unit = ing.baseUnit
+            ..product = l.product;
           if (stocked) {
             item
               ..ingredientId = id
-              ..ingredientKey = ing.key
               ..qtyBase = left;
           }
           // What is gone since an old purchase counts as eaten (or thrown away) in those days.

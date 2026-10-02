@@ -401,3 +401,22 @@ on commit          → unit cost = packagePriceMinor / packageQty
                      neither overrides a price paid (§3.3)
 ```
 Every price to confirm holds the photo for review (pantry photos never auto-commit anyway). Merging a line into an existing item in review re-runs `checkPrice` against that item.
+
+**A count that goes back up.** Undo after **I'm out**, or a mis-tap on − in an item's sheet, is a count going back up within 2 minutes of one that found less. `PantryService.setQuantity` then shrinks the uses those counts recorded (newest first) by as much, so a correction isn't eaten food. After 2 minutes more is just more: what went before stays eaten.
+
+## 3.17 PriceBook: where it's cheaper
+
+Every grocery line that maps to a pantry item keeps the item's key, how much was bought (`qtyBought`, in the item's base unit at the time, `unit`) and the exact product, stocked or not. The transaction's merchant is the store. Pure Dart, no AI:
+```
+store(merchant)  = first word, lowercased, articles skipped: "Migros Zürich", "MIGROS" → migros
+unit price       = line total / qtyBought                 // two lines of one item on a receipt add up
+book[item]       = each store's latest unit price for it, last 120 days, cheapest first
+                   (its name: the shortest the store was printed as; lines without a store,
+                    a quantity, or in a unit the item no longer uses are left out)
+tip(receipt, i)  = cheapest OTHER store for i in the last 90 days, when
+                   1 − its unit price / paid unit price ≥ 10%  and  saving on the qty bought ≥ 0.30
+```
+- **Proactive:** after a receipt is filed, by review or on its own, the message adds the biggest saving ("Chicken breast: 26% cheaper at Aldi (and 2 more)") with **See**, which lists each tip: both prices per kg, l or piece, and the saving. A receipt filed in the background puts it in the notification too.
+- **On demand:** an item's sheet lists each store's last price, cheapest first, with how much more the others cost. **Running low** says where an item is cheapest. Say it answers "where is X cheaper?" with a `price_check` ([05 §5.11](05-ai-layer-and-prompts.md#511-say-it-logging-what-the-user-says-prompt-g)), from the same book.
+- A sale price counts like any other: it is what that store charged last. Products differ (store brand or Barilla); the product name is shown so the user can judge.
+

@@ -55,6 +55,9 @@ String minutesLabel(int m) {
 }
 
 /// 1st, 2nd, 3rd, 4th, 11th, 21st.
+/// "1 item", "3 items".
+String itemCount(int n) => n == 1 ? '1 item' : '$n items';
+
 String ordinal(int n) {
   final teen = n % 100 >= 11 && n % 100 <= 13;
   final suffix = teen

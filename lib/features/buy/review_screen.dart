@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../app/messenger.dart';
 import '../../app/providers.dart';
 import '../../app/theme.dart';
 import '../../application/scan_service.dart';
@@ -12,11 +11,13 @@ import '../../core/day_clock.dart';
 import '../../core/enums.dart';
 import '../../core/money.dart';
 import '../../data/isar/collections/schemas.dart';
+import '../../domain/price_book.dart';
 import '../../domain/units.dart';
 import '../../domain/validation/receipt_validator.dart';
 import '../common/category_style.dart';
 import '../common/format.dart';
 import '../common/search_suggestions.dart';
+import '../common/store_prices.dart';
 import '../common/widgets.dart';
 import 'fx_widgets.dart';
 
@@ -111,6 +112,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
       return _setRate();
     }
     final tx = txId == null ? null : await ref.read(isarProvider).transactions.get(txId);
+    final tips = txId == null ? const <PriceTip>[] : await ref.read(priceServiceProvider).tipsFor(txId);
     unawaited(ref.read(nutritionServiceProvider).fillMissing());
     celebrate();
     if (!mounted) return;
@@ -119,10 +121,12 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
         ? ' (${moneyFor(tx!.originalCurrency!).format(tx.originalTotalMinor ?? 0)})'
         : '';
     final when = tx == null ? '' : dayNote(tx.occurredAt, DateTime.now());
-    notifyApp(
+    notifyFiled(
       job.kind == ScanKind.pantry
-          ? 'Pantry updated · $stocked items verified'
-          : '${job.merchant ?? 'Receipt'} ${money.format(tx?.totalMinor ?? _sum)}$original$when · $stocked items stocked',
+          ? 'Pantry updated · ${itemCount(stocked)} verified'
+          : '${job.merchant ?? 'Receipt'} ${money.format(tx?.totalMinor ?? _sum)}$original$when · '
+                '${itemCount(stocked)} stocked',
+      tips,
     );
   }
 

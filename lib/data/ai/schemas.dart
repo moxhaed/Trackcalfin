@@ -162,7 +162,7 @@ class AiSchemas {
         'items': {
           'type': 'object',
           'properties': {
-            'type': _enum(['buy', 'expense', 'eat', 'cook', 'throw_away', 'count']),
+            'type': _enum(['buy', 'expense', 'eat', 'cook', 'throw_away', 'count', 'price_check']),
             'when': _nullable('string'),
             'source': {
               'type': ['string', 'null'],

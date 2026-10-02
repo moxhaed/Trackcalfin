@@ -15,13 +15,22 @@ import '../data/isar/collections/user_profile.dart';
 import 'costing.dart';
 import 'depletion.dart';
 import 'nutrition.dart';
+import 'price_book.dart';
 import 'stock_index.dart';
 import 'units.dart';
 import 'used_up.dart';
 
 /// What one line of the Say it card shows.
 class QuickStep {
-  QuickStep(this.action, this.kind, this.title, {this.detail, this.warning, this.estimatedPrice = false});
+  QuickStep(
+    this.action,
+    this.kind,
+    this.title, {
+    this.detail,
+    this.warning,
+    this.estimatedPrice = false,
+    this.info = false,
+  });
 
   /// Index of the action it came from: unticking it plans again without that action.
   final int action;
@@ -36,6 +45,9 @@ class QuickStep {
   /// A bought item priced at the usual shop price, because the user didn't say what they paid.
   final bool estimatedPrice;
 
+  /// An answer, not something to log (a price check): saves nothing, can't be unticked.
+  final bool info;
+
   /// The same step, saying when it happened (the user said "yesterday", "at lunch").
   QuickStep dated(String when) => QuickStep(
     action,
@@ -44,6 +56,7 @@ class QuickStep {
     detail: detail == null ? when : '$detail · $when',
     warning: warning,
     estimatedPrice: estimatedPrice,
+    info: info,
   );
 }
 
@@ -56,7 +69,9 @@ class QuickLogWorld {
     required List<Recipe> recipes,
     required List<DailyLog> logs,
     required this.profile,
-  }) : stock = StockIndex(ingredients),
+    PriceBook? prices,
+  }) : prices = prices ?? PriceBook.empty,
+       stock = StockIndex(ingredients),
        fridge = {for (final s in fridge) s.id: s},
        recipes = {for (final r in recipes) r.id: r},
        logs = {for (final l in logs) l.dateKey: l};
@@ -66,6 +81,9 @@ class QuickLogWorld {
   final Map<int, Recipe> recipes;
   final Map<int, DailyLog> logs;
   final UserProfile profile;
+
+  /// Store prices from the user's receipts, for price checks.
+  final PriceBook prices;
 
   /// New ingredients and cook sessions get negative stand-in ids until they are saved.
   final created = <Ingredient>[];
@@ -129,7 +147,10 @@ class QuickLogPlanner {
                 ..totalMinor = price
                 ..ingredientId = ing.id
                 ..ingredientKey = ing.key
-                ..qtyBase = qty,
+                ..qtyBase = qty
+                // An estimated price is no store's price: kept out of the price book.
+                ..qtyBought = estimated ? null : qty
+                ..unit = ing.baseUnit,
             ];
           steps.add(
             QuickStep(
@@ -191,10 +212,51 @@ class QuickLogPlanner {
               detail: 'Was ${UnitConverter.format(had, ing.baseUnit)}',
             ),
           );
+        case QuickActionType.priceCheck:
+          steps.add(_priceCheck(i, a, w, money));
       }
       if (a.when != null && steps.length > before) steps.last = steps.last.dated(_when(a.when!, now));
     }
     return steps;
+  }
+
+  /// "Where is it cheaper?", from the user's own receipts: each store's last price, cheapest
+  /// first. Prompt G only names the item.
+  static QuickStep _priceCheck(int i, QuickAction a, QuickLogWorld w, MoneyFormat money) {
+    final ing = a.key == null ? null : w.stock.byKey[a.key];
+    final name = ing?.name ?? a.name ?? a.key!;
+    final prices = ing == null ? const <StorePrice>[] : w.prices.pricesFor(ing.key);
+    if (prices.isEmpty) {
+      return QuickStep(
+        i,
+        a.type,
+        '$name: no store prices yet',
+        detail: 'Scan receipts with it, and each store\'s price is kept to compare.',
+        info: true,
+      );
+    }
+    String at(StorePrice p) => '${p.store} ${PriceBook.perUnit(money, p.unitMinor, ing!.baseUnit)}';
+    if (prices.length == 1) {
+      return QuickStep(
+        i,
+        a.type,
+        '$name: only bought at ${prices.single.store} so far',
+        detail: '${at(prices.single)}. Buy it somewhere else and the two are compared.',
+        info: true,
+      );
+    }
+    final best = prices.first;
+    final next = prices[1];
+    final less = ((1 - best.unitMinor / next.unitMinor) * 100).round();
+    return QuickStep(
+      i,
+      a.type,
+      less > 0
+          ? '$name: cheapest at ${best.store}, $less% less than ${next.store}'
+          : '$name: about the same at ${best.store} and ${next.store}',
+      detail: [for (final p in prices) at(p)].join(' · '),
+      info: true,
+    );
   }
 
   /// What each buy cost, and whether that is only the usual price. A total the user gave

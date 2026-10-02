@@ -2546,12 +2546,24 @@ const LineItemSchema = Schema(
       enumMap: _LineItemlineTypeEnumValueMap,
     ),
     r'name': PropertySchema(id: 4, name: r'name', type: IsarType.string),
-    r'qtyBase': PropertySchema(id: 5, name: r'qtyBase', type: IsarType.double),
-    r'rawText': PropertySchema(id: 6, name: r'rawText', type: IsarType.string),
-    r'totalMinor': PropertySchema(
+    r'product': PropertySchema(id: 5, name: r'product', type: IsarType.string),
+    r'qtyBase': PropertySchema(id: 6, name: r'qtyBase', type: IsarType.double),
+    r'qtyBought': PropertySchema(
       id: 7,
+      name: r'qtyBought',
+      type: IsarType.double,
+    ),
+    r'rawText': PropertySchema(id: 8, name: r'rawText', type: IsarType.string),
+    r'totalMinor': PropertySchema(
+      id: 9,
       name: r'totalMinor',
       type: IsarType.long,
+    ),
+    r'unit': PropertySchema(
+      id: 10,
+      name: r'unit',
+      type: IsarType.string,
+      enumMap: _LineItemunitEnumValueMap,
     ),
   },
 
@@ -2576,7 +2588,19 @@ int _lineItemEstimateSize(
   }
   bytesCount += 3 + object.lineType.name.length * 3;
   bytesCount += 3 + object.name.length * 3;
+  {
+    final value = object.product;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount += 3 + object.rawText.length * 3;
+  {
+    final value = object.unit;
+    if (value != null) {
+      bytesCount += 3 + value.name.length * 3;
+    }
+  }
   return bytesCount;
 }
 
@@ -2591,9 +2615,12 @@ void _lineItemSerialize(
   writer.writeString(offsets[2], object.ingredientKey);
   writer.writeString(offsets[3], object.lineType.name);
   writer.writeString(offsets[4], object.name);
-  writer.writeDouble(offsets[5], object.qtyBase);
-  writer.writeString(offsets[6], object.rawText);
-  writer.writeLong(offsets[7], object.totalMinor);
+  writer.writeString(offsets[5], object.product);
+  writer.writeDouble(offsets[6], object.qtyBase);
+  writer.writeDouble(offsets[7], object.qtyBought);
+  writer.writeString(offsets[8], object.rawText);
+  writer.writeLong(offsets[9], object.totalMinor);
+  writer.writeString(offsets[10], object.unit?.name);
 }
 
 LineItem _lineItemDeserialize(
@@ -2612,9 +2639,12 @@ LineItem _lineItemDeserialize(
       _LineItemlineTypeValueEnumMap[reader.readStringOrNull(offsets[3])] ??
       LineType.product;
   object.name = reader.readString(offsets[4]);
-  object.qtyBase = reader.readDoubleOrNull(offsets[5]);
-  object.rawText = reader.readString(offsets[6]);
-  object.totalMinor = reader.readLong(offsets[7]);
+  object.product = reader.readStringOrNull(offsets[5]);
+  object.qtyBase = reader.readDoubleOrNull(offsets[6]);
+  object.qtyBought = reader.readDoubleOrNull(offsets[7]);
+  object.rawText = reader.readString(offsets[8]);
+  object.totalMinor = reader.readLong(offsets[9]);
+  object.unit = _LineItemunitValueEnumMap[reader.readStringOrNull(offsets[10])];
   return object;
 }
 
@@ -2640,11 +2670,17 @@ P _lineItemDeserializeProp<P>(
     case 4:
       return (reader.readString(offset)) as P;
     case 5:
-      return (reader.readDoubleOrNull(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 6:
-      return (reader.readString(offset)) as P;
+      return (reader.readDoubleOrNull(offset)) as P;
     case 7:
+      return (reader.readDoubleOrNull(offset)) as P;
+    case 8:
+      return (reader.readString(offset)) as P;
+    case 9:
       return (reader.readLong(offset)) as P;
+    case 10:
+      return (_LineItemunitValueEnumMap[reader.readStringOrNull(offset)]) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
   }
@@ -2677,6 +2713,12 @@ const _LineItemlineTypeValueEnumMap = {
   r'adjustment': LineType.adjustment,
   r'deposit': LineType.deposit,
   r'fee': LineType.fee,
+};
+const _LineItemunitEnumValueMap = {r'g': r'g', r'ml': r'ml', r'pc': r'pc'};
+const _LineItemunitValueEnumMap = {
+  r'g': BaseUnit.g,
+  r'ml': BaseUnit.ml,
+  r'pc': BaseUnit.pc,
 };
 
 extension LineItemQueryFilter
@@ -3358,6 +3400,168 @@ extension LineItemQueryFilter
     });
   }
 
+  QueryBuilder<LineItem, LineItem, QAfterFilterCondition> productIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'product'),
+      );
+    });
+  }
+
+  QueryBuilder<LineItem, LineItem, QAfterFilterCondition> productIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'product'),
+      );
+    });
+  }
+
+  QueryBuilder<LineItem, LineItem, QAfterFilterCondition> productEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'product',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<LineItem, LineItem, QAfterFilterCondition> productGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'product',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<LineItem, LineItem, QAfterFilterCondition> productLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'product',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<LineItem, LineItem, QAfterFilterCondition> productBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'product',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<LineItem, LineItem, QAfterFilterCondition> productStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'product',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<LineItem, LineItem, QAfterFilterCondition> productEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'product',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<LineItem, LineItem, QAfterFilterCondition> productContains(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'product',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<LineItem, LineItem, QAfterFilterCondition> productMatches(
+    String pattern, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'product',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<LineItem, LineItem, QAfterFilterCondition> productIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'product', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<LineItem, LineItem, QAfterFilterCondition> productIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'product', value: ''),
+      );
+    });
+  }
+
   QueryBuilder<LineItem, LineItem, QAfterFilterCondition> qtyBaseIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
@@ -3437,6 +3641,96 @@ extension LineItemQueryFilter
       return query.addFilterCondition(
         FilterCondition.between(
           property: r'qtyBase',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<LineItem, LineItem, QAfterFilterCondition> qtyBoughtIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'qtyBought'),
+      );
+    });
+  }
+
+  QueryBuilder<LineItem, LineItem, QAfterFilterCondition> qtyBoughtIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'qtyBought'),
+      );
+    });
+  }
+
+  QueryBuilder<LineItem, LineItem, QAfterFilterCondition> qtyBoughtEqualTo(
+    double? value, {
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'qtyBought',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<LineItem, LineItem, QAfterFilterCondition> qtyBoughtGreaterThan(
+    double? value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'qtyBought',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<LineItem, LineItem, QAfterFilterCondition> qtyBoughtLessThan(
+    double? value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'qtyBought',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<LineItem, LineItem, QAfterFilterCondition> qtyBoughtBetween(
+    double? lower,
+    double? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'qtyBought',
           lower: lower,
           includeLower: includeLower,
           upper: upper,
@@ -3649,6 +3943,168 @@ extension LineItemQueryFilter
           upper: upper,
           includeUpper: includeUpper,
         ),
+      );
+    });
+  }
+
+  QueryBuilder<LineItem, LineItem, QAfterFilterCondition> unitIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'unit'),
+      );
+    });
+  }
+
+  QueryBuilder<LineItem, LineItem, QAfterFilterCondition> unitIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'unit'),
+      );
+    });
+  }
+
+  QueryBuilder<LineItem, LineItem, QAfterFilterCondition> unitEqualTo(
+    BaseUnit? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'unit',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<LineItem, LineItem, QAfterFilterCondition> unitGreaterThan(
+    BaseUnit? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'unit',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<LineItem, LineItem, QAfterFilterCondition> unitLessThan(
+    BaseUnit? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'unit',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<LineItem, LineItem, QAfterFilterCondition> unitBetween(
+    BaseUnit? lower,
+    BaseUnit? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'unit',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<LineItem, LineItem, QAfterFilterCondition> unitStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'unit',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<LineItem, LineItem, QAfterFilterCondition> unitEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'unit',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<LineItem, LineItem, QAfterFilterCondition> unitContains(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'unit',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<LineItem, LineItem, QAfterFilterCondition> unitMatches(
+    String pattern, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'unit',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<LineItem, LineItem, QAfterFilterCondition> unitIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'unit', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<LineItem, LineItem, QAfterFilterCondition> unitIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'unit', value: ''),
       );
     });
   }

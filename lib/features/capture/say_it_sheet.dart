@@ -49,6 +49,7 @@ class _SayItSheetState extends ConsumerState<SayItSheet> {
     'Bought a Coke Zero for 1.29 and drank it',
     'Ate two portions of the chili',
     'Döner for 7.50 at lunch',
+    'Where is chicken cheaper?',
   ];
 
   @override
@@ -173,11 +174,13 @@ class _SayItSheetState extends ConsumerState<SayItSheet> {
     unawaited(ref.read(metricsServiceProvider).record('say_it', _timer.elapsed));
     unawaited(ref.read(nutritionServiceProvider).fillMissing());
     nav.pop();
-    final n = r.steps.length;
+    // Price checks were answers on the card, not things logged.
+    final logged = r.steps.where((s) => !s.info).toList();
+    final n = logged.length;
     showUndoOn(
       messenger,
-      n == 1 ? r.steps.single.title : 'Logged $n things',
-      detail: n == 1 ? r.steps.single.detail : r.steps.map((s) => s.title).take(3).join(' · '),
+      n == 1 ? logged.single.title : 'Logged $n things',
+      detail: n == 1 ? logged.single.detail : logged.map((s) => s.title).take(3).join(' · '),
       onUndo: () => service.undo(r),
     );
   }
@@ -208,7 +211,11 @@ class _SayItSheetState extends ConsumerState<SayItSheet> {
       children: [
         Text('Say it', style: context.text.titleLarge),
         const SizedBox(height: 2),
-        Text('What did you buy, eat, cook or pay for? Nothing is saved until you check it.', style: muted),
+        Text(
+          'What did you buy, eat, cook or pay for? Or ask where something is cheaper. '
+          'Nothing is saved until you check it.',
+          style: muted,
+        ),
         const SizedBox(height: 12),
         TextField(
           controller: _text,
@@ -263,12 +270,17 @@ class _SayItSheetState extends ConsumerState<SayItSheet> {
   Widget _review(BuildContext context, QuickLogDraft draft) {
     final muted = context.text.bodySmall?.copyWith(color: context.scheme.onSurfaceVariant);
     final current = {for (final s in _now) s.action: s};
-    final included = _all.where((s) => !_skip.contains(s.action)).length;
+    final included = _all.where((s) => !s.info && !_skip.contains(s.action)).length;
+    // Only answers (where something is cheaper): nothing to log, the card just closes.
+    final onlyAnswers = _all.isNotEmpty && _all.every((s) => s.info);
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(_all.isEmpty ? 'One question' : 'Here is what I got', style: context.text.titleLarge),
+        Text(
+          _all.isEmpty ? 'One question' : (onlyAnswers ? 'Here is what I found' : 'Here is what I got'),
+          style: context.text.titleLarge,
+        ),
         const SizedBox(height: 2),
         Text('“${draft.said}”', style: muted, maxLines: 3, overflow: TextOverflow.ellipsis),
         const SizedBox(height: 10),
@@ -318,11 +330,18 @@ class _SayItSheetState extends ConsumerState<SayItSheet> {
               label: Text(draft.question != null ? 'Answer' : 'Change'),
             ),
             const Spacer(),
-            FilledButton.icon(
-              onPressed: _saving || included == 0 ? null : _log,
-              icon: const Icon(Icons.check),
-              label: Text(included <= 1 ? 'Log it' : 'Log $included things'),
-            ),
+            if (onlyAnswers)
+              FilledButton.icon(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.check),
+                label: const Text('Done'),
+              )
+            else
+              FilledButton.icon(
+                onPressed: _saving || included == 0 ? null : _log,
+                icon: const Icon(Icons.check),
+                label: Text(included <= 1 ? 'Log it' : 'Log $included things'),
+              ),
           ],
         ),
       ],
@@ -377,6 +396,7 @@ class _StepTile extends StatelessWidget {
     QuickActionType.cook => Icons.soup_kitchen_outlined,
     QuickActionType.throwAway => Icons.delete_outline,
     QuickActionType.count => Icons.inventory_2_outlined,
+    QuickActionType.priceCheck => Icons.storefront_outlined,
   };
 
   @override
@@ -389,7 +409,11 @@ class _StepTile extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Checkbox(value: included, onChanged: (v) => onToggle(v ?? true)),
+            // An answer has nothing to leave out.
+            if (step.info)
+              const SizedBox(width: 12)
+            else
+              Checkbox(value: included, onChanged: (v) => onToggle(v ?? true)),
             Padding(
               padding: const EdgeInsets.only(top: 12, right: 10),
               child: Icon(_icon(step.kind), size: 20, color: context.scheme.primary),

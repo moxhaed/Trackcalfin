@@ -10,7 +10,7 @@ The master prompts are **runtime assets**. The app loads them verbatim as the `s
 | **D** | [`assets/prompts/nutrition_estimate.v1.md`](../assets/prompts/nutrition_estimate.v1.md) | Ingredients with unknown macros → typical values per 100 g, density, piece weight |
 | **E** | [`assets/prompts/nutrition_label.v1.md`](../assets/prompts/nutrition_label.v1.md) | Photo of a nutrition facts panel → the printed values, unconverted |
 | **F** | [`assets/prompts/price_lookup.v1.md`](../assets/prompts/price_lookup.v1.md) | Products from a pantry photo → their shop price, searched with Google (one pack, its size, the store and the site) |
-| **G** | [`assets/prompts/quick_log.v1.md`](../assets/prompts/quick_log.v1.md) | What the user says they did ("bought a Coke Zero for 1.29 and drank it") + pantry, fridge and recipes → actions to log |
+| **G** | [`assets/prompts/quick_log.v2.md`](../assets/prompts/quick_log.v2.md) | What the user says they did ("bought a Coke Zero for 1.29 and drank it") or asks ("where is it cheaper?") + pantry, fridge and recipes → actions to log, price checks to answer |
 
 Those files are the single source of truth. This document covers how they're called, fed, and verified.
 
@@ -242,9 +242,9 @@ Cost: one lookup is one model call plus the searches the model runs, usually one
 
 ## 5.11 Say it: logging what the user says (Prompt G)
 
-The ⊕ menu's **Say it** (also a home-screen shortcut) takes one sentence, spoken (on-device speech to text, the same as Ask) or typed, and logs everything in it: "bought a Coke Zero for 1.29 and drank it", "two portions of the chili and a döner for 7.50 at lunch", "cooked the bean pasta for three, ate one", "we're out of milk".
+The ⊕ menu's **Say it** (also a home-screen shortcut) takes one sentence, spoken (on-device speech to text, the same as Ask) or typed, and logs everything in it: "bought a Coke Zero for 1.29 and drank it", "two portions of the chili and a döner for 7.50 at lunch", "cooked the bean pasta for three, ate one", "we're out of milk". It also answers "where is Coke Zero cheapest?" from the user's own receipts.
 
-**Call.** `QuickLogService.interpret` sends [`quick_log.v1`](../assets/prompts/quick_log.v1.md) the sentence (`said`), `now` and the weekday, the currency, and what it may refer to: every pantry item (key, name, unit, on hand), the fridge (batch id, title, portions left, day cooked) and the saved recipes (id, title). JSON mode with `AiSchemas.quickLog`, `thinkingLevel: low`, 4 096 output tokens, 30 s timeout, one call per use. The input is about 20 tokens per pantry item, so ~2–4k tokens with a full pantry.
+**Call.** `QuickLogService.interpret` sends [`quick_log.v2`](../assets/prompts/quick_log.v2.md) the sentence (`said`), `now` and the weekday, the currency, and what it may refer to: every pantry item (key, name, unit, on hand), the fridge (batch id, title, portions left, day cooked) and the saved recipes (id, title). JSON mode with `AiSchemas.quickLog`, `thinkingLevel: low`, 4 096 output tokens, 30 s timeout, one call per use. The input is about 20 tokens per pantry item, so ~2–4k tokens with a full pantry.
 
 **Output.** A list of actions, each with a `type`, plus `total_paid_minor` (one amount for several items) and `question` (one short question when a detail is missing; then that action is left out). Every action has the same fields, null where they don't apply:
 
@@ -257,11 +257,14 @@ The ⊕ menu's **Say it** (also a home-screen shortcut) takes one sentence, spok
 | `eat` · out | `name`, `nutrition` (the model's estimate of the whole thing eaten) | a meal with cost 0: its money is an eating-out expense, and food eaten counts groceries only |
 | `cook` | `recipe_id`, `portions`, `ate_portions` | the same as **I cooked this** (depletion, fridge batch, recipe stats); eats `ate_portions`, or the first portion when the user didn't say and **Log the first portion** is on |
 | `throw_away` | fridge `batch_id` + `portions`, or pantry `key` + `qty` (null = all) | discards portions, or takes stock out |
-| `count` | `key`, `qty` + `unit` | sets what is on hand, as a count (`ExpiryEstimator.onCount`) |
+| `count` | `key`, `qty` + `unit` | sets what is on hand, as a count (`ExpiryEstimator.onCount`); what went counts as eaten (`FoodUse`) |
+| `price_check` | pantry `key` (null for an item not in the pantry), `name` | nothing is saved: the card answers from `PriceBook` (each store's last price per unit, cheapest first). The model never gives a price |
 
 **Checks** (`QuickLog.parse`, a failure gets the repair round): keys, batch ids and recipe ids exist (a key bought earlier in the same message counts); quantities are in the item's own unit; a new key comes with a full `new_ingredient`; a buy without a price has an estimate (no amount paid is ever invented); money is 1 to 100 000 minor units; `when` is `YYYY-MM-DDTHH:MM`, not after now and at most 14 days back; no actions means there must be a question.
 
 **Dart works out every number** (`QuickLogPlanner`, pure). It runs the actions in order on plain copies of the data, so a buy comes before the eat that follows it, and returns one step per action for the card: "Bought Cola Zero · 1 pc · €1.29 · Groceries", "Drank Cola Zero · 1 pc · 1 kcal · €0.84". A total for several items is split by their usual prices (the last item takes the rounding, so the lines add up). A buy priced only at the usual price is marked "~" and offers **Enter the price paid**. Eating more than is left logs what was there and says so. A batch or item that disappeared since is left out with a note.
+
+A price check is an answer, not something to log: its line has no tick box ("Chicken breast: cheapest at Aldi, 4% less than Lidl" · "Aldi €9.58/kg · Lidl €9.98/kg · Rewe €13.73/kg"), and a card with only answers has **Done** instead of **Log it**. v2 added `price_check` to v1; nothing else changed.
 
 **Confirm, then one transaction, then Undo.** Nothing is saved until **Log it**. Unticking a step plans again without it. `QuickLogService.apply` plans once more on the database inside one write transaction and saves the result. New ingredients and cook sessions carry negative stand-in ids until then, and are swapped for real ones in purchases, cook deltas and meals. It also keeps copies of everything it changed. **Undo** puts those copies back and deletes what was created, in one transaction. Deleting a pantry meal later from the day's log puts its stock back too.
 

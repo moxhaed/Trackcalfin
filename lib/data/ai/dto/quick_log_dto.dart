@@ -4,7 +4,17 @@ import '../json_reader.dart';
 import 'enum_codec.dart';
 import 'receipt_dto.dart';
 
-enum QuickActionType { buy, expense, eat, cook, throwAway, count }
+enum QuickActionType {
+  buy,
+  expense,
+  eat,
+  cook,
+  throwAway,
+  count,
+
+  /// "Where is X cheaper?": answered from the user's receipts (PriceBook), nothing is saved.
+  priceCheck,
+}
 
 /// Where eaten or thrown-away food came from.
 enum FoodSource { fridge, pantry, out }
@@ -90,6 +100,7 @@ class QuickLog {
     'cook': QuickActionType.cook,
     'throw_away': QuickActionType.throwAway,
     'count': QuickActionType.count,
+    'price_check': QuickActionType.priceCheck,
   };
   static const _sources = {'fridge': FoodSource.fridge, 'pantry': FoodSource.pantry, 'out': FoodSource.out};
   static final _expense = {
@@ -246,6 +257,15 @@ class QuickLog {
           final k = key();
           final (qty, unit) = amount(k, required: true);
           out.add(QuickAction(type: type, when: when, key: k, qty: qty, unit: unit));
+        case QuickActionType.priceCheck:
+          // Null for an item the pantry doesn't have: the app says it has no prices for it.
+          final k = j.str(a, 'key', path, nullable: true);
+          if (k != null && !units.containsKey(k)) {
+            j.error('$path.key', "'$k' is not in the pantry; copy pantry keys exactly, or use null");
+          }
+          final name = _text(j, a, 'name', path);
+          if (k == null && name == null) j.error('$path.name', 'is required when key is null');
+          out.add(QuickAction(type: type, key: k, name: name));
       }
     }
     final total = j.integer(m, 'total_paid_minor', r'$', nullable: true);

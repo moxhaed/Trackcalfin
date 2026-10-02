@@ -6,6 +6,7 @@ import 'package:trackcalfin/core/enums.dart';
 import 'package:trackcalfin/core/money.dart';
 import 'package:trackcalfin/data/ai/dto/quick_log_dto.dart';
 import 'package:trackcalfin/data/isar/collections/schemas.dart';
+import 'package:trackcalfin/domain/price_book.dart';
 import 'package:trackcalfin/domain/quick_log.dart';
 
 import '../support/fake_gemini.dart';
@@ -203,6 +204,59 @@ void main() {
     expect((chili.portionsRemaining, chili.portionsDiscarded, chili.status), (0, 3, CookStatus.discarded));
     expect(beans.qtyOnHand, 0);
     expect(beans.lastCountedAt, now);
+  });
+
+  test('"where is coke zero cheapest?": answered from the receipts, nothing changes', () {
+    Transaction shop(String store, int days, int minor) => Transaction()
+      ..merchant = store
+      ..occurredAt = now.subtract(Duration(days: days))
+      ..lines = [
+        LineItem()
+          ..ingredientKey = 'cola_zero'
+          ..qtyBought = 6
+          ..unit = BaseUnit.pc
+          ..totalMinor = minor,
+      ];
+    final w = QuickLogWorld(
+      ingredients: [cola, beans],
+      fridge: [chili],
+      recipes: [pasta],
+      logs: const [],
+      profile: UserProfile(),
+      prices: PriceBook.from([shop('Rewe', 3, 534), shop('Lidl', 10, 474)], now: now),
+    );
+    final log = read(
+      out([
+        action('price_check', {'key': 'cola_zero', 'name': 'Coke Zero'}),
+        action('price_check', {'key': 'kidney_beans', 'name': 'beans'}),
+        action('price_check', {'name': 'Oat milk'}),
+      ]),
+    );
+    final steps = plan(log, w);
+    expect(
+      [for (final s in steps) (s.title, s.info)],
+      [
+        ('cola zero: cheapest at Lidl, 11% less than Rewe', true),
+        ('kidney beans: no store prices yet', true),
+        ('Oat milk: no store prices yet', true),
+      ],
+    );
+    expect(steps.first.detail, 'Lidl €0.79 each · Rewe €0.89 each');
+    expect(w.changedIngredients, isEmpty);
+    expect(w.transactions, isEmpty);
+
+    final r = QuickLog.parse(
+      jsonDecode(
+            jsonEncode(
+              out([
+                action('price_check', {'key': 'oat_milk'}),
+              ]),
+            ),
+          )
+          as Map<String, dynamic>,
+      ctx: ctx(),
+    );
+    expect(r.errors.single, contains("'oat_milk' is not in the pantry"));
   });
 
   test('skipping an action leaves it out, and a target that is gone is left out with a note', () {

@@ -231,6 +231,63 @@ void main() {
     expect(await isar.transactions.filter().noteEqualTo('Haircut').findFirst(), isNull);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
+  testWidgets('say it answers "where is chicken cheaper?" from the receipts; nothing to log', (tester) async {
+    final fake = FakeGemini()
+      ..replyJson({
+        'schema_version': 1,
+        'actions': [
+          {
+            'type': 'price_check',
+            'when': null,
+            'source': null,
+            'key': 'chicken_breast',
+            'name': 'chicken',
+            'qty': null,
+            'unit': null,
+            'batch_id': null,
+            'recipe_id': null,
+            'portions': null,
+            'ate_portions': null,
+            'paid_minor': null,
+            'est_price_minor': null,
+            'category': null,
+            'merchant': null,
+            'nutrition': null,
+            'new_ingredient': null,
+          },
+        ],
+        'total_paid_minor': null,
+        'question': null,
+      });
+    await pumpApp(
+      tester,
+      overrides: [
+        aiGatewayProvider.overrideWith(
+          (ref) => AiGateway(
+            isar: isar,
+            secrets: MemorySecretStore('test-key'),
+            prompts: PromptRepository(loadPromptAsset),
+            httpClient: fake.client,
+          ),
+        ),
+      ],
+    );
+    await tester.tap(find.byTooltip('Log something'));
+    await settle(tester);
+    await tester.tap(find.text('Say it'));
+    await settle(tester);
+    await tester.enterText(find.byType(TextField), 'where is chicken cheaper?');
+    await tester.tap(find.text('Next'));
+    await settle(tester);
+    expect(find.text('Here is what I found'), findsOneWidget);
+    expect(find.text('Chicken breast: cheapest at Aldi, 4% less than Lidl'), findsOneWidget);
+    expect(find.text('Aldi €9.58/kg · Lidl €9.98/kg · Rewe €13.73/kg'), findsOneWidget);
+    expect(find.byType(Checkbox), findsNothing, reason: 'an answer has nothing to leave out');
+    await tester.tap(find.text('Done'));
+    await settle(tester);
+    expect(find.text('Here is what I found'), findsNothing);
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
   testWidgets('pantry macros: unknown banner, confirm and edit an item', (tester) async {
     await pumpApp(tester, initial: '/buy');
     final salt = (await isar.ingredients.getByKey('salt'))!..nutritionSource = DataSource.none;
@@ -429,6 +486,55 @@ void main() {
     expect((await isar.ingredients.getByKey('oat_drink'))!.qtyOnHand, 250);
     final use = (await isar.foodUses.filter().ingredientKeyEqualTo('oat_drink').findFirst())!;
     expect((use.qtyBase, use.costMinor, use.kind), (750.0, (199 * 0.75).round(), UseKind.eaten));
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  testWidgets('a receipt from a pricier store says where it was cheaper, and "See" lists why', (tester) async {
+    await DemoSeed.run(isar);
+    final chicken = (await isar.ingredients.getByKey('chicken_breast'))!;
+    final id = await isar.writeTxn(
+      () => isar.scanJobs.put(
+        ScanJob()
+          ..status = ScanStatus.needsReview
+          ..kind = ScanKind.receipt
+          ..merchant = 'Rewe City'
+          ..purchasedAt = DateTime.now().subtract(const Duration(hours: 1))
+          ..receiptTotalMinor = 649
+          ..currency = 'EUR'
+          ..lines = [
+            DraftLine()
+              ..rawText = 'HAEHNCHENBRUST 6,49'
+              ..name = 'Chicken breast'
+              ..totalMinor = 649
+              ..ingredientKey = 'chicken_breast'
+              ..matchedIngredientId = chicken.id
+              ..isNewIngredient = false
+              ..qty = 500
+              ..unit = BaseUnit.g
+              ..qtySource = QtySource.printed
+              ..product = 'Rewe Beste Wahl chicken breast fillet, 500 g',
+          ],
+      ),
+    );
+    await pumpApp(tester, initial: '/inbox/$id');
+    await tester.tap(find.text('Looks good'));
+    await settle(tester);
+    // The demo bought it at Aldi for 4.79 five weeks ago, and at Lidl for 4.99.
+    expect(find.textContaining('Chicken breast: 26% cheaper at Aldi.'), findsOneWidget);
+    await tester.tap(find.text('See'));
+    await settle(tester);
+    expect(find.text('Cheaper elsewhere'), findsOneWidget);
+    expect(find.text('saves €1.70'), findsOneWidget);
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  testWidgets("an item's sheet lists each store's last price, cheapest first", (tester) async {
+    await pumpApp(tester, initial: '/buy');
+    await tester.tap(find.text('Chicken breast').first);
+    await settle(tester);
+    expect(find.text("WHERE IT'S CHEAPEST"), findsOneWidget);
+    expect(find.text('€9.58/kg'), findsOneWidget, reason: 'Aldi');
+    expect(find.text('cheapest'), findsOneWidget);
+    expect(find.text('+4%'), findsOneWidget, reason: 'Lidl, at 9.98');
+    expect(find.text('+43%'), findsOneWidget, reason: 'Rewe, at 13.73');
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   testWidgets('an old receipt shows its date and a possible duplicate', (tester) async {

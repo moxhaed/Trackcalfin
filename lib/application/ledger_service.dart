@@ -89,7 +89,9 @@ class LedgerService {
             ..totalMinor = totalMinor
             ..ingredientId = ing.id
             ..ingredientKey = ing.key
-            ..qtyBase = qty,
+            ..qtyBase = qty
+            ..qtyBought = qty
+            ..unit = ing.baseUnit,
         ];
       return isar.transactions.put(tx);
     });

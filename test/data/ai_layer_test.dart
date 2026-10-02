@@ -65,15 +65,15 @@ void main() {
       expect(r.value!.basis, LabelBasis.per100g);
       expect(r.value!.energyKcal, 348);
     });
-    test('Prompt G examples: buy and drink, fridge and eating out, a split total, a question', () {
+    test('Prompt G examples: buy and drink, fridge and eating out, a split total, prices, a question', () {
       final ctx = QuickLogContext(
         now: DateTime(2026, 10, 2, 18, 40),
         pantry: const {'cola_zero': BaseUnit.pc, 'whole_milk': BaseUnit.ml},
         fridge: const {12: 3},
         recipes: const {4},
       );
-      final examples = promptExamples('quick_log.v1.md');
-      expect(examples, hasLength(4));
+      final examples = promptExamples('quick_log.v2.md');
+      expect(examples, hasLength(5));
       final parsed = [for (final e in examples) QuickLog.parse(jsonDecode(e), ctx: ctx)];
       for (final r in parsed) {
         expect(r.ok, isTrue, reason: r.errors.join('\n'));
@@ -83,8 +83,12 @@ void main() {
       expect(parsed[1].value!.actions[2].nutrition!.kcal, 700);
       expect(parsed[2].value!.totalPaidMinor, 950);
       expect(parsed[2].value!.actions[0].newIngredient!.gramsPerPiece, 260);
-      expect(parsed[3].value!.actions, isEmpty);
-      expect(parsed[3].value!.question, startsWith('Which chili'));
+      expect(
+        [for (final a in parsed[3].value!.actions) (a.type, a.key, a.name)],
+        [(QuickActionType.priceCheck, 'cola_zero', 'Coke Zero'), (QuickActionType.priceCheck, null, 'Oat milk')],
+      );
+      expect(parsed[4].value!.actions, isEmpty);
+      expect(parsed[4].value!.question, startsWith('Which chili'));
     });
     test('Prompt F example', () {
       final r = PriceLookup.parse(
