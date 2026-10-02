@@ -48,7 +48,12 @@ class ProfileService {
     });
   }
 
-  static DayClock clockFor(UserProfile p) => DayClock(rolloverHour: p.dayRolloverHour, weekStartsOn: p.weekStartsOn);
+  /// A stored profile from before the month start day reads it as 0: calendar months.
+  static DayClock clockFor(UserProfile p) => DayClock(
+    rolloverHour: p.dayRolloverHour,
+    weekStartsOn: p.weekStartsOn,
+    monthStartDay: p.monthStartDay.clamp(1, 31),
+  );
 
   static MoneyFormat moneyFor(UserProfile p) => MoneyFormat(currency: p.currency, digits: p.currencyMinorDigits);
 }

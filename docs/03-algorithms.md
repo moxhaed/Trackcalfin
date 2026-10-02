@@ -17,10 +17,13 @@ int dateKey(DateTime t, {int rolloverHour = 4}) {
   return d.year * 10000 + d.month * 100 + d.day;
 }
 DateTime weekStart(DateTime now, {int weekStartsOn = DateTime.monday}); // 00:00 + rollover
-DateTime monthStart(DateTime now);
+DateTime monthStart(DateTime now);       // budget month: starts on profile.monthStartDay
+DateTime nextMonthStart(DateTime now);
 double elapsedFraction(DateTime start, DateTime end, DateTime now); // 0..1
 ```
 Test cases: 23:59 and 03:59 on the next day share a key, while 04:00 starts a new one. Weeks that span a month boundary. DST transition days.
+
+**Budget months.** `UserProfile.monthStartDay` (1–31, asked in onboarding and in Settings) is the day money resets, like payday. With 17, the month of 2 Oct runs from 17 Sep to 17 Oct (at the rollover hour). A month without that day starts on its last day: with 31, February's month starts on the 28th. Everything that says "month" follows it: the food budget and its pace, other-spend limits, the projection and the Vibe Check. The dashboard says "Since Thu 17 Sep" when a month isn't a calendar month. A stored profile reads the new field as 0, which counts as 1 (calendar months).
 
 ## 3.2 UnitConverter
 

@@ -302,9 +302,13 @@ class _FoodCard extends ConsumerWidget {
       );
     }
 
-    final projection = f.collecting
-        ? (eaten ? 'Projection after 7 days of logged meals' : 'Projection after 7 days of data')
-        : 'Projected month: ${money.compact(f.projectedMonth ?? 0)} (trailing week × 4.33)';
+    final projection = [
+      // A month from payday to payday says when it began.
+      if (s.customMonth) 'Since ${DateFormat('EEE d MMM').format(s.monthStart)}',
+      f.collecting
+          ? (eaten ? 'Projection after 7 days of logged meals' : 'Projection after 7 days of data')
+          : 'Projected month: ${money.compact(f.projectedMonth ?? 0)} (trailing week × 4.33)',
+    ].join(' · ');
     return SectionCard(
       title: 'Food',
       trailing: SegmentedButton<FoodBasis>(
@@ -372,7 +376,9 @@ class _OtherSpendCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final rows = state.nonFood.where((c) => c.limitMinor > 0 || c.spentMinor > 0).toList();
     return SectionCard(
-      title: 'Other spend · month',
+      title: state.customMonth
+          ? 'Other spend · since ${DateFormat('d MMM').format(state.monthStart)}'
+          : 'Other spend · month',
       child: rows.isEmpty
           ? Text('No other spending this month.', style: context.text.bodyMedium)
           : Column(

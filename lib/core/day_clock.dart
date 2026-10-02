@@ -1,9 +1,13 @@
 /// Logical days with a rollover hour: a 00:30 snack belongs to the previous day.
 class DayClock {
-  const DayClock({this.rolloverHour = 4, this.weekStartsOn = DateTime.monday});
+  const DayClock({this.rolloverHour = 4, this.weekStartsOn = DateTime.monday, this.monthStartDay = 1});
 
   final int rolloverHour;
   final int weekStartsOn;
+
+  /// The day a budget month starts on, like payday: 1 = calendar months. A month without
+  /// that day (31 in April) starts on its last day.
+  final int monthStartDay;
 
   DateTime _logicalDate(DateTime t) {
     final shifted = t.subtract(Duration(hours: rolloverHour));
@@ -35,15 +39,26 @@ class DayClock {
     return DateTime(d.year, d.month, d.day - back, rolloverHour);
   }
 
+  /// The budget month's start in calendar month [month] of [year] (month 0 is last December).
+  DateTime _startIn(int year, int month) {
+    final last = DateTime(year, month + 1, 0).day;
+    return DateTime(year, month, monthStartDay > last ? last : monthStartDay, rolloverHour);
+  }
+
+  /// Start of the budget month containing [now].
   DateTime monthStart(DateTime now) {
     final d = _logicalDate(now);
-    return DateTime(d.year, d.month, 1, rolloverHour);
+    final here = _startIn(d.year, d.month);
+    return d.day >= here.day ? here : _startIn(d.year, d.month - 1);
   }
 
   DateTime nextMonthStart(DateTime now) {
-    final d = _logicalDate(now);
-    return DateTime(d.year, d.month + 1, 1, rolloverHour);
+    final s = monthStart(now);
+    return _startIn(s.year, s.month + 1);
   }
+
+  /// Start of the budget month before the one starting at [start].
+  DateTime previousMonthStart(DateTime start) => monthStart(DateTime(start.year, start.month, start.day - 1, 12));
 
   /// Adds whole calendar days, keeping the wall-clock time (DST-safe).
   static DateTime addDays(DateTime t, int days) => DateTime(t.year, t.month, t.day + days, t.hour, t.minute, t.second);

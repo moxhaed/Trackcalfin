@@ -181,7 +181,7 @@ Three tabs plus a **global capture button (⊕)** beside the bottom bar. ⊕ ope
 ## 1.9 Onboarding (cold start in about 3 minutes)
 
 1. **API key**: paste once, stored in secure storage.
-2. **Goals**: three sliders with sensible defaults (monthly food budget, kcal, protein) and optional per-category limits.
+2. **Goals**: three sliders with sensible defaults (monthly food budget, kcal, protein), the day the month starts on (payday; the 1st by default) and optional per-category limits.
 3. **Kitchen sweep**: photos of fridge, freezer, cupboard, and spices and oils → Prompt A in pantry mode → one review → 20–40 items seeded, each with the exact product and its usual shop price. Recent receipts can be scanned too: they're filed on their printed dates, and an item that shows up on both a receipt and a photo is asked about ("Same one or extra?", "Already counted?") instead of being counted twice. Endowed progress: "Your pantry knows 34 items." There is no staples list: nothing is assumed to be in the kitchen, so salt and oil are counted, deducted and costed like everything else.
 4. **Rhythm**: daily-pick time, meal reminder times, default portions.
 5. **Instant value**: today's pick is generated right away, so the first session ends with a costed, macro-counted recipe built from your own food.

@@ -500,6 +500,7 @@ class UserProfile {
   String outputLanguage = 'en';
   int weekStartsOn = DateTime.monday;
   int dayRolloverHour = 4;
+  int monthStartDay = 1;               // budget months start on this day (payday); 0 (stored before) = 1
 
   // Goals (Vibe Check)
   int monthlyFoodBudgetMinor = 30000;

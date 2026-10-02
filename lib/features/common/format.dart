@@ -53,3 +53,20 @@ String minutesLabel(int m) {
   final r = m % 60;
   return r == 0 ? '$h h' : '$h h $r';
 }
+
+/// 1st, 2nd, 3rd, 4th, 11th, 21st.
+String ordinal(int n) {
+  final teen = n % 100 >= 11 && n % 100 <= 13;
+  final suffix = teen
+      ? 'th'
+      : switch (n % 10) {
+          1 => 'st',
+          2 => 'nd',
+          3 => 'rd',
+          _ => 'th',
+        };
+  return '$n$suffix';
+}
+
+/// "the 1st (calendar months)", "the 17th".
+String monthStartLabel(int day) => day <= 1 ? 'the 1st (calendar months)' : 'the ${ordinal(day)}';

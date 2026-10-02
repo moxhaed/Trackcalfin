@@ -29,6 +29,21 @@ void main() {
       expect(f, closeTo(0.5, 0.01));
     });
 
+    test('a month that starts on payday: the 17th, and the 31st in short months', () {
+      const payday = DayClock(monthStartDay: 17);
+      expect(payday.monthStart(DateTime(2026, 10, 2, 12)), DateTime(2026, 9, 17, 4));
+      expect(payday.nextMonthStart(DateTime(2026, 10, 2, 12)), DateTime(2026, 10, 17, 4));
+      expect(payday.monthStart(DateTime(2026, 10, 17, 9)), DateTime(2026, 10, 17, 4));
+      expect(payday.monthStart(DateTime(2026, 10, 17, 3)), DateTime(2026, 9, 17, 4), reason: 'before the rollover');
+      expect(payday.monthStart(DateTime(2026, 1, 5, 12)), DateTime(2025, 12, 17, 4), reason: 'across the year');
+      expect(payday.previousMonthStart(DateTime(2026, 9, 17, 4)), DateTime(2026, 8, 17, 4));
+
+      const last = DayClock(monthStartDay: 31);
+      expect(last.monthStart(DateTime(2026, 3, 10, 12)), DateTime(2026, 2, 28, 4), reason: 'February has no 31st');
+      expect(last.nextMonthStart(DateTime(2026, 3, 10, 12)), DateTime(2026, 3, 31, 4));
+      expect(last.nextMonthStart(DateTime(2026, 4, 2, 12)), DateTime(2026, 4, 30, 4));
+    });
+
     test('daysBetween is calendar based across DST', () {
       expect(DayClock.daysBetween(DateTime(2026, 3, 28, 12), DateTime(2026, 3, 30, 1)), 2);
       expect(DayClock.daysBetween(DateTime(2026, 10, 24), DateTime(2026, 10, 26)), 2);

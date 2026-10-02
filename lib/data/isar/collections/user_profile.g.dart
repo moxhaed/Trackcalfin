@@ -134,55 +134,60 @@ const UserProfileSchema = CollectionSchema(
       name: r'mealsPerDay',
       type: IsarType.long,
     ),
-    r'monthlyCategoryLimits': PropertySchema(
+    r'monthStartDay': PropertySchema(
       id: 24,
+      name: r'monthStartDay',
+      type: IsarType.long,
+    ),
+    r'monthlyCategoryLimits': PropertySchema(
+      id: 25,
       name: r'monthlyCategoryLimits',
       type: IsarType.objectList,
 
       target: r'CategoryLimit',
     ),
     r'monthlyFoodBudgetMinor': PropertySchema(
-      id: 25,
+      id: 26,
       name: r'monthlyFoodBudgetMinor',
       type: IsarType.long,
     ),
     r'notificationsEnabled': PropertySchema(
-      id: 26,
+      id: 27,
       name: r'notificationsEnabled',
       type: IsarType.bool,
     ),
     r'onboardingDone': PropertySchema(
-      id: 27,
+      id: 28,
       name: r'onboardingDone',
       type: IsarType.bool,
     ),
     r'outputLanguage': PropertySchema(
-      id: 28,
+      id: 29,
       name: r'outputLanguage',
       type: IsarType.string,
     ),
     r'schemaVersion': PropertySchema(
-      id: 29,
+      id: 30,
       name: r'schemaVersion',
       type: IsarType.long,
     ),
     r'targetCostPerPortionMinor': PropertySchema(
-      id: 30,
+      id: 31,
       name: r'targetCostPerPortionMinor',
       type: IsarType.long,
     ),
     r'themeMode': PropertySchema(
-      id: 31,
+      id: 32,
       name: r'themeMode',
       type: IsarType.string,
     ),
     r'weekStartsOn': PropertySchema(
-      id: 32,
+      id: 33,
       name: r'weekStartsOn',
       type: IsarType.long,
     ),
     r'weeklyRecapEnabled': PropertySchema(
-      id: 33,
+      id: 34,
       name: r'weeklyRecapEnabled',
       type: IsarType.bool,
     ),
@@ -330,21 +335,22 @@ void _userProfileSerialize(
   writer.writeLong(offsets[21], object.maxActiveMinutes);
   writer.writeLongList(offsets[22], object.mealReminderMinutes);
   writer.writeLong(offsets[23], object.mealsPerDay);
+  writer.writeLong(offsets[24], object.monthStartDay);
   writer.writeObjectList<CategoryLimit>(
-    offsets[24],
+    offsets[25],
     allOffsets,
     CategoryLimitSchema.serialize,
     object.monthlyCategoryLimits,
   );
-  writer.writeLong(offsets[25], object.monthlyFoodBudgetMinor);
-  writer.writeBool(offsets[26], object.notificationsEnabled);
-  writer.writeBool(offsets[27], object.onboardingDone);
-  writer.writeString(offsets[28], object.outputLanguage);
-  writer.writeLong(offsets[29], object.schemaVersion);
-  writer.writeLong(offsets[30], object.targetCostPerPortionMinor);
-  writer.writeString(offsets[31], object.themeMode);
-  writer.writeLong(offsets[32], object.weekStartsOn);
-  writer.writeBool(offsets[33], object.weeklyRecapEnabled);
+  writer.writeLong(offsets[26], object.monthlyFoodBudgetMinor);
+  writer.writeBool(offsets[27], object.notificationsEnabled);
+  writer.writeBool(offsets[28], object.onboardingDone);
+  writer.writeString(offsets[29], object.outputLanguage);
+  writer.writeLong(offsets[30], object.schemaVersion);
+  writer.writeLong(offsets[31], object.targetCostPerPortionMinor);
+  writer.writeString(offsets[32], object.themeMode);
+  writer.writeLong(offsets[33], object.weekStartsOn);
+  writer.writeBool(offsets[34], object.weeklyRecapEnabled);
 }
 
 UserProfile _userProfileDeserialize(
@@ -395,23 +401,24 @@ UserProfile _userProfileDeserialize(
   object.maxActiveMinutes = reader.readLong(offsets[21]);
   object.mealReminderMinutes = reader.readLongList(offsets[22]) ?? [];
   object.mealsPerDay = reader.readLong(offsets[23]);
+  object.monthStartDay = reader.readLong(offsets[24]);
   object.monthlyCategoryLimits =
       reader.readObjectList<CategoryLimit>(
-        offsets[24],
+        offsets[25],
         CategoryLimitSchema.deserialize,
         allOffsets,
         CategoryLimit(),
       ) ??
       [];
-  object.monthlyFoodBudgetMinor = reader.readLong(offsets[25]);
-  object.notificationsEnabled = reader.readBool(offsets[26]);
-  object.onboardingDone = reader.readBool(offsets[27]);
-  object.outputLanguage = reader.readString(offsets[28]);
-  object.schemaVersion = reader.readLong(offsets[29]);
-  object.targetCostPerPortionMinor = reader.readLong(offsets[30]);
-  object.themeMode = reader.readString(offsets[31]);
-  object.weekStartsOn = reader.readLong(offsets[32]);
-  object.weeklyRecapEnabled = reader.readBool(offsets[33]);
+  object.monthlyFoodBudgetMinor = reader.readLong(offsets[26]);
+  object.notificationsEnabled = reader.readBool(offsets[27]);
+  object.onboardingDone = reader.readBool(offsets[28]);
+  object.outputLanguage = reader.readString(offsets[29]);
+  object.schemaVersion = reader.readLong(offsets[30]);
+  object.targetCostPerPortionMinor = reader.readLong(offsets[31]);
+  object.themeMode = reader.readString(offsets[32]);
+  object.weekStartsOn = reader.readLong(offsets[33]);
+  object.weeklyRecapEnabled = reader.readBool(offsets[34]);
   return object;
 }
 
@@ -489,6 +496,8 @@ P _userProfileDeserializeProp<P>(
     case 23:
       return (reader.readLong(offset)) as P;
     case 24:
+      return (reader.readLong(offset)) as P;
+    case 25:
       return (reader.readObjectList<CategoryLimit>(
                 offset,
                 CategoryLimitSchema.deserialize,
@@ -497,23 +506,23 @@ P _userProfileDeserializeProp<P>(
               ) ??
               [])
           as P;
-    case 25:
-      return (reader.readLong(offset)) as P;
     case 26:
-      return (reader.readBool(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 27:
       return (reader.readBool(offset)) as P;
     case 28:
-      return (reader.readString(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 29:
-      return (reader.readLong(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 30:
       return (reader.readLong(offset)) as P;
     case 31:
-      return (reader.readString(offset)) as P;
-    case 32:
       return (reader.readLong(offset)) as P;
+    case 32:
+      return (reader.readString(offset)) as P;
     case 33:
+      return (reader.readLong(offset)) as P;
+    case 34:
       return (reader.readBool(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -3034,6 +3043,61 @@ extension UserProfileQueryFilter
   }
 
   QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
+  monthStartDayEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'monthStartDay', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
+  monthStartDayGreaterThan(int value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'monthStartDay',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
+  monthStartDayLessThan(int value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'monthStartDay',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
+  monthStartDayBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'monthStartDay',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
   monthlyCategoryLimitsLengthEqualTo(int length) {
     return QueryBuilder.apply(this, (query) {
       return query.listLength(
@@ -3883,6 +3947,19 @@ extension UserProfileQuerySortBy
     });
   }
 
+  QueryBuilder<UserProfile, UserProfile, QAfterSortBy> sortByMonthStartDay() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'monthStartDay', Sort.asc);
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterSortBy>
+  sortByMonthStartDayDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'monthStartDay', Sort.desc);
+    });
+  }
+
   QueryBuilder<UserProfile, UserProfile, QAfterSortBy>
   sortByMonthlyFoodBudgetMinor() {
     return QueryBuilder.apply(this, (query) {
@@ -4228,6 +4305,19 @@ extension UserProfileQuerySortThenBy
     });
   }
 
+  QueryBuilder<UserProfile, UserProfile, QAfterSortBy> thenByMonthStartDay() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'monthStartDay', Sort.asc);
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterSortBy>
+  thenByMonthStartDayDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'monthStartDay', Sort.desc);
+    });
+  }
+
   QueryBuilder<UserProfile, UserProfile, QAfterSortBy>
   thenByMonthlyFoodBudgetMinor() {
     return QueryBuilder.apply(this, (query) {
@@ -4502,6 +4592,12 @@ extension UserProfileQueryWhereDistinct
     });
   }
 
+  QueryBuilder<UserProfile, UserProfile, QDistinct> distinctByMonthStartDay() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'monthStartDay');
+    });
+  }
+
   QueryBuilder<UserProfile, UserProfile, QDistinct>
   distinctByMonthlyFoodBudgetMinor() {
     return QueryBuilder.apply(this, (query) {
@@ -4729,6 +4825,12 @@ extension UserProfileQueryProperty
   QueryBuilder<UserProfile, int, QQueryOperations> mealsPerDayProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'mealsPerDay');
+    });
+  }
+
+  QueryBuilder<UserProfile, int, QQueryOperations> monthStartDayProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'monthStartDay');
     });
   }
 

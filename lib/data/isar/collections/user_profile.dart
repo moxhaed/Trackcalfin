@@ -17,6 +17,9 @@ class UserProfile {
   int weekStartsOn = DateTime.monday;
   int dayRolloverHour = 4;
 
+  /// The day budget months start on, like payday (1 = calendar months; 31 = the last day).
+  int monthStartDay = 1;
+
   // Goals (Vibe Check)
   int monthlyFoodBudgetMinor = 30000;
   List<CategoryLimit> monthlyCategoryLimits = [];

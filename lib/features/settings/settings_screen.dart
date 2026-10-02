@@ -13,6 +13,8 @@ import '../../app/theme.dart';
 import '../../application/habit_scheduler.dart';
 import '../../core/enums.dart';
 import '../../data/isar/collections/schemas.dart';
+import '../common/format.dart';
+import '../common/widgets.dart';
 
 const dietOptions = ['vegetarian', 'vegan', 'pescatarian', 'halal', 'gluten_free', 'high_protein', 'low_carb'];
 const equipmentOptions = [
@@ -51,6 +53,15 @@ class SettingsScreen extends ConsumerWidget {
             valueMinor: p.monthlyFoodBudgetMinor,
             subtitle: 'Weekly: ${money.compact((p.monthlyFoodBudgetMinor / 4.33).round())} (÷ 4.33)',
             onSave: (v) => update((x) => x.monthlyFoodBudgetMinor = v),
+          ),
+          ListTile(
+            title: const Text('Month starts on'),
+            subtitle: const Text('Like payday: budgets and spending count from this day'),
+            trailing: Text(ordinal(p.monthStartDay.clamp(1, 31)), style: context.text.titleSmall),
+            onTap: () async {
+              final day = await showMonthStartPicker(context, current: p.monthStartDay.clamp(1, 31));
+              if (day != null) await update((x) => x.monthStartDay = day);
+            },
           ),
           _NumberTile(
             title: 'Daily calories',

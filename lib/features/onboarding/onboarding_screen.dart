@@ -8,6 +8,8 @@ import '../../app/providers.dart';
 import '../../app/theme.dart';
 import '../../platform/notifications.dart';
 import '../capture/scan_flow.dart';
+import '../common/format.dart';
+import '../common/widgets.dart';
 
 /// Cold start in about 3 minutes: goals, key, kitchen sweep, rhythm.
 class OnboardingScreen extends ConsumerStatefulWidget {
@@ -26,6 +28,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final _key = TextEditingController();
   int _portions = 3;
   int _pickMinute = 450;
+  int _monthStart = 1;
   int _sweeps = 0;
 
   static const _pages = 5;
@@ -40,6 +43,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       _protein.text = p.dailyProteinTargetG.round().toString();
       _portions = p.defaultPortions;
       _pickMinute = p.dailyPickMinuteOfDay;
+      _monthStart = p.monthStartDay.clamp(1, 31);
     }
   }
 
@@ -66,6 +70,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       p.monthlyFoodBudgetMinor = money.parse(_budget.text) ?? p.monthlyFoodBudgetMinor;
       p.dailyKcalTarget = double.tryParse(_kcal.text) ?? p.dailyKcalTarget;
       p.dailyProteinTargetG = double.tryParse(_protein.text) ?? p.dailyProteinTargetG;
+      p.monthStartDay = _monthStart;
     });
   }
 
@@ -196,6 +201,17 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             labelText: 'Monthly food budget',
             prefixText: '${ref.watch(moneyProvider).symbol} ',
           ),
+        ),
+        const SizedBox(height: 4),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('My month starts on'),
+          subtitle: const Text('Paid on the 17th? Start your month then.'),
+          trailing: Text(monthStartLabel(_monthStart), style: context.text.titleSmall),
+          onTap: () async {
+            final day = await showMonthStartPicker(context, current: _monthStart);
+            if (day != null) setState(() => _monthStart = day);
+          },
         ),
         const SizedBox(height: 12),
         TextField(

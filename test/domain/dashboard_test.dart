@@ -56,6 +56,23 @@ void main() {
     expect(s.spent.collecting, isFalse);
   });
 
+  test('a budget month from payday to payday', () {
+    final s = DashboardAggregator.compute(
+      DashboardInput(
+        now: now, // Thu 1 Oct
+        clock: const DayClock(monthStartDay: 17),
+        profile: profile()..monthStartDay = 17,
+        transactions: [tx(DateTime(2026, 9, 16, 12), 5000), tx(DateTime(2026, 9, 20, 12), 3000)],
+        logs: const [],
+        firstTransactionAt: DateTime(2026, 8, 1),
+      ),
+    );
+    expect(s.monthStart, DateTime(2026, 9, 17, 4));
+    expect(s.customMonth, isTrue);
+    expect(s.spent.month, 3000, reason: 'the 16th was last month');
+    expect(s.daysLeftInMonth, 16);
+  });
+
   test('cold start: fewer than 7 days of data', () {
     final s = DashboardAggregator.compute(
       DashboardInput(

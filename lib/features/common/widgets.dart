@@ -484,3 +484,49 @@ class LogTimer {
   final DateTime _start;
   Duration get elapsed => DateTime.now().difference(_start);
 }
+
+/// Which day budget months start on (payday): a grid of days 1 to 31.
+Future<int?> showMonthStartPicker(BuildContext context, {required int current}) => showDialog<int>(
+  context: context,
+  builder: (context) => AlertDialog(
+    title: const Text('Your month starts on'),
+    content: SizedBox(
+      width: 300,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'The day your money resets, like payday. Budgets, spending and what you ate count from it.',
+            style: context.text.bodySmall?.copyWith(color: context.scheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: 12),
+          GridView.count(
+            crossAxisCount: 7,
+            shrinkWrap: true,
+            mainAxisSpacing: 4,
+            crossAxisSpacing: 4,
+            physics: const NeverScrollableScrollPhysics(),
+            children: [
+              for (var d = 1; d <= 31; d++)
+                ChoiceChip(
+                  label: Text('$d'),
+                  showCheckmark: false,
+                  padding: EdgeInsets.zero,
+                  labelPadding: EdgeInsets.zero,
+                  selected: d == current,
+                  onSelected: (_) => Navigator.of(context).pop(d),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'A month without that day (31 in April) starts on its last day.',
+            style: context.text.bodySmall?.copyWith(color: context.scheme.onSurfaceVariant),
+          ),
+        ],
+      ),
+    ),
+    actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel'))],
+  ),
+);
