@@ -4,7 +4,7 @@ A personal **micro-procurement, pantry and meal-prep tracker** built with Flutte
 
 <table>
   <tr>
-    <td><img src="docs/screenshots/dashboard.png" width="200" alt="Dashboard with Vibe Check, today's rings and spend cards"></td>
+    <td><img src="docs/screenshots/dashboard.png" width="200" alt="Dashboard with the status circle, today's rings and spend cards"></td>
     <td><img src="docs/screenshots/buy.png" width="200" alt="Pantry with use-soon and running-low sections"></td>
     <td><img src="docs/screenshots/cook.png" width="200" alt="Cook tab with today's pick, fridge and cook-again list"></td>
   </tr>
@@ -26,7 +26,7 @@ A personal **micro-procurement, pantry and meal-prep tracker** built with Flutte
 
 | Tab | What you do | What the app does |
 |---|---|---|
-| **Dashboard** | Glance | Vibe Check score with one next-step insight, today's kcal/protein rings, the food budget by what you ate this week and month (or what you spent, one tap away) with pace markers and a ×4.33 projection, other-spend limits, the week's calories, and a streak with a weekly freeze. **Past months** shows each month eaten next to spent, with its weeks and what was thrown away. Months can start on payday (any day you pick). All pure Dart. |
+| **Dashboard** | Glance | A status circle (on track, slipping or off track, no score) with one next-step line, today's kcal/protein rings, the food budget by what you ate this week and month (or what you spent, one tap away) with pace markers and a month estimate, other-spend limits, and the week's calories. **Past months** shows each month eaten next to spent, with its weeks and what was thrown away. Months can start on payday (any day you pick). All pure Dart. |
 | **Buy** | Snap a receipt or pantry photo, or log an expense in 3 taps | Gemini extracts lines, categories, quantities and new-ingredient nutrition, names the exact product, and looks up what pantry-photo items cost in the shops with Google Search, asking you to confirm each price. Clean receipts file themselves; messy ones wait in the Inbox for one "Looks good". A receipt is filed on its printed date, so an old one counts toward the week it was paid; a week or more old, it asks what is left of each item, and what is gone counts as eaten in the days it went. Every line remembers its store, so after a shop the app says when something was clearly cheaper elsewhere, and each item lists its stores cheapest first. A receipt you already filed, or an item already in the pantry, is asked about instead of counted twice. Receipts in another currency are converted at the European Central Bank rate for the purchase day, or from the amount your card was charged. The stock list shows use-soon and running-low items, and the shopping list groups what to buy by the store it's cheapest at; a receipt ticks it off. |
 | **Cook** | Tap "I cooked this ×3", tap "Eat 1", or ask "carbonara for two" | Daily pick from your stock (planned the evening before), exact stock deduction, fridge portions, macros logged when you eat, and a Dart-checked feasibility verdict for requests. |
 | **⊕** | One button for every log | **Say it**: talk or type what you did, check what it understood, one tap logs it all (purchases, meals, cooking, stock) with Undo. Ask it "where is chicken cheaper?" and it answers from your receipts. Or scan, pantry photo, expense, cooked, ate. |
@@ -37,7 +37,7 @@ Principles: every log takes ≤ 3 seconds, the LLM proposes and Dart does the ma
 
 **Built and verified in this repo**
 - All 33 sprints from the [sprint plan](docs/06-sprint-plan.md) are implemented.
-- 224 automated tests pass: domain math, use cases against a real Isar database, the full AI pipeline against a scripted fake Gemini endpoint (including repair retries and allergen rejection), and widget smoke tests that drive the whole app. `flutter analyze` is clean.
+- 219 automated tests pass: domain math, use cases against a real Isar database, the full AI pipeline against a scripted fake Gemini endpoint (including repair retries and allergen rejection), and widget smoke tests that drive the whole app. `flutter analyze` is clean.
 - The Linux desktop build runs. The screenshots above come from it.
 
 **Not verified here (needs your machine)**
@@ -62,7 +62,7 @@ On first launch, onboarding asks for your goals, optionally takes photos of your
 
 ```bash
 flutter analyze
-flutter test                      # 224 tests; Isar's native core is loaded from the Linux plugin in your pub cache
+flutter test                      # 219 tests; Isar's native core is loaded from the Linux plugin in your pub cache
 dart run build_runner build       # after changing anything in lib/data/isar/collections/
 flutter run -d linux --dart-define=DEMO=true   # quick UI iteration (needs libgtk-3-dev, libsecret-1-dev)
 ```
@@ -76,7 +76,7 @@ flutter run -d linux --dart-define=DEMO=true   # quick UI iteration (needs libgt
 lib/
   app/            bootstrap, router, shell (⊕), providers, integrations (quick actions, share, lifecycle)
   core/           enums, Money, DayClock (rollover hour)
-  domain/         pure-Dart engines: costing, nutrition, feasibility, depletion, dashboard, vibe, streak,
+  domain/         pure-Dart engines: costing, nutrition, feasibility, depletion, dashboard, status (vibe),
                   quick check, matcher, parsers, validation/ (receipt, recipe, allergen screen)
   data/isar/      collections (+ generated .g.dart)
   data/ai/        Gemini client, AI runner (repair retry + AiCallLog), DTOs, JSON schemas, context builders
@@ -93,7 +93,7 @@ test/             domain, application (Isar), data (AI layer), widget
 |---|---|---|
 | 01 | [Behavioral Optimization Plan](docs/01-behavioral-plan.md) | Fogg B=MAP per behavior, 3-second flows, friction rules, retention loop, notification budget, wireframes, onboarding |
 | 02 | [Infrastructure & Data Flow](docs/02-infrastructure-and-data-flow.md) | Stack, layers, **every Gemini call** vs pure Dart, sequence diagrams, background jobs, resilience, security |
-| 03 | [Algorithmic Engines](docs/03-algorithms.md) | Exact formulas: WAC costing, expiry, nutrition, feasibility, depletion, dashboard (×4.33), Vibe Check, parsers, matcher |
+| 03 | [Algorithmic Engines](docs/03-algorithms.md) | Exact formulas: WAC costing, expiry, nutrition, feasibility, depletion, dashboard (×4.33), status, parsers, matcher |
 | 04 | [Database Schema](docs/04-database-schema.md) | Isar collections, indexes, invariants |
 | 05 | [AI Layer & Prompts](docs/05-ai-layer-and-prompts.md) | Call config, request anatomy, input envelopes, validation pipeline, evaluation |
 | 06 | [Sprint Plan](docs/06-sprint-plan.md) | The 33 sprints this build followed |

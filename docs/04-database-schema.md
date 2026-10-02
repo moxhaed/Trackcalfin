@@ -126,7 +126,8 @@ class Ingredient {
   @Enumerated(EnumType.name)
   DataSource nutritionSource = DataSource.none;
 
-  /// When the user confirmed per100 (label scan, own numbers, "Confirm"); null = unconfirmed.
+  /// When per100 came from the user (a label scan or typed numbers); null for an AI estimate.
+  /// Estimates need no confirming: people fix an item when it looks wrong.
   DateTime? nutritionConfirmedAt;
 
   int shelfLifeDays = 7;
@@ -550,7 +551,7 @@ class UserProfile {
   int dayRolloverHour = 4;
   int monthStartDay = 1;               // budget months start on this day (payday); 0 (stored before) = 1
 
-  // Goals (Vibe Check)
+  // Goals (the status circle)
   int monthlyFoodBudgetMinor = 30000;
   List<CategoryLimit> monthlyCategoryLimits = [];
   double dailyKcalTarget = 2200;
@@ -574,7 +575,7 @@ class UserProfile {
   bool autoCommitCleanScans = true;
   bool lookUpPrices = true;            // pantry photos: shop prices from Google (Prompt F)
   FoodBasis foodBasis = FoodBasis.eaten; // food card: what was eaten or spent (missing reads as eaten)
-  int eatingOutAvgMealMinor = 1500;    // fallback for "saved vs eating out"
+  int eatingOutAvgMealMinor = 1500;    // unused: "saved vs eating out" needs the user's own meals out
 
   // Parser memory
   List<KeywordCategory> learnedKeywords = [];

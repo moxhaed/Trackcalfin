@@ -143,10 +143,10 @@ When something goes wrong, note the **test ID** (e.g. `R3`), what you expected, 
   *Expect:* its kcal went up compared with before the update (10 ml oil adds about 80 kcal per portion).
 - [ ] **M3 · Scan a label.** Open an item you have the package for → **Scan label** → photograph the nutrition table.
   *Expect:* the fields fill with the per-100 g (or per-100 ml) values from the package, with the product name above. **Save macros** marks it "From label". Try a US-style per-serving label too: the numbers should be scaled to 100 g.
-- [ ] **M4 · Confirm or edit.** On an "AI estimate" item, tap **Confirm**, and on another tap **Edit**, change the kcal, and save.
-  *Expect:* both show "Confirmed".
-- [ ] **M5 · Review queue.** At the bottom of the pantry, tap **Review macros**.
-  *Expect:* one sheet per unconfirmed item ("Check macros · 1 of N"). **Confirm** or **Skip** moves to the next one; swiping the sheet down stops.
+- [ ] **M4 · Fix an estimate.** On an "AI estimate" item there is no Confirm button. Tap **Edit**, change the kcal, and save.
+  *Expect:* it shows "Your numbers".
+- [ ] **M5 · Items without macros.** Tap the "N items have no macros" banner.
+  *Expect:* one sheet per item without macros ("Check macros · 1 of N"); **Skip** moves on, swiping the sheet down stops.
 - [ ] **M6 · New item without numbers.** **Add an item** named `Tahini`, leave the nutrition fields empty, and save.
   *Expect:* a moment later its sheet shows about 600 kcal per 100 g as an AI estimate.
 
@@ -217,7 +217,7 @@ When something goes wrong, note the **test ID** (e.g. `R3`), what you expected, 
 - [ ] **L2 · From a recipe.** Open a recipe that's missing something. *Expect:* "Add the N missing items to the shopping list", with Undo.
 - [ ] **E1 · Eat from the pantry.** ⊕ → **I ate** → From the pantry → **Eat 1** on a piece (banana, can). *Expect:* "Ate … · 1 pc" with calories and Undo; the pantry has one less. For grams or ml it asks how much.
 - [ ] **R1 · Receipt photo.** Open a receipt waiting in the Inbox → **Photo**. *Expect:* the photo full screen; pinch to zoom.
-- [ ] **D3 · Vibe explanation.** Tap the Vibe card. *Expect:* a breakdown of the parts, and the insight line makes sense.
+- [ ] **D3 · Status.** *Expect:* a colored circle with an icon and a word (On track / Slipping / Off track), no number and no streak. Tap it. *Expect:* each part as a status, and the line under the word makes sense. "Saved vs eating out" only shows once you have logged 3 or more meals out.
 - [ ] **D4 · Dark mode.** Go to **Settings → Appearance → Dark**. *Expect:* everything stays readable.
 
 ## 11 · Backup (do this before trusting the app with real data)

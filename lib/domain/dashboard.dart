@@ -86,7 +86,8 @@ class DashboardInput {
   /// Food found gone without a logged meal (counts, old receipts) reaching into the window.
   final List<FoodUse> uses;
 
-  /// Mean eating-out transaction over 90 days (null when < 3 transactions).
+  /// Mean eating-out transaction over 90 days (null when < 3 transactions): what a meal out
+  /// costs this user. Without it there is no "saved vs eating out".
   final int? eatingOutAvgMinor;
 }
 
@@ -284,8 +285,9 @@ class DashboardAggregator {
       (a, l) => a + l.meals.where(home).fold<double>(0, (b, m) => b + m.portions),
     );
     final homeCost = weekLogs.fold<int>(0, (a, l) => a + l.meals.where(home).fold<int>(0, (b, m) => b + m.costMinor));
-    final eatingOutAvg = input.eatingOutAvgMinor ?? p.eatingOutAvgMealMinor;
-    final savedVsOut = homeMeals > 0 ? (homeMeals * eatingOutAvg - homeCost).round() : null;
+    // Only from the user's own eating-out spending: a guessed restaurant price isn't a saving.
+    final eatingOutAvg = input.eatingOutAvgMinor;
+    final savedVsOut = homeMeals > 0 && eatingOutAvg != null ? (homeMeals * eatingOutAvg - homeCost).round() : null;
 
     final todayLog = logsByKey[todayKey];
     final bars = [

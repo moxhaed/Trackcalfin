@@ -160,10 +160,7 @@ void main() {
     expect(draft.ok, isFalse);
     expect(draft.error, contains('no_nutrition_table'));
 
-    await svc.confirm(id);
-    final c = await byKey('chicken_breast');
-    expect(c.nutritionConfirmedAt, now);
-    expect(c.nutritionSource, DataSource.aiEstimate);
+    expect((await byKey('chicken_breast')).nutritionSource, DataSource.aiEstimate, reason: 'unchanged');
   });
 
   test('migration v2 marks all-zero macros as unknown, once', () async {

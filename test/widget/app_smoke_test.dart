@@ -16,6 +16,7 @@ import 'package:trackcalfin/core/enums.dart';
 import 'package:trackcalfin/data/ai/prompt_repository.dart';
 import 'package:trackcalfin/data/isar/collections/schemas.dart';
 import 'package:trackcalfin/features/buy/ingredient_sheet.dart';
+import 'package:trackcalfin/features/dashboard/dashboard_screen.dart';
 import 'package:trackcalfin/features/dashboard/food_history_screen.dart';
 import 'package:trackcalfin/platform/image_store.dart';
 import 'package:trackcalfin/platform/secret_store.dart';
@@ -69,7 +70,8 @@ void main() {
 
   testWidgets('dashboard renders every card from demo data', (tester) async {
     await pumpApp(tester);
-    expect(find.textContaining('Vibe ·'), findsOneWidget);
+    expect(find.byType(StatusCircle), findsOneWidget, reason: 'a status, no score');
+    expect(find.textContaining('Vibe'), findsNothing);
     expect(find.text('TODAY'), findsOneWidget);
     expect(find.text('FOOD'), findsOneWidget);
     expect(find.text('Groceries count when you eat them.'), findsOneWidget, reason: 'eaten is the default');
@@ -366,7 +368,7 @@ void main() {
     expect(find.text('Here is what I found'), findsNothing);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
-  testWidgets('pantry macros: unknown banner, confirm and edit an item', (tester) async {
+  testWidgets('pantry macros: unknown banner, and fixing an estimate by hand', (tester) async {
     await pumpApp(tester, initial: '/buy');
     final salt = (await isar.ingredients.getByKey('salt'))!..nutritionSource = DataSource.none;
     await isar.writeTxn(() => isar.ingredients.put(salt));
@@ -378,16 +380,12 @@ void main() {
 
     await tester.dragUntilVisible(find.text('Cumin'), find.byType(ListView).first, const Offset(0, -300));
     await settle(tester);
-    expect(find.textContaining('Review macros ·'), findsOneWidget);
+    expect(find.textContaining('Review macros'), findsNothing, reason: 'estimates need no confirming');
     await tester.tap(find.text('Cumin'));
     await settle(tester);
     expect(find.text('NUTRITION PER 100 G'), findsOneWidget);
     expect(find.text('AI estimate'), findsOneWidget);
-
-    await tester.tap(find.text('Confirm'));
-    await settle(tester);
-    expect((await isar.ingredients.getByKey('cumin'))!.nutritionConfirmedAt, isNotNull);
-    expect(find.text('Confirmed'), findsOneWidget);
+    expect(find.text('Confirm'), findsNothing);
 
     await tester.tap(find.text('Edit'));
     await settle(tester);
@@ -398,6 +396,7 @@ void main() {
     expect(cumin.per100.kcal, 380);
     expect(cumin.per100.proteinG, 18, reason: 'untouched fields keep their values');
     expect(cumin.nutritionSource, DataSource.user);
+    expect(find.text('Your numbers'), findsOneWidget);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   testWidgets('switching an item from ml to cans keeps its amount and price per can right', (tester) async {
@@ -663,12 +662,13 @@ void main() {
     expect(find.text('Monthly food budget'), findsOneWidget);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
-  testWidgets('fresh install starts in onboarding', (tester) async {
+  testWidgets('fresh install starts in onboarding, on the goals', (tester) async {
     await pumpApp(tester, demo: false);
-    expect(find.text('Your kitchen, on autopilot'), findsOneWidget);
-    await tester.tap(find.text('Get started'));
-    await settle(tester);
     expect(find.text('Your goals'), findsOneWidget);
+    expect(find.text('Where you shop'), findsOneWidget);
+    await tester.tap(find.text('Next'));
+    await settle(tester);
+    expect(find.text('Connect Gemini'), findsOneWidget);
   }, timeout: const Timeout(Duration(seconds: 60)));
 }
 

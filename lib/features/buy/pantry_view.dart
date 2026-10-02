@@ -53,11 +53,8 @@ class _PantryViewState extends ConsumerState<PantryView> {
     final low = inStock.where((i) => i.isLow).toList();
     final empty = matches.where((i) => i.qtyOnHand <= 0).toList();
     final unknownMacros = all.where((i) => i.needsNutrition).length;
-    // Unknown first: they're the ones that count as 0 kcal.
-    final toReview = all.where((i) => i.nutritionConfirmedAt == null).sorted((a, b) {
-      if (a.needsNutrition != b.needsNutrition) return a.needsNutrition ? -1 : 1;
-      return a.name.compareTo(b.name);
-    });
+    // Estimates are fine as they are; only items without any macros are worth a look.
+    final noMacros = all.where((i) => i.needsNutrition).sorted((a, b) => a.name.compareTo(b.name));
     final groups = groupBy(inStock, (Ingredient i) => i.category);
     final cats = groups.keys.toList()..sort((a, b) => a.index.compareTo(b.index));
 
@@ -102,7 +99,7 @@ class _PantryViewState extends ConsumerState<PantryView> {
                 trailing: _filling
                     ? const SizedBox.square(dimension: 24, child: CircularProgressIndicator(strokeWidth: 2))
                     : TextButton(onPressed: _fillMacros, child: const Text('Fill with AI')),
-                onTap: () => reviewMacros(context, toReview),
+                onTap: () => reviewMacros(context, noMacros),
               ),
             ),
           ),
@@ -170,18 +167,6 @@ class _PantryViewState extends ConsumerState<PantryView> {
           if (_showEmpty)
             for (final ing in empty) _IngredientTile(ing: ing, now: now),
         ],
-        if (toReview.isNotEmpty && q.isEmpty)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(8, 12, 8, 0),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                icon: const Icon(Icons.fact_check_outlined, size: 18),
-                label: Text('Review macros · ${toReview.length} unconfirmed'),
-                onPressed: () => reviewMacros(context, toReview),
-              ),
-            ),
-          ),
       ],
     );
   }

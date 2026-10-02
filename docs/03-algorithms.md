@@ -23,7 +23,7 @@ double elapsedFraction(DateTime start, DateTime end, DateTime now); // 0..1
 ```
 Test cases: 23:59 and 03:59 on the next day share a key, while 04:00 starts a new one. Weeks that span a month boundary. DST transition days.
 
-**Budget months.** `UserProfile.monthStartDay` (1–31, asked in onboarding and in Settings) is the day money resets, like payday. With 17, the month of 2 Oct runs from 17 Sep to 17 Oct (at the rollover hour). A month without that day starts on its last day: with 31, February's month starts on the 28th. Everything that says "month" follows it: the food budget and its pace, other-spend limits, the projection and the Vibe Check. The dashboard says "Since Thu 17 Sep" when a month isn't a calendar month. A stored profile reads the new field as 0, which counts as 1 (calendar months).
+**Budget months.** `UserProfile.monthStartDay` (1–31, asked in onboarding and in Settings) is the day money resets, like payday. With 17, the month of 2 Oct runs from 17 Sep to 17 Oct (at the rollover hour). A month without that day starts on its last day: with 31, February's month starts on the 28th. Everything that says "month" follows it: the food budget and its pace, other-spend limits, the projection and the status circle. The dashboard says "Since Thu 17 Sep" when a month isn't a calendar month. A stored profile reads the new field as 0, which counts as 1 (calendar months).
 
 ## 3.2 UnitConverter
 
@@ -212,8 +212,8 @@ trailingWeekly  = eaten(today − N d .. today) / N * 7
 projectedMonth  = trailingWeekly * 4.33
 weekPace, monthPace: as for spent, against the same food budget
 costPerMeal     = homeCost / Σ home meal portions          // "€2.14 per home meal"
-savedVsOut      = homeMeals * eatingOutAvg − homeCost
-eatingOutAvg    = mean(eating_out transactions, last 90 d) if count ≥ 3 else profile.eatingOutAvgMealMinor
+savedVsOut      = homeMeals * eatingOutAvg − homeCost       // only when eatingOutAvg is known
+eatingOutAvg    = mean(eating_out transactions, last 90 d) if count ≥ 3, else unknown: no "saved vs eating out"
 ```
 Spent and Eaten are two views of the same money, never added together. Eating out is in neither: it is its own line under Other spend, and a meal eaten out logged with Say it costs 0 in the meal log. Home meals (cost per meal, saved vs eating out) are cooked ones: a can of cola from the pantry counts as eaten food, but not as a meal.
 
@@ -258,9 +258,9 @@ drop adjustment lines; keep deposit/fee lines (category other)
 ```
 `primaryCategory` = the category with the largest share of the total (used for icons and filters).
 
-## 3.11 Vibe Check (VibeScorer)
+## 3.11 Status (VibeScorer)
 
-Each component is scored 0–100. Components without a goal set are dropped, and the remaining weights are renormalized.
+The dashboard shows **no score**: a circle in the status color with an icon (✓ on track · ↘ slipping · ! off track; ⧗ before there's anything to judge), a plain word and one line. Tapping it lists the parts, each as a status. Underneath, each component is scored 0–100; components without a goal set are dropped, and the remaining weights are renormalized.
 
 ```
 S_food     = 100 − clamp((monthPace − 1) * 200, 0, 100)      // on/under pace 100 · 25% over 50 · 50% over 0
@@ -271,8 +271,8 @@ d          = |avgKcal − kcalTarget| / kcalTarget
 S_kcal     = 100 − clamp((d − 0.05) * 400, 0, 100)           // ±5% 100 · ±17.5% 50 · ±30% 0
 S_logging  = coverage * 100
 
-Vibe = 0.30·S_food + 0.15·S_nonfood + 0.20·S_protein + 0.15·S_kcal + 0.20·S_logging
-Label: ≥85 "Locked in" · 70–84 "On track" · 50–69 "Drifting" · <50 "Reset mode"
+score = 0.30·S_food + 0.15·S_nonfood + 0.20·S_protein + 0.15·S_kcal + 0.20·S_logging   // never shown
+Status: ≥70 "On track" (good) · 50–69 "Slipping" (warning) · <50 "Off track" (critical)
 ```
 
 **Insight line** (algorithmic templates, no AI): take the lowest component and fill its template.
@@ -286,7 +286,7 @@ Label: ≥85 "Locked in" · 70–84 "On track" · 50–69 "Drifting" · <50 "Res
 | kcal (over) | "Averaging {x}% above your calorie target this week." |
 | kcal (under) | "Averaging {x}% under your calorie target — prepped portions help." |
 | logging | "Log one meal today to keep this week's picture accurate." |
-| all ≥ 85 | "Everything's on track — {coverage} days logged, ~{savedVsOut} saved." |
+| all ≥ 85 | "{completedDays} days logged this week, ~{savedVsOut} saved vs eating out." |
 | week start (≤ 1 day in) | "New week, clean slate — {weeklyBudget} to plan with." |
 
 ## 3.12 QuickTextParser (non-food expense in one line)

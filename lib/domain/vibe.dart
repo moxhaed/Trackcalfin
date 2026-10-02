@@ -3,17 +3,27 @@ import '../core/money.dart';
 import '../data/isar/collections/user_profile.dart';
 import 'dashboard.dart';
 
+/// How things are going, as the dashboard's status circle shows it: a color, an icon and a word.
+enum VibeLevel { none, good, watch, off }
+
 class VibeResult {
   VibeResult(this.score, this.label, this.insight, this.components);
 
-  /// 0..100, or null while there's nothing to score yet.
+  /// 0..100, or null while there's nothing to judge yet. Never shown: only its [level] is.
   final int? score;
+
+  /// "On track", "Slipping", "Off track", or "Getting started".
   final String label;
+
+  /// One line on what matters most right now.
   final String insight;
   final Map<String, double> components;
+
+  VibeLevel get level => VibeScorer.levelFor(score);
 }
 
-/// Composite 0-100 "Vibe Check" with one actionable insight line.
+/// Budget pace, other spending, protein, calories and logging, weighed into one status
+/// (on track, slipping, off track) with one actionable line. Pure Dart.
 class VibeScorer {
   const VibeScorer._();
 
@@ -26,13 +36,20 @@ class VibeScorer {
     return 100 - ((d - 0.05) * 400).clamp(0, 100);
   }
 
-  static String labelFor(int score) => score >= 85
-      ? 'Locked in'
+  static VibeLevel levelFor(num? score) => score == null
+      ? VibeLevel.none
       : score >= 70
-      ? 'On track'
+      ? VibeLevel.good
       : score >= 50
-      ? 'Drifting'
-      : 'Reset mode';
+      ? VibeLevel.watch
+      : VibeLevel.off;
+
+  static String labelFor(int score) => switch (levelFor(score)) {
+    VibeLevel.good => 'On track',
+    VibeLevel.watch => 'Slipping',
+    VibeLevel.off => 'Off track',
+    VibeLevel.none => 'Getting started',
+  };
 
   static VibeResult score(
     DashboardState s,
@@ -60,7 +77,12 @@ class VibeScorer {
     if (s.coverage != null) c['logging'] = s.coverage! * 100;
 
     if (c.isEmpty) {
-      return VibeResult(null, 'Getting started', 'Log a few meals and purchases and your vibe check appears here.', c);
+      return VibeResult(
+        null,
+        'Getting started',
+        'Log a few meals and purchases, and how things are going shows here.',
+        c,
+      );
     }
 
     final wSum = c.keys.fold<double>(0, (a, k) => a + weights[k]!);
@@ -74,8 +96,10 @@ class VibeScorer {
     } else if (weekStart) {
       insight = 'New week, clean slate: ${money.compact(s.weeklyBudget)} to plan with.';
     } else if (lowest.value >= 85) {
-      final saved = s.savedVsOut != null && s.savedVsOut! > 0 ? ', ~${money.compact(s.savedVsOut!)} saved' : '';
-      insight = "Everything's on track: ${s.completedDays} days logged$saved.";
+      final saved = s.savedVsOut != null && s.savedVsOut! > 0
+          ? ', ~${money.compact(s.savedVsOut!)} saved vs eating out'
+          : '';
+      insight = '${s.completedDays} ${s.completedDays == 1 ? 'day' : 'days'} logged this week$saved.';
     } else {
       insight = _template(lowest.key, s, p, money, pickTitle, pickProtein);
     }

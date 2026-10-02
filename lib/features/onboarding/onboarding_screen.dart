@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../app/providers.dart';
 import '../../app/theme.dart';
 import '../../application/profile_service.dart';
+import '../../core/currency.dart';
 import '../../core/region.dart';
 import '../../platform/notifications.dart';
 import '../capture/scan_flow.dart';
@@ -14,7 +15,7 @@ import '../common/format.dart';
 import '../common/pickers.dart';
 import '../common/widgets.dart';
 
-/// Cold start in about 3 minutes: goals, key, kitchen sweep, rhythm.
+/// Cold start in about 3 minutes: goals, key, kitchen sweep, rhythm. It opens on the goals.
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -34,14 +35,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   int _monthStart = 1;
   int _sweeps = 0;
 
-  static const _pages = 5;
+  static const _pages = 4;
 
   @override
   void initState() {
     super.initState();
     final p = ref.read(profileProvider).value;
     if (p != null && p.onboardingDone) {
-      _budget.text = (p.monthlyFoodBudgetMinor / 100).round().toString();
+      _budget.text = Currency.toMajor(p.monthlyFoodBudgetMinor, p.currency).round().toString();
       _kcal.text = p.dailyKcalTarget.round().toString();
       _protein.text = p.dailyProteinTargetG.round().toString();
       _portions = p.defaultPortions;
@@ -117,7 +118,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 controller: _page,
                 physics: const NeverScrollableScrollPhysics(),
                 onPageChanged: (i) => setState(() => _index = i),
-                children: [_welcome(context), _goals(context), _apiKey(context), _sweep(context), _rhythm(context)],
+                children: [_goals(context), _apiKey(context), _sweep(context), _rhythm(context)],
               ),
             ),
             Padding(
@@ -133,8 +134,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   const Spacer(),
                   FilledButton(
                     onPressed: () async {
-                      if (_index == 1) await _saveGoals();
-                      if (_index == 2 && _key.text.trim().isNotEmpty) {
+                      if (_index == 0) await _saveGoals();
+                      if (_index == 1 && _key.text.trim().isNotEmpty) {
                         await ref.read(secretStoreProvider).writeApiKey(_key.text.trim());
                         ref.invalidate(hasApiKeyProvider);
                         // Items already in the pantry get their macros while the user carries on.
@@ -142,7 +143,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       }
                       _next();
                     },
-                    child: Text(_index == _pages - 1 ? 'Start' : (_index == 0 ? 'Get started' : 'Next')),
+                    child: Text(_index == _pages - 1 ? 'Start' : 'Next'),
                   ),
                 ],
               ),
@@ -172,23 +173,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       ],
     );
   }
-
-  Widget _welcome(BuildContext context) => _page0(
-    context,
-    icon: Icons.kitchen_outlined,
-    title: 'Your kitchen, on autopilot',
-    body:
-        'Snap receipts, cook from what you have, and see where the money and protein go. '
-        'Every log takes about 3 seconds; the AI does the typing.',
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: const [
-        _Habit('After I put the groceries away, I snap the receipt.'),
-        _Habit('After I close the fridge with my lunch box, I tap "Ate it".'),
-        _Habit('While the coffee brews, I glance at today\'s pick.'),
-      ],
-    ),
-  );
 
   Widget _goals(BuildContext context) => _page0(
     context,
@@ -345,21 +329,4 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       ),
     );
   }
-}
-
-class _Habit extends StatelessWidget {
-  const _Habit(this.text);
-  final String text;
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 10),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(Icons.check_circle_outline, size: 20, color: context.scheme.primary),
-        const SizedBox(width: 10),
-        Expanded(child: Text(text, style: context.text.bodyMedium)),
-      ],
-    ),
-  );
 }

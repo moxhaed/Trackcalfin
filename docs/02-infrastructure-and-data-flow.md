@@ -5,7 +5,7 @@
 > - **No separate repository classes.** Each use case in `lib/application/` talks to Isar directly and owns its write transaction. Screens read reactive Isar queries through Riverpod providers (`lib/app/providers.dart`).
 > - **Domain purity:** engines in `lib/domain/` never touch an `Isar` instance or do I/O, but they read the Isar entity classes as plain data rather than mapping to separate domain models.
 > - **Navigation:** Settings is a fourth bottom-bar slot next to the ⊕ button (more discoverable than a gear icon), and the Cook tab's ask bar sits at the top of the screen so the ⊕ button never covers it.
-> - **Extras:** a `MetricEvent` collection for time-to-log stats, a Light/Dark/System theme setting, a streak with a weekly freeze on the Dashboard, and opt-in demo data (`--dart-define=DEMO=true`).
+> - **Extras:** a `MetricEvent` collection for time-to-log stats, a Light/Dark/System theme setting, and opt-in demo data (`--dart-define=DEMO=true`).
 
 ## 2.1 Guiding rules
 
@@ -126,7 +126,7 @@ test/
 
 ### Never AI (pure Dart / Isar)
 
-Dashboard (all cards), spend totals and the ×4.33 projection, Vibe Check, macro averages, weighted-average costing, recipe cost and macros, feasibility badges and max portions, depletion, undo, fridge portions, DailyLog totals, expiry estimates, quick-expense text parsing, ingredient alias matching, Quick Check candidate selection, weekly recap stats, "saved vs eating out", and the offline daily-pick fallback.
+Dashboard (all cards), spend totals and the ×4.33 projection, the status circle, macro averages, weighted-average costing, recipe cost and macros, feasibility badges and max portions, depletion, undo, fridge portions, DailyLog totals, expiry estimates, quick-expense text parsing, ingredient alias matching, Quick Check candidate selection, weekly recap stats, "saved vs eating out", and the offline daily-pick fallback.
 
 ## 2.6 Data flows
 

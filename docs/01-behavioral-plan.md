@@ -8,7 +8,7 @@
 |---|---|---|
 | **Entry cost > perceived value** | Itemized forms, mandatory fields and review screens make logging feel like admin work. After about a week the user stops. | The AI does the data entry and the user only confirms, by exception. Logs commit on the last tap. There are no forms on the hot paths. |
 | **Data drift → distrust** | Stock numbers slowly diverge from reality. The app suggests a recipe with eggs you don't have, trust collapses, and the app gets abandoned. This kills pantry apps specifically. | Correction is cheap and happens in context (tap "I'm out" on a recipe row), plus a 30-second swipe "Quick Check" deck aimed at likely-wrong items. |
-| **Guilt spiral** | You miss two days, the streak resets to 0 and red numbers pile up. Opening the app now feels bad, so you avoid it (the *ostrich effect*). | Coverage replaces streaks, streaks get automatic freezes, the act of logging is never punished, and there is a fresh start each week and month. |
+| **Guilt spiral** | You miss two days, the streak resets to 0 and red numbers pile up. Opening the app now feels bad, so you avoid it (the *ostrich effect*). | No streaks: coverage ("4 of 6 days logged") instead, the act of logging is never punished, and there is a fresh start each week and month. |
 
 ## 1.2 Fogg Behavior Model applied (B = M · A · P)
 
@@ -24,7 +24,7 @@ Motivation is volatile, so we design for the **low-motivation day**. The lever w
 | Fix stock | Weekly recap, or a mismatch detected while cooking | One swipe per item, with only suspect items shown | "Pantry accuracy: 97%" |
 | Ask for a recipe | Standing at the fridge wondering what to make | Hold the mic, speak, let go. Speech-to-text runs on device. | A feasibility badge ("Ready now") as instant relief |
 
-### Tiny Habits anchor recipes (shown once in onboarding, one per screen)
+### Tiny Habits anchor recipes (the moments the app is built around; not shown as onboarding text)
 - *"After I put the groceries away, I snap the receipt."*
 - *"After I close the fridge with my lunch box, I tap **Ate it**."*
 - *"While the coffee brews, I glance at today's pick."*
@@ -70,7 +70,7 @@ Motivation is volatile, so we design for the **low-motivation day**. The lever w
  Sun 18:00 weekly recap             swipe Quick Check        "~€48 saved vs eating out"    stock accuracy ↑
 ```
 
-After a few weeks, **internal triggers** take over: *"What's today's pick?"* (curiosity) and *"Am I on budget?"* (mild money anxiety that the Vibe Check settles). The **investment** step matters most for retention. The more you log, the better the pantry reflects reality and the better the suggestions get, so leaving means losing a system that knows your kitchen.
+After a few weeks, **internal triggers** take over: *"What's today's pick?"* (curiosity) and *"Am I on budget?"* (mild money anxiety that the status circle settles). The **investment** step matters most for retention. The more you log, the better the pantry reflects reality and the better the suggestions get, so leaving means losing a system that knows your kitchen.
 
 ### Notification budget (max 3 per day, each one actionable)
 
@@ -86,10 +86,10 @@ Every notification without an action button is a candidate for deletion.
 
 ## 1.6 Motivation without guilt
 
-- **Vibe Check, not a report card.** One composite score (0–100) with a plain-language label (*Locked in · On track · Drifting · Reset mode*) and **one** insight line that points to the next best action ("Protein is 18% under — today's pick has 51 g"). The formula is in [03-algorithms.md](03-algorithms.md#311-vibe-check-vibescorer).
-- **Coverage over streaks.** "Logged 5 of 6 days" is honest and forgiving. A streak counter exists but gets **1 automatic freeze per week**, so it doesn't reset to 0 over one missed day.
+- **A status, not a score.** A circle in the status color with an icon and a plain word (*On track · Slipping · Off track*), and **one** line that points to the next best action ("Protein is 18% under target. Today's pick has 51 g."). No number to chase. How it's judged is in [03-algorithms.md](03-algorithms.md#311-status-vibescorer).
+- **Coverage, no streaks.** "Logged 5 of 6 days" is honest and forgiving; there is no streak to lose.
 - **Fresh-start effect.** Pacing resets on Monday and on the 1st of the month, and the insight line uses this ("New week, clean slate — €69 to plan with").
-- **Positive framing of savings.** "~€48 saved vs eating out this week" is computed from your own eating-out average. It shows the payoff of cooking.
+- **Positive framing of savings.** "~€48 saved vs eating out this week" is computed from your own eating-out average, and only shown once there is one (3 meals out in 90 days): a guessed restaurant price isn't a saving.
 - **Loss aversion, pointed at waste.** "€3.20 of spinach expires tomorrow" appears *inside* the daily pick's hook, where it drives action (cooking) rather than guilt.
 - **Celebrate the behavior, not the outcome.** Haptic plus a micro-animation plus one neutral or positive stat, immediately after the action (Fogg's "Shine").
 
@@ -113,9 +113,9 @@ Three tabs plus a **global capture button (⊕)** beside the bottom bar. ⊕ ope
 ```
 ┌──────────────────────────────────────────┐
 │ Mon 28 Sep                          [⚙]  │
-│  ╭─────╮  VIBE · On track (78)           │
-│  │ 78  │  Protein 18% under target —     │
-│  ╰─────╯  today's pick has 51 g.         │
+│  ╭─────╮  On track                       │
+│  │  ✓  │  Protein 18% under target.      │
+│  ╰─────╯  Today's pick has 51 g.         │
 ├──────────────────────────────────────────┤
 │ TODAY   kcal 1,240/2,200 ◔   P 68/140 g ◑│
 ├──────────────────────────────────────────┤
@@ -188,8 +188,10 @@ Three tabs plus a **global capture button (⊕)** beside the bottom bar. ⊕ ope
 
 ## 1.9 Onboarding (cold start in about 3 minutes)
 
-1. **API key**: paste once, stored in secure storage.
-2. **Goals**: three sliders with sensible defaults (monthly food budget, kcal, protein), the day the month starts on (payday; the 1st by default) and optional per-category limits.
+It opens straight on the goals; there is no welcome page.
+
+1. **Goals**: where you shop (country and currency, taken from the phone's region; one tap to change), monthly food budget, the day the month starts on (payday; the 1st by default), kcal and protein.
+2. **API key**: paste once, stored in secure storage.
 3. **Kitchen sweep**: photos of fridge, freezer, cupboard, and spices and oils → Prompt A in pantry mode → one review → 20–40 items seeded, each with the exact product and its usual shop price. Recent receipts can be scanned too: they're filed on their printed dates, and an item that shows up on both a receipt and a photo is asked about ("Same one or extra?", "Already counted?") instead of being counted twice. Endowed progress: "Your pantry knows 34 items." There is no staples list: nothing is assumed to be in the kitchen, so salt and oil are counted, deducted and costed like everything else.
 4. **Rhythm**: daily-pick time, meal reminder times, default portions.
 5. **Instant value**: today's pick is generated right away, so the first session ends with a costed, macro-counted recipe built from your own food.

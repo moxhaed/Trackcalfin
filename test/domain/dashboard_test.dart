@@ -152,7 +152,18 @@ void main() {
     expect(s.eaten.week, 1200);
     expect(s.homeMealsWeek, 6);
     expect(s.costPerMeal, 200);
-    expect(s.savedVsOut, (6 * 1500 - 1200));
+    expect(s.savedVsOut, isNull, reason: 'no meals out of their own to compare with: no saving claimed');
+    final withOut = DashboardAggregator.compute(
+      DashboardInput(
+        now: now,
+        clock: clock,
+        profile: profile(),
+        transactions: const [],
+        logs: logs,
+        eatingOutAvgMinor: 1500,
+      ),
+    );
+    expect(withOut.savedVsOut, (6 * 1500 - 1200));
     expect(s.weekBars.length, 7);
     expect(s.weekBars.where((b) => b.isFuture).length, 3);
   });
@@ -201,10 +212,11 @@ void main() {
       expect(VibeScorer.paceScore(1.6), 0);
       expect(VibeScorer.kcalScore(2200 * 1.05, 2200), closeTo(100, 1e-9));
       expect(VibeScorer.kcalScore(2200 * 1.175, 2200), closeTo(50, 1e-6));
-      expect(VibeScorer.labelFor(85), 'Locked in');
-      expect(VibeScorer.labelFor(70), 'On track');
-      expect(VibeScorer.labelFor(50), 'Drifting');
-      expect(VibeScorer.labelFor(49), 'Reset mode');
+      expect((VibeScorer.labelFor(85), VibeScorer.levelFor(85)), ('On track', VibeLevel.good));
+      expect((VibeScorer.labelFor(70), VibeScorer.levelFor(70)), ('On track', VibeLevel.good));
+      expect((VibeScorer.labelFor(50), VibeScorer.levelFor(50)), ('Slipping', VibeLevel.watch));
+      expect((VibeScorer.labelFor(49), VibeScorer.levelFor(49)), ('Off track', VibeLevel.off));
+      expect(VibeScorer.levelFor(null), VibeLevel.none);
     });
 
     test('weights renormalize over available goals; protein insight names the pick', () {

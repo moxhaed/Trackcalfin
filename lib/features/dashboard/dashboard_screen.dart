@@ -9,7 +9,6 @@ import '../../core/day_clock.dart';
 import '../../core/enums.dart';
 import '../../core/money.dart';
 import '../../domain/dashboard.dart';
-import '../../domain/streak.dart';
 import '../../domain/vibe.dart';
 import '../capture/ate_sheet.dart';
 import '../common/category_style.dart';
@@ -58,7 +57,7 @@ class _DashboardBody extends ConsumerWidget {
     return ListView(
       padding: EdgeInsets.fromLTRB(16, 4, 16, MediaQuery.paddingOf(context).bottom + 24),
       children: [
-        _VibeCard(vibe: view.vibe),
+        _StatusCard(vibe: view.vibe),
         const SizedBox(height: 12),
         _TodayCard(state: s, kcalTarget: view.profile.dailyKcalTarget, proteinTarget: view.profile.dailyProteinTargetG),
         const SizedBox(height: 12),
@@ -66,36 +65,28 @@ class _DashboardBody extends ConsumerWidget {
         const SizedBox(height: 12),
         _OtherSpendCard(state: s, money: money),
         const SizedBox(height: 12),
-        _WeekCard(state: s, kcalTarget: view.profile.dailyKcalTarget, money: money, streak: view.streak),
+        _WeekCard(state: s, kcalTarget: view.profile.dailyKcalTarget),
       ],
     );
   }
 }
 
-class _VibeCard extends StatelessWidget {
-  const _VibeCard({required this.vibe});
+/// How things are going, without a score: a circle in the status color with an icon (never
+/// color alone), a plain word and one line on what matters most. Tap for what goes into it.
+class _StatusCard extends StatelessWidget {
+  const _StatusCard({required this.vibe});
   final VibeResult vibe;
 
-  Color _color(AppColors c) {
-    final s = vibe.score;
-    if (s == null) return c.track;
-    if (s >= 70) return c.good;
-    if (s >= 50) return c.warning;
-    return c.critical;
-  }
-
-  IconData get _icon {
-    final s = vibe.score;
-    if (s == null) return Icons.hourglass_empty;
-    if (s >= 85) return Icons.bolt;
-    if (s >= 70) return Icons.check_circle_outline;
-    if (s >= 50) return Icons.trending_flat;
-    return Icons.restart_alt;
-  }
+  static (Color, IconData) look(BuildContext context, VibeLevel level) => switch (level) {
+    VibeLevel.good => (context.colors.good, Icons.check),
+    VibeLevel.watch => (context.colors.warning, Icons.trending_down),
+    VibeLevel.off => (context.colors.critical, Icons.priority_high),
+    VibeLevel.none => (context.scheme.onSurfaceVariant, Icons.hourglass_empty),
+  };
 
   @override
   Widget build(BuildContext context) {
-    final color = _color(context.colors);
+    final on = context.scheme.onPrimaryContainer;
     return Card(
       color: context.scheme.primaryContainer.withValues(alpha: 0.55),
       child: InkWell(
@@ -105,33 +96,18 @@ class _VibeCard extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              RingGauge(
-                fraction: (vibe.score ?? 0) / 100,
-                color: color,
-                size: 76,
-                stroke: 8,
-                center: Text(vibe.score?.toString() ?? '–', style: context.text.headlineSmall),
+              Semantics(
+                label: 'Status: ${vibe.label}',
+                child: StatusCircle(level: vibe.level, size: 64),
               ),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Icon(_icon, size: 18, color: context.scheme.onPrimaryContainer),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Vibe · ${vibe.label}',
-                          style: context.text.titleMedium?.copyWith(color: context.scheme.onPrimaryContainer),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      vibe.insight,
-                      style: context.text.bodyMedium?.copyWith(color: context.scheme.onPrimaryContainer),
-                    ),
+                    Text(vibe.label, style: context.text.titleMedium?.copyWith(color: on)),
+                    const SizedBox(height: 4),
+                    Text(vibe.insight, style: context.text.bodyMedium?.copyWith(color: on)),
                   ],
                 ),
               ),
@@ -144,10 +120,10 @@ class _VibeCard extends StatelessWidget {
 
   void _explain(BuildContext context) {
     const names = {
-      'food': 'Food budget pace',
-      'nonfood': 'Other spend pace',
-      'protein': 'Protein vs target',
-      'kcal': 'Calories vs target',
+      'food': 'Food budget',
+      'nonfood': 'Other spending',
+      'protein': 'Protein',
+      'kcal': 'Calories',
       'logging': 'Days logged',
     };
     showModalBottomSheet<void>(
@@ -160,30 +136,22 @@ class _VibeCard extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('How the vibe is scored', style: context.text.titleLarge),
+              Text('What goes into it', style: context.text.titleLarge),
               const SizedBox(height: 4),
-              Text('Each part is 0–100. Parts without a goal are left out.', style: context.text.bodySmall),
+              Text(
+                'This week and month so far. Parts without a goal are left out.',
+                style: context.text.bodySmall?.copyWith(color: context.scheme.onSurfaceVariant),
+              ),
               const SizedBox(height: 12),
               for (final e in vibe.components.entries)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 6),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      Row(
-                        children: [
-                          Expanded(child: Text(names[e.key] ?? e.key)),
-                          Text('${e.value.round()}', style: context.text.titleSmall),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      PaceBar(
-                        fraction: e.value / 100,
-                        color: e.value >= 70
-                            ? context.colors.good
-                            : (e.value >= 50 ? context.colors.warning : context.colors.critical),
-                        height: 6,
-                      ),
+                      StatusCircle(level: VibeScorer.levelFor(e.value), size: 28),
+                      const SizedBox(width: 12),
+                      Expanded(child: Text(names[e.key] ?? e.key, style: context.text.bodyLarge)),
+                      Text(VibeScorer.labelFor(e.value.round()), style: context.text.titleSmall),
                     ],
                   ),
                 ),
@@ -191,6 +159,28 @@ class _VibeCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// A status as a circle: the status color, with an icon so it never relies on color alone.
+class StatusCircle extends StatelessWidget {
+  const StatusCircle({super.key, required this.level, this.size = 64});
+  final VibeLevel level;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final (color, icon) = _StatusCard.look(context, level);
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: color.withValues(alpha: 0.14),
+        border: Border.all(color: color, width: size / 12),
+      ),
+      child: Icon(icon, color: color, size: size * 0.46),
     );
   }
 }
@@ -351,12 +341,11 @@ class _FoodCard extends ConsumerWidget {
                   label: 'per home meal',
                 ),
               ),
-              Expanded(
-                child: Metric(
-                  value: (s.savedVsOut ?? 0) > 0 ? money.compact(s.savedVsOut!) : '–',
-                  label: 'saved vs eating out',
+              // Only once it is worked out from the user's own meals out (3 or more).
+              if ((s.savedVsOut ?? 0) > 0)
+                Expanded(
+                  child: Metric(value: money.compact(s.savedVsOut!), label: 'saved vs eating out'),
                 ),
-              ),
             ],
           ),
           const SizedBox(height: 4),
@@ -449,11 +438,9 @@ class _OtherSpendCard extends StatelessWidget {
 }
 
 class _WeekCard extends StatelessWidget {
-  const _WeekCard({required this.state, required this.kcalTarget, required this.money, required this.streak});
+  const _WeekCard({required this.state, required this.kcalTarget});
   final DashboardState state;
   final double kcalTarget;
-  final MoneyFormat money;
-  final StreakResult streak;
 
   @override
   Widget build(BuildContext context) {
@@ -466,21 +453,6 @@ class _WeekCard extends StatelessWidget {
               '${s.avgProtein!.round()} g protein';
     return SectionCard(
       title: 'Calories this week',
-      trailing: streak.days >= 2
-          ? Tooltip(
-              message: streak.freezesUsed > 0
-                  ? '${streak.freezesUsed} missed ${streak.freezesUsed == 1 ? 'day was' : 'days were'} covered by the weekly freeze'
-                  : 'Days in a row with something logged',
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.local_fire_department_outlined, size: 16, color: context.colors.protein),
-                  const SizedBox(width: 4),
-                  Text('${streak.days}-day streak', style: context.text.labelMedium),
-                ],
-              ),
-            )
-          : null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

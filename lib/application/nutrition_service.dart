@@ -143,14 +143,4 @@ class NutritionService {
       await RecipeService.refreshUsing(isar, {ingredientId});
     });
   }
-
-  /// "Confirm": the current macros are right.
-  Future<void> confirm(int ingredientId) async {
-    await isar.writeTxn(() async {
-      final ing = await isar.ingredients.get(ingredientId);
-      if (ing == null || ing.needsNutrition) return;
-      ing.nutritionConfirmedAt = now();
-      await isar.ingredients.put(ing);
-    });
-  }
 }

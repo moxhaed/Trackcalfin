@@ -37,7 +37,7 @@ Future<void> reviewMacros(BuildContext context, List<Ingredient> items) async {
   }
 }
 
-/// Quick adjust (stepper), macros (confirm, scan label, edit) and full edit of one pantry item.
+/// Quick adjust (stepper), macros (scan a label, edit) and full edit of one pantry item.
 class IngredientSheet extends ConsumerStatefulWidget {
   const IngredientSheet({super.key, this.ingredient, this.review});
   final Ingredient? ingredient;
@@ -137,12 +137,6 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
 
   void _next() {
     if (widget.review != null && mounted) Navigator.of(context).pop(true);
-  }
-
-  Future<void> _confirmMacros() async {
-    await ref.read(nutritionServiceProvider).confirm(_ing.id);
-    tick();
-    _next();
   }
 
   Future<void> _askAi() async {
@@ -563,16 +557,13 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
   Widget _nutritionCard(BuildContext context, Ingredient cur) {
     final c = context.colors;
     final n = cur.per100;
-    final confirmed = cur.nutritionConfirmedAt != null;
-    final pill = cur.needsNutrition
-        ? StatusPill(label: 'Unknown', color: c.warning, icon: Icons.help_outline)
-        : confirmed
-        ? StatusPill(
-            label: cur.nutritionSource == DataSource.label ? 'From label' : 'Confirmed',
-            color: c.good,
-            icon: Icons.verified_outlined,
-          )
-        : StatusPill(label: 'AI estimate', color: c.kcal, icon: Icons.auto_awesome_outlined);
+    // Where the numbers come from. An estimate needs no confirming: fix it when it looks wrong.
+    final pill = switch (cur.nutritionSource) {
+      DataSource.none => StatusPill(label: 'Unknown', color: c.warning, icon: Icons.help_outline),
+      DataSource.label => StatusPill(label: 'From label', color: c.good, icon: Icons.verified_outlined),
+      DataSource.user => StatusPill(label: 'Your numbers', color: c.good, icon: Icons.verified_outlined),
+      DataSource.aiEstimate => StatusPill(label: 'AI estimate', color: c.kcal, icon: Icons.auto_awesome_outlined),
+    };
     final flags = _label?.numbers?.flags ?? const <String>[];
     final muted = context.text.bodySmall?.copyWith(color: context.scheme.onSurfaceVariant);
     return SectionCard(
@@ -633,12 +624,6 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
               spacing: 8,
               runSpacing: 8,
               children: [
-                if (!cur.needsNutrition && !confirmed)
-                  ActionChip(
-                    avatar: const Icon(Icons.check, size: 18),
-                    label: const Text('Confirm'),
-                    onPressed: _busy ? null : _confirmMacros,
-                  ),
                 if (cur.needsNutrition)
                   ActionChip(
                     avatar: const Icon(Icons.auto_awesome_outlined, size: 18),
