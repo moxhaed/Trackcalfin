@@ -192,10 +192,17 @@ Future<DashboardView> loadDashboard(Isar isar, DateTime now, {Recipe? pick}) asy
   final txs = await isar.transactions.where().occurredAtBetween(from, now.add(const Duration(minutes: 1))).findAll();
   final first = await isar.transactions.where().anyOccurredAt().findFirst();
   final weekStartKey = clock.dateKey(clock.weekStart(now));
+  // Last week (macro fallback), this month and the trailing 28 days (what was eaten).
+  final logsFrom = [
+    DayClock.addDaysToKey(weekStartKey, -7),
+    clock.dateKey(monthStart),
+    clock.dateKey(trailingStart),
+  ].reduce((a, b) => a < b ? a : b);
   final logs = await isar.dailyLogs
       .where()
-      .dateKeyBetween(DayClock.addDaysToKey(weekStartKey, -7), DayClock.addDaysToKey(weekStartKey, 7))
+      .dateKeyBetween(logsFrom, DayClock.addDaysToKey(weekStartKey, 7))
       .findAll();
+  final firstMeal = await isar.dailyLogs.where().anyDateKey().filter().mealsCountGreaterThan(0).findFirst();
   final outTx = await isar.transactions
       .where()
       .occurredAtGreaterThan(now.subtract(const Duration(days: 90)))
@@ -210,6 +217,7 @@ Future<DashboardView> loadDashboard(Isar isar, DateTime now, {Recipe? pick}) asy
       transactions: txs,
       logs: logs,
       firstTransactionAt: first?.occurredAt,
+      firstMealAt: firstMeal == null ? null : DayClock.dateOfKey(firstMeal.dateKey),
       eatingOutAvgMinor: outTx.length >= 3 ? (outTx.fold(0, (a, t) => a + t.totalMinor) / outTx.length).round() : null,
     ),
   );

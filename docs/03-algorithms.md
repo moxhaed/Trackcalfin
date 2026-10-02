@@ -173,9 +173,15 @@ When there are several active sessions, a notification action picks the **oldest
 
 ## 3.9 DashboardAggregator
 
-Inputs: committed transactions for `[monthStart − 28 d, now]`, DailyLogs for the current and previous week, CookSessions for the waste count, and the profile.
+Inputs: committed transactions for `[monthStart − 28 d, now]`, DailyLogs from the earliest of last week's start, the month's start and 28 days back, the day of the first logged meal, CookSessions for the waste count, and the profile.
 
-### Food spend (cash basis: what left your wallet)
+The food budget can be read two ways, and the Food card switches between them (**Eaten | Spent**, `UserProfile.foodBasis`, Eaten by default):
+- **Spent** (cash basis): groceries count on the day they were paid. A big shop that lasts two weeks lands on one day, so the week jumps.
+- **Eaten**: groceries count when they are eaten, at what they cost (`DailyLog.foodCostMinor`: cooked portions at the batch's cost per portion, pantry items at their average cost, quick adds at the cost typed). This is the real weekly cost of food.
+
+Both are computed every time (`DashboardState.spent`, `.eaten`), and the card shows the other one's week as a small number, so both stay a glance away. Non-food categories are spend only.
+
+### Food spent (cash basis: what left your wallet)
 ```
 groceries(tx range) = Σ line.totalMinor where line.category == groceries
 
@@ -191,14 +197,19 @@ monthPace       = monthFood / (monthlyFoodBudget * max(elapsedFraction(month), 0
 - **4.33** is used in exactly two places: converting the monthly budget into a weekly one, and projecting the month from the trailing weekly average. The trailing average smooths out lumpy big shops.
 - The `0.2` floor on the elapsed fraction stops one big Monday shop from reading as "400% over pace".
 
-### Food consumed (value eaten, from DailyLog)
+### Food eaten (value of what was eaten, from DailyLog)
 ```
-eatenWeek     = Σ log.foodCostMinor over this week
-costPerMeal   = eatenWeek / Σ meals.portions          // "€2.14 per meal"
-savedVsOut    = homeMeals * eatingOutAvg − eatenWeek
-eatingOutAvg  = mean(eating_out transactions, last 90 d) if count ≥ 3 else profile.eatingOutAvgMealMinor
+eaten(range)    = Σ log.foodCostMinor over the days in range
+week, month     = eaten(weekStart .. today), eaten(monthStart .. today)
+N               = clamp(daysSinceFirstLoggedMeal, 7, 28)   // "projection after 7 days of logged meals" before that
+trailingWeekly  = eaten(today − N d .. today) / N * 7
+projectedMonth  = trailingWeekly * 4.33
+weekPace, monthPace: as for spent, against the same food budget
+costPerMeal     = homeCost / Σ home meal portions          // "€2.14 per home meal"
+savedVsOut      = homeMeals * eatingOutAvg − homeCost
+eatingOutAvg    = mean(eating_out transactions, last 90 d) if count ≥ 3 else profile.eatingOutAvgMealMinor
 ```
-The dashboard labels these separately as **Spent** and **Eaten**. Spent drives the budget, and Eaten drives cost per meal and savings. Adding them together would double-count.
+Spent and Eaten are two views of the same money, never added together. Eating out is in neither: it is its own line under Other spend.
 
 ### Non-food spend
 For each `c ∈ {household, clothes, eatingOut, entertainment, other}`: `monthSpend[c]` vs `limit[c]`, with `pace[c]` as above. There's **no ×4.33 projection** for these lumpy categories (one pair of shoes isn't a trend). Bars show month-to-date against the limit, with a pace marker at `limit · elapsedFraction(month)`.
@@ -231,6 +242,7 @@ Each component is scored 0–100. Components without a goal set are dropped, and
 
 ```
 S_food     = 100 − clamp((monthPace − 1) * 200, 0, 100)      // on/under pace 100 · 25% over 50 · 50% over 0
+                                                             // monthPace of the basis the Food card shows
 S_nonfood  = same formula on Σ non-food spend vs Σ limits (monthly pace)
 S_protein  = clamp(avgProtein / proteinTarget, 0, 1) * 100
 d          = |avgKcal − kcalTarget| / kcalTarget
@@ -245,7 +257,8 @@ Label: ≥85 "Locked in" · 70–84 "On track" · 50–69 "Drifting" · <50 "Res
 
 | Lowest | Template |
 |---|---|
-| food | "Food spend is {x}% ahead of pace — a pantry-only day saves ~{costPerMeal}." |
+| food (spent) | "Food spend is {x}% ahead of pace — a pantry-only day saves ~{costPerMeal}." |
+| food (eaten) | "You're eating {x}% ahead of the food budget's pace, ~{costPerMeal} a meal. Cheaper picks bring it down." |
 | nonfood | "{category} is at {pct}% of its limit with {days} days to go." |
 | protein | "Protein is {x}% under target — {todayPickTitle} has {p} g." |
 | kcal (over) | "Averaging {x}% above your calorie target this week." |

@@ -62,7 +62,7 @@ class _DashboardBody extends ConsumerWidget {
         const SizedBox(height: 12),
         _TodayCard(state: s, kcalTarget: view.profile.dailyKcalTarget, proteinTarget: view.profile.dailyProteinTargetG),
         const SizedBox(height: 12),
-        _FoodSpendCard(state: s, money: money),
+        _FoodCard(state: s, money: money),
         const SizedBox(height: 12),
         _OtherSpendCard(state: s, money: money),
         const SizedBox(height: 12),
@@ -144,7 +144,7 @@ class _VibeCard extends StatelessWidget {
 
   void _explain(BuildContext context) {
     const names = {
-      'food': 'Food spend pace',
+      'food': 'Food budget pace',
       'nonfood': 'Other spend pace',
       'protein': 'Protein vs target',
       'kcal': 'Calories vs target',
@@ -254,16 +254,21 @@ class _TodayCard extends StatelessWidget {
   }
 }
 
-class _FoodSpendCard extends StatelessWidget {
-  const _FoodSpendCard({required this.state, required this.money});
+/// The food budget, by what was eaten (default) or what was spent. A big shop that lasts two
+/// weeks makes spending jumpy; what was eaten shows the real weekly cost of food.
+class _FoodCard extends ConsumerWidget {
+  const _FoodCard({required this.state, required this.money});
   final DashboardState state;
   final MoneyFormat money;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final s = state;
+    final f = s.food;
+    final eaten = s.basis == FoodBasis.eaten;
     final c = context.colors;
-    Widget row(String label, int spent, int budget, double? pace, double marker, {String? extra}) {
+    final muted = context.text.bodySmall?.copyWith(color: context.scheme.onSurfaceVariant);
+    Widget row(String label, int amount, int budget, double? pace, double marker, {String? extra}) {
       final color = c.forPace(pace);
       final over = pace != null && pace > 1.0;
       return Padding(
@@ -277,7 +282,7 @@ class _FoodSpendCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    budget > 0 ? '${money.compact(spent)} / ${money.compact(budget)}' : money.compact(spent),
+                    budget > 0 ? '${money.compact(amount)} / ${money.compact(budget)}' : money.compact(amount),
                     style: context.text.bodyMedium,
                   ),
                 ),
@@ -290,30 +295,53 @@ class _FoodSpendCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 6),
-            PaceBar(fraction: budget > 0 ? spent / budget : 0, marker: budget > 0 ? marker : null, color: color),
-            if (extra != null) ...[
-              const SizedBox(height: 4),
-              Text(extra, style: context.text.bodySmall?.copyWith(color: context.scheme.onSurfaceVariant)),
-            ],
+            PaceBar(fraction: budget > 0 ? amount / budget : 0, marker: budget > 0 ? marker : null, color: color),
+            if (extra != null) ...[const SizedBox(height: 4), Text(extra, style: muted)],
           ],
         ),
       );
     }
 
-    final projection = s.collectingData
-        ? 'Projection after 7 days of data'
-        : 'Projected month: ${money.compact(s.projectedMonth ?? 0)} (trailing week × 4.33)';
+    final projection = f.collecting
+        ? (eaten ? 'Projection after 7 days of logged meals' : 'Projection after 7 days of data')
+        : 'Projected month: ${money.compact(f.projectedMonth ?? 0)} (trailing week × 4.33)';
     return SectionCard(
-      title: 'Food spend',
+      title: 'Food',
+      trailing: SegmentedButton<FoodBasis>(
+        style: SegmentedButton.styleFrom(
+          visualDensity: VisualDensity.compact,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          textStyle: context.text.labelMedium,
+        ),
+        showSelectedIcon: false,
+        segments: const [
+          ButtonSegment(value: FoodBasis.eaten, label: Text('Eaten')),
+          ButtonSegment(value: FoodBasis.spent, label: Text('Spent')),
+        ],
+        selected: {s.basis},
+        onSelectionChanged: (v) => ref.read(profileServiceProvider).update((p) => p.foodBasis = v.first),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          row('Week', s.weekFood, s.weeklyBudget, s.weekPace, s.weekElapsedFraction),
-          row('Month', s.monthFood, s.monthlyBudget, s.monthPace, s.monthElapsedFraction, extra: projection),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Text(
+              eaten
+                  ? 'What the food you ate was worth. Groceries count when you eat them, not when you buy them.'
+                  : 'What you paid for groceries, on the day you paid.',
+              style: muted,
+            ),
+          ),
+          row('Week', f.week, s.weeklyBudget, f.weekPace, s.weekElapsedFraction),
+          row('Month', f.month, s.monthlyBudget, f.monthPace, s.monthElapsedFraction, extra: projection),
           Row(
             children: [
+              // The other way of counting, so both stay one glance away.
               Expanded(
-                child: Metric(value: money.compact(s.eatenWeek), label: 'eaten this week'),
+                child: eaten
+                    ? Metric(value: money.compact(s.spent.week), label: 'spent this week')
+                    : Metric(value: money.compact(s.eaten.week), label: 'eaten this week'),
               ),
               Expanded(
                 child: Metric(

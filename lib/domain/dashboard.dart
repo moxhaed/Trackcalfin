@@ -28,6 +28,32 @@ class DayBar {
   final bool logged;
 }
 
+/// Food money counted one way: what left the wallet, or what the food eaten was worth.
+class FoodTotals {
+  FoodTotals({
+    required this.week,
+    required this.month,
+    required this.weekPace,
+    required this.monthPace,
+    required this.trailingWeekly,
+    required this.projectedMonth,
+    required this.collecting,
+  });
+  final int week;
+  final int month;
+  final double? weekPace;
+  final double? monthPace;
+
+  /// Per week, over the last 7 to 28 days that have data.
+  final int trailingWeekly;
+
+  /// [trailingWeekly] × 4.33; null while [collecting].
+  final int? projectedMonth;
+
+  /// Fewer than 7 days of data so far.
+  final bool collecting;
+}
+
 class DashboardInput {
   DashboardInput({
     required this.now,
@@ -36,6 +62,7 @@ class DashboardInput {
     required this.transactions,
     required this.logs,
     this.firstTransactionAt,
+    this.firstMealAt,
     this.eatingOutAvgMinor,
   });
 
@@ -46,9 +73,12 @@ class DashboardInput {
   /// Committed transactions covering at least [monthStart - 28 d, now].
   final List<Transaction> transactions;
 
-  /// DailyLogs for this week and last week.
+  /// DailyLogs covering at least last week, this month and the last 28 days.
   final List<DailyLog> logs;
   final DateTime? firstTransactionAt;
+
+  /// The day the first meal was logged; the eaten projection waits for 7 days of them.
+  final DateTime? firstMealAt;
 
   /// Mean eating-out transaction over 90 days (null when < 3 transactions).
   final int? eatingOutAvgMinor;
@@ -56,17 +86,12 @@ class DashboardInput {
 
 class DashboardState {
   DashboardState({
-    required this.weekFood,
-    required this.monthFood,
+    required this.spent,
+    required this.eaten,
+    required this.basis,
     required this.weeklyBudget,
     required this.monthlyBudget,
-    required this.weekPace,
-    required this.monthPace,
-    required this.trailingWeekly,
-    required this.projectedMonth,
-    required this.collectingData,
     required this.nonFood,
-    required this.eatenWeek,
     required this.homeMealsWeek,
     required this.costPerMeal,
     required this.savedVsOut,
@@ -83,21 +108,20 @@ class DashboardState {
     required this.daysLeftInMonth,
   });
 
-  // Food spend (cash basis)
-  final int weekFood;
-  final int monthFood;
+  /// Groceries paid for (cash basis): an expense counts on the day it was paid.
+  final FoodTotals spent;
+
+  /// What the food eaten was worth (DailyLog cost): groceries count when they are eaten.
+  /// Smoother than [spent], which jumps on a big shop that lasts two weeks.
+  final FoodTotals eaten;
+
+  /// Which of the two the food card and the Vibe Check go by.
+  final FoodBasis basis;
   final int weeklyBudget;
   final int monthlyBudget;
-  final double? weekPace;
-  final double? monthPace;
-  final int trailingWeekly;
-  final int? projectedMonth;
-  final bool collectingData;
 
   final List<CategorySpend> nonFood;
 
-  // Food eaten (value of consumption)
-  final int eatenWeek;
   final double homeMealsWeek;
   final int? costPerMeal;
   final int? savedVsOut;
@@ -117,6 +141,7 @@ class DashboardState {
   final int daysLeftInMonth;
 
   double? get coverage => elapsedDays == 0 ? null : completedDays / elapsedDays;
+  FoodTotals get food => basis == FoodBasis.eaten ? eaten : spent;
   int get nonFoodSpent => nonFood.fold(0, (a, c) => a + c.spentMinor);
   int get nonFoodLimit => nonFood.fold(0, (a, c) => a + c.limitMinor);
 }
@@ -163,19 +188,39 @@ class DashboardAggregator {
     final weekFraction = DayClock.elapsedFraction(weekStart, weekEnd, now);
     final monthFraction = DayClock.elapsedFraction(monthStart, monthEnd, now);
 
-    // --- Food spend -------------------------------------------------------
-    final weekFood = _sum(_between(input.transactions, weekStart, now), (c) => c.isFood);
-    final monthFood = _sum(_between(input.transactions, monthStart, now), (c) => c.isFood);
-    final daysSinceFirst = input.firstTransactionAt == null
-        ? 0
-        : DayClock.daysBetween(input.firstTransactionAt!, now) + 1;
-    final collecting = daysSinceFirst < 7;
-    final n = daysSinceFirst.clamp(7, 28);
-    final trailingFrom = clock.dayStart(DayClock.addDays(now, -(n - 1)));
-    final trailingFood = _sum(_between(input.transactions, trailingFrom, now), (c) => c.isFood);
-    final trailingWeekly = (trailingFood / n * 7).round();
     final monthlyBudget = p.monthlyFoodBudgetMinor;
     final weeklyBudget = (monthlyBudget / weeksPerMonth).round();
+
+    /// One basis: [total] sums it from a moment on; [first] is when its data starts.
+    FoodTotals food(int Function(DateTime from) total, DateTime? first) {
+      final days = first == null ? 0 : DayClock.daysBetween(first, now) + 1;
+      final n = days.clamp(7, 28);
+      final trailingWeekly = (total(clock.dayStart(DayClock.addDays(now, -(n - 1)))) / n * 7).round();
+      final week = total(weekStart);
+      final month = total(monthStart);
+      return FoodTotals(
+        week: week,
+        month: month,
+        weekPace: _pace(week, weeklyBudget, weekFraction),
+        monthPace: _pace(month, monthlyBudget, monthFraction),
+        trailingWeekly: trailingWeekly,
+        projectedMonth: days < 7 ? null : (trailingWeekly * weeksPerMonth).round(),
+        collecting: days < 7,
+      );
+    }
+
+    // --- Food spent (what left the wallet) and eaten (what it was worth) ----
+    final spent = food(
+      (from) => _sum(_between(input.transactions, from, now), (c) => c.isFood),
+      input.firstTransactionAt,
+    );
+    final todayKeyForFood = clock.dateKey(now);
+    final eaten = food((from) {
+      final fromKey = clock.dateKey(from);
+      return input.logs
+          .where((l) => l.dateKey >= fromKey && l.dateKey <= todayKeyForFood)
+          .fold(0, (a, l) => a + l.foodCostMinor);
+    }, input.firstMealAt);
 
     // --- Non-food ---------------------------------------------------------
     final monthTx = _between(input.transactions, monthStart, now).toList();
@@ -217,7 +262,6 @@ class DashboardAggregator {
     }
 
     final weekLogs = weekKeys.map((k) => logsByKey[k]).whereType<DailyLog>().toList();
-    final eatenWeek = weekLogs.fold(0, (a, l) => a + l.foodCostMinor);
     final homeMeals = weekLogs.fold<double>(
       0,
       (a, l) => a + l.meals.where((m) => m.source != MealSource.quickAdd).fold<double>(0, (b, m) => b + m.portions),
@@ -243,17 +287,12 @@ class DashboardAggregator {
     ];
 
     return DashboardState(
-      weekFood: weekFood,
-      monthFood: monthFood,
+      spent: spent,
+      eaten: eaten,
+      basis: p.foodBasis,
       weeklyBudget: weeklyBudget,
       monthlyBudget: monthlyBudget,
-      weekPace: _pace(weekFood, weeklyBudget, weekFraction),
-      monthPace: _pace(monthFood, monthlyBudget, monthFraction),
-      trailingWeekly: trailingWeekly,
-      projectedMonth: collecting ? null : (trailingWeekly * weeksPerMonth).round(),
-      collectingData: collecting,
       nonFood: nonFood,
-      eatenWeek: eatenWeek,
       homeMealsWeek: homeMeals,
       costPerMeal: homeMeals > 0 ? (homeCost / homeMeals).round() : null,
       savedVsOut: savedVsOut,

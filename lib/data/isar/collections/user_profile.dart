@@ -47,6 +47,11 @@ class UserProfile {
   /// Pantry photos: look shop prices up with Google Search. The user confirms each one.
   bool lookUpPrices = true;
 
+  /// The dashboard's food card: what was eaten, or what was spent. A stored profile without
+  /// it reads [FoodBasis.eaten], the first value.
+  @Enumerated(EnumType.name)
+  FoodBasis foodBasis = FoodBasis.eaten;
+
   /// Fallback for "saved vs eating out".
   int eatingOutAvgMealMinor = 1500;
 

@@ -84,6 +84,15 @@ enum PriceSource {
   web,
 }
 
+/// What the dashboard's food budget counts. The first value is the default.
+enum FoodBasis {
+  /// What the food eaten was worth: groceries count when they are eaten, not when bought.
+  eaten,
+
+  /// What left the wallet for groceries.
+  spent,
+}
+
 enum AiTask { receipt, dailyRecipe, spontaneousRecipe, nutritionEstimate, nutritionLabel, priceLookup }
 
 extension BaseUnitLabel on BaseUnit {

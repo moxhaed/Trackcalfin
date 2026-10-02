@@ -89,94 +89,100 @@ const UserProfileSchema = CollectionSchema(
       name: r'equipment',
       type: IsarType.stringList,
     ),
-    r'fxMemory': PropertySchema(
+    r'foodBasis': PropertySchema(
       id: 16,
+      name: r'foodBasis',
+      type: IsarType.string,
+      enumMap: _UserProfilefoodBasisEnumValueMap,
+    ),
+    r'fxMemory': PropertySchema(
+      id: 17,
       name: r'fxMemory',
       type: IsarType.objectList,
 
       target: r'FxMemo',
     ),
     r'geminiModel': PropertySchema(
-      id: 17,
+      id: 18,
       name: r'geminiModel',
       type: IsarType.string,
     ),
     r'learnedKeywords': PropertySchema(
-      id: 18,
+      id: 19,
       name: r'learnedKeywords',
       type: IsarType.objectList,
 
       target: r'KeywordCategory',
     ),
     r'lookUpPrices': PropertySchema(
-      id: 19,
+      id: 20,
       name: r'lookUpPrices',
       type: IsarType.bool,
     ),
     r'maxActiveMinutes': PropertySchema(
-      id: 20,
+      id: 21,
       name: r'maxActiveMinutes',
       type: IsarType.long,
     ),
     r'mealReminderMinutes': PropertySchema(
-      id: 21,
+      id: 22,
       name: r'mealReminderMinutes',
       type: IsarType.longList,
     ),
     r'mealsPerDay': PropertySchema(
-      id: 22,
+      id: 23,
       name: r'mealsPerDay',
       type: IsarType.long,
     ),
     r'monthlyCategoryLimits': PropertySchema(
-      id: 23,
+      id: 24,
       name: r'monthlyCategoryLimits',
       type: IsarType.objectList,
 
       target: r'CategoryLimit',
     ),
     r'monthlyFoodBudgetMinor': PropertySchema(
-      id: 24,
+      id: 25,
       name: r'monthlyFoodBudgetMinor',
       type: IsarType.long,
     ),
     r'notificationsEnabled': PropertySchema(
-      id: 25,
+      id: 26,
       name: r'notificationsEnabled',
       type: IsarType.bool,
     ),
     r'onboardingDone': PropertySchema(
-      id: 26,
+      id: 27,
       name: r'onboardingDone',
       type: IsarType.bool,
     ),
     r'outputLanguage': PropertySchema(
-      id: 27,
+      id: 28,
       name: r'outputLanguage',
       type: IsarType.string,
     ),
     r'schemaVersion': PropertySchema(
-      id: 28,
+      id: 29,
       name: r'schemaVersion',
       type: IsarType.long,
     ),
     r'targetCostPerPortionMinor': PropertySchema(
-      id: 29,
+      id: 30,
       name: r'targetCostPerPortionMinor',
       type: IsarType.long,
     ),
     r'themeMode': PropertySchema(
-      id: 30,
+      id: 31,
       name: r'themeMode',
       type: IsarType.string,
     ),
     r'weekStartsOn': PropertySchema(
-      id: 31,
+      id: 32,
       name: r'weekStartsOn',
       type: IsarType.long,
     ),
     r'weeklyRecapEnabled': PropertySchema(
-      id: 32,
+      id: 33,
       name: r'weeklyRecapEnabled',
       type: IsarType.bool,
     ),
@@ -244,6 +250,7 @@ int _userProfileEstimateSize(
       bytesCount += value.length * 3;
     }
   }
+  bytesCount += 3 + object.foodBasis.name.length * 3;
   bytesCount += 3 + object.fxMemory.length * 3;
   {
     final offsets = allOffsets[FxMemo]!;
@@ -305,38 +312,39 @@ void _userProfileSerialize(
   writer.writeStringList(offsets[13], object.dislikes);
   writer.writeLong(offsets[14], object.eatingOutAvgMealMinor);
   writer.writeStringList(offsets[15], object.equipment);
+  writer.writeString(offsets[16], object.foodBasis.name);
   writer.writeObjectList<FxMemo>(
-    offsets[16],
+    offsets[17],
     allOffsets,
     FxMemoSchema.serialize,
     object.fxMemory,
   );
-  writer.writeString(offsets[17], object.geminiModel);
+  writer.writeString(offsets[18], object.geminiModel);
   writer.writeObjectList<KeywordCategory>(
-    offsets[18],
+    offsets[19],
     allOffsets,
     KeywordCategorySchema.serialize,
     object.learnedKeywords,
   );
-  writer.writeBool(offsets[19], object.lookUpPrices);
-  writer.writeLong(offsets[20], object.maxActiveMinutes);
-  writer.writeLongList(offsets[21], object.mealReminderMinutes);
-  writer.writeLong(offsets[22], object.mealsPerDay);
+  writer.writeBool(offsets[20], object.lookUpPrices);
+  writer.writeLong(offsets[21], object.maxActiveMinutes);
+  writer.writeLongList(offsets[22], object.mealReminderMinutes);
+  writer.writeLong(offsets[23], object.mealsPerDay);
   writer.writeObjectList<CategoryLimit>(
-    offsets[23],
+    offsets[24],
     allOffsets,
     CategoryLimitSchema.serialize,
     object.monthlyCategoryLimits,
   );
-  writer.writeLong(offsets[24], object.monthlyFoodBudgetMinor);
-  writer.writeBool(offsets[25], object.notificationsEnabled);
-  writer.writeBool(offsets[26], object.onboardingDone);
-  writer.writeString(offsets[27], object.outputLanguage);
-  writer.writeLong(offsets[28], object.schemaVersion);
-  writer.writeLong(offsets[29], object.targetCostPerPortionMinor);
-  writer.writeString(offsets[30], object.themeMode);
-  writer.writeLong(offsets[31], object.weekStartsOn);
-  writer.writeBool(offsets[32], object.weeklyRecapEnabled);
+  writer.writeLong(offsets[25], object.monthlyFoodBudgetMinor);
+  writer.writeBool(offsets[26], object.notificationsEnabled);
+  writer.writeBool(offsets[27], object.onboardingDone);
+  writer.writeString(offsets[28], object.outputLanguage);
+  writer.writeLong(offsets[29], object.schemaVersion);
+  writer.writeLong(offsets[30], object.targetCostPerPortionMinor);
+  writer.writeString(offsets[31], object.themeMode);
+  writer.writeLong(offsets[32], object.weekStartsOn);
+  writer.writeBool(offsets[33], object.weeklyRecapEnabled);
 }
 
 UserProfile _userProfileDeserialize(
@@ -362,45 +370,48 @@ UserProfile _userProfileDeserialize(
   object.dislikes = reader.readStringList(offsets[13]) ?? [];
   object.eatingOutAvgMealMinor = reader.readLong(offsets[14]);
   object.equipment = reader.readStringList(offsets[15]) ?? [];
+  object.foodBasis =
+      _UserProfilefoodBasisValueEnumMap[reader.readStringOrNull(offsets[16])] ??
+      FoodBasis.eaten;
   object.fxMemory =
       reader.readObjectList<FxMemo>(
-        offsets[16],
+        offsets[17],
         FxMemoSchema.deserialize,
         allOffsets,
         FxMemo(),
       ) ??
       [];
-  object.geminiModel = reader.readString(offsets[17]);
+  object.geminiModel = reader.readString(offsets[18]);
   object.id = id;
   object.learnedKeywords =
       reader.readObjectList<KeywordCategory>(
-        offsets[18],
+        offsets[19],
         KeywordCategorySchema.deserialize,
         allOffsets,
         KeywordCategory(),
       ) ??
       [];
-  object.lookUpPrices = reader.readBool(offsets[19]);
-  object.maxActiveMinutes = reader.readLong(offsets[20]);
-  object.mealReminderMinutes = reader.readLongList(offsets[21]) ?? [];
-  object.mealsPerDay = reader.readLong(offsets[22]);
+  object.lookUpPrices = reader.readBool(offsets[20]);
+  object.maxActiveMinutes = reader.readLong(offsets[21]);
+  object.mealReminderMinutes = reader.readLongList(offsets[22]) ?? [];
+  object.mealsPerDay = reader.readLong(offsets[23]);
   object.monthlyCategoryLimits =
       reader.readObjectList<CategoryLimit>(
-        offsets[23],
+        offsets[24],
         CategoryLimitSchema.deserialize,
         allOffsets,
         CategoryLimit(),
       ) ??
       [];
-  object.monthlyFoodBudgetMinor = reader.readLong(offsets[24]);
-  object.notificationsEnabled = reader.readBool(offsets[25]);
-  object.onboardingDone = reader.readBool(offsets[26]);
-  object.outputLanguage = reader.readString(offsets[27]);
-  object.schemaVersion = reader.readLong(offsets[28]);
-  object.targetCostPerPortionMinor = reader.readLong(offsets[29]);
-  object.themeMode = reader.readString(offsets[30]);
-  object.weekStartsOn = reader.readLong(offsets[31]);
-  object.weeklyRecapEnabled = reader.readBool(offsets[32]);
+  object.monthlyFoodBudgetMinor = reader.readLong(offsets[25]);
+  object.notificationsEnabled = reader.readBool(offsets[26]);
+  object.onboardingDone = reader.readBool(offsets[27]);
+  object.outputLanguage = reader.readString(offsets[28]);
+  object.schemaVersion = reader.readLong(offsets[29]);
+  object.targetCostPerPortionMinor = reader.readLong(offsets[30]);
+  object.themeMode = reader.readString(offsets[31]);
+  object.weekStartsOn = reader.readLong(offsets[32]);
+  object.weeklyRecapEnabled = reader.readBool(offsets[33]);
   return object;
 }
 
@@ -444,6 +455,12 @@ P _userProfileDeserializeProp<P>(
     case 15:
       return (reader.readStringList(offset) ?? []) as P;
     case 16:
+      return (_UserProfilefoodBasisValueEnumMap[reader.readStringOrNull(
+                offset,
+              )] ??
+              FoodBasis.eaten)
+          as P;
+    case 17:
       return (reader.readObjectList<FxMemo>(
                 offset,
                 FxMemoSchema.deserialize,
@@ -452,9 +469,9 @@ P _userProfileDeserializeProp<P>(
               ) ??
               [])
           as P;
-    case 17:
-      return (reader.readString(offset)) as P;
     case 18:
+      return (reader.readString(offset)) as P;
+    case 19:
       return (reader.readObjectList<KeywordCategory>(
                 offset,
                 KeywordCategorySchema.deserialize,
@@ -463,15 +480,15 @@ P _userProfileDeserializeProp<P>(
               ) ??
               [])
           as P;
-    case 19:
-      return (reader.readBool(offset)) as P;
     case 20:
-      return (reader.readLong(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 21:
-      return (reader.readLongList(offset) ?? []) as P;
-    case 22:
       return (reader.readLong(offset)) as P;
+    case 22:
+      return (reader.readLongList(offset) ?? []) as P;
     case 23:
+      return (reader.readLong(offset)) as P;
+    case 24:
       return (reader.readObjectList<CategoryLimit>(
                 offset,
                 CategoryLimitSchema.deserialize,
@@ -480,28 +497,37 @@ P _userProfileDeserializeProp<P>(
               ) ??
               [])
           as P;
-    case 24:
-      return (reader.readLong(offset)) as P;
     case 25:
-      return (reader.readBool(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 26:
       return (reader.readBool(offset)) as P;
     case 27:
-      return (reader.readString(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 28:
-      return (reader.readLong(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 29:
       return (reader.readLong(offset)) as P;
     case 30:
-      return (reader.readString(offset)) as P;
-    case 31:
       return (reader.readLong(offset)) as P;
+    case 31:
+      return (reader.readString(offset)) as P;
     case 32:
+      return (reader.readLong(offset)) as P;
+    case 33:
       return (reader.readBool(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
   }
 }
+
+const _UserProfilefoodBasisEnumValueMap = {
+  r'eaten': r'eaten',
+  r'spent': r'spent',
+};
+const _UserProfilefoodBasisValueEnumMap = {
+  r'eaten': FoodBasis.eaten,
+  r'spent': FoodBasis.spent,
+};
 
 Id _userProfileGetId(UserProfile object) {
   return object.id;
@@ -2316,6 +2342,147 @@ extension UserProfileQueryFilter
   }
 
   QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
+  foodBasisEqualTo(FoodBasis value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'foodBasis',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
+  foodBasisGreaterThan(
+    FoodBasis value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'foodBasis',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
+  foodBasisLessThan(
+    FoodBasis value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'foodBasis',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
+  foodBasisBetween(
+    FoodBasis lower,
+    FoodBasis upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'foodBasis',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
+  foodBasisStartsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'foodBasis',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
+  foodBasisEndsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'foodBasis',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
+  foodBasisContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'foodBasis',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
+  foodBasisMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'foodBasis',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
+  foodBasisIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'foodBasis', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
+  foodBasisIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'foodBasis', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterFilterCondition>
   fxMemoryLengthEqualTo(int length) {
     return QueryBuilder.apply(this, (query) {
       return query.listLength(r'fxMemory', length, true, length, true);
@@ -3653,6 +3820,18 @@ extension UserProfileQuerySortBy
     });
   }
 
+  QueryBuilder<UserProfile, UserProfile, QAfterSortBy> sortByFoodBasis() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'foodBasis', Sort.asc);
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterSortBy> sortByFoodBasisDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'foodBasis', Sort.desc);
+    });
+  }
+
   QueryBuilder<UserProfile, UserProfile, QAfterSortBy> sortByGeminiModel() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'geminiModel', Sort.asc);
@@ -3974,6 +4153,18 @@ extension UserProfileQuerySortThenBy
     });
   }
 
+  QueryBuilder<UserProfile, UserProfile, QAfterSortBy> thenByFoodBasis() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'foodBasis', Sort.asc);
+    });
+  }
+
+  QueryBuilder<UserProfile, UserProfile, QAfterSortBy> thenByFoodBasisDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'foodBasis', Sort.desc);
+    });
+  }
+
   QueryBuilder<UserProfile, UserProfile, QAfterSortBy> thenByGeminiModel() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'geminiModel', Sort.asc);
@@ -4269,6 +4460,14 @@ extension UserProfileQueryWhereDistinct
     });
   }
 
+  QueryBuilder<UserProfile, UserProfile, QDistinct> distinctByFoodBasis({
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'foodBasis', caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<UserProfile, UserProfile, QDistinct> distinctByGeminiModel({
     bool caseSensitive = true,
   }) {
@@ -4480,6 +4679,12 @@ extension UserProfileQueryProperty
   equipmentProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'equipment');
+    });
+  }
+
+  QueryBuilder<UserProfile, FoodBasis, QQueryOperations> foodBasisProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'foodBasis');
     });
   }
 

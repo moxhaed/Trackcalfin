@@ -61,7 +61,13 @@ void main() {
     await pumpApp(tester);
     expect(find.textContaining('Vibe ·'), findsOneWidget);
     expect(find.text('TODAY'), findsOneWidget);
-    expect(find.text('FOOD SPEND'), findsOneWidget);
+    expect(find.text('FOOD'), findsOneWidget);
+    expect(find.textContaining('Groceries count when you eat them'), findsOneWidget, reason: 'eaten is the default');
+    expect(find.text('spent this week'), findsOneWidget);
+    await tester.tap(find.text('Spent'));
+    await settle(tester);
+    expect((await isar.userProfiles.get(1))!.foodBasis, FoodBasis.spent);
+    expect(find.text('eaten this week'), findsOneWidget);
     await tester.drag(find.byType(ListView).first, const Offset(0, -900));
     await settle(tester);
     expect(find.text('OTHER SPEND · MONTH'), findsOneWidget);

@@ -61,6 +61,7 @@ enum ScanKind { unknown, receipt, pantry, unreadable }
 enum StockEffect { add, replace, none }             // what filing a scan line does to the pantry
 enum StockCheck { onHand, counted, usedUp }         // why a scan line asks about it
 enum PriceSource { estimate, web }                  // a pantry photo's shop price: the model's idea, or Google
+enum FoodBasis { eaten, spent }                     // what the dashboard's food budget counts
 enum AiTask { receipt, dailyRecipe, spontaneousRecipe, nutritionEstimate, nutritionLabel, priceLookup }
 ```
 AI JSON uses snake_case (`meat_fish`, `eating_out`). The DTO layer maps with an explicit `switch` and never uses `EnumType.name` on AI strings directly.
@@ -520,6 +521,7 @@ class UserProfile {
   List<int> mealReminderMinutes = [750, 1140]; // 12:30, 19:00
   bool autoCommitCleanScans = true;
   bool lookUpPrices = true;            // pantry photos: shop prices from Google (Prompt F)
+  FoodBasis foodBasis = FoodBasis.eaten; // food card: what was eaten or spent (missing reads as eaten)
   int eatingOutAvgMealMinor = 1500;    // fallback for "saved vs eating out"
 
   // Parser memory

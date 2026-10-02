@@ -119,10 +119,10 @@ Three tabs plus a **global capture button (⊕)** docked in the center of the bo
 ├──────────────────────────────────────────┤
 │ TODAY   kcal 1,240/2,200 ◔   P 68/140 g ◑│
 ├──────────────────────────────────────────┤
-│ FOOD SPEND                                │
-│ Week    €41 / €69    ██████░░░░  on pace  │
-│ Month  €164 / €300   proj. €281 (×4.33)   │
-│ Eaten this week €27 · €2.14 per meal      │
+│ FOOD                     [Eaten | Spent]  │
+│ Week    €27 / €69    ████░░░░░░  on pace  │
+│ Month  €118 / €300   proj. €245 (×4.33)   │
+│ €41 spent this week · €2.14 per meal      │
 ├──────────────────────────────────────────┤
 │ OTHER SPEND · month                       │
 │ Household      €22 / €40   █████░░░░      │

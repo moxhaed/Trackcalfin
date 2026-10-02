@@ -42,8 +42,9 @@ class VibeScorer {
     double? pickProtein,
   }) {
     final c = <String, double>{};
-    if (s.monthlyBudget > 0 && s.monthPace != null && !s.collectingData) {
-      c['food'] = paceScore(s.monthPace!);
+    // The food budget is judged the way the user reads it: by what was eaten or what was spent.
+    if (s.monthlyBudget > 0 && s.food.monthPace != null && !s.food.collecting) {
+      c['food'] = paceScore(s.food.monthPace!);
     }
     if (s.nonFoodLimit > 0) {
       final pace =
@@ -91,8 +92,14 @@ class VibeScorer {
   ) {
     switch (key) {
       case 'food':
-        final pct = ((s.monthPace! - 1) * 100).round();
+        final pct = ((s.food.monthPace! - 1) * 100).round();
         final meal = s.costPerMeal != null ? money.compact(s.costPerMeal!) : 'money';
+        if (s.basis == FoodBasis.eaten) {
+          // Eating from the pantry still counts as eaten: what helps is cheaper meals.
+          return pct > 0
+              ? "You're eating $pct% ahead of the food budget's pace, ~$meal a meal. Cheaper picks bring it down."
+              : 'What you eat is right on pace with the food budget.';
+        }
         return pct > 0
             ? 'Food spend is $pct% ahead of pace. A pantry-only day saves ~$meal.'
             : 'Food spend is right on pace.';

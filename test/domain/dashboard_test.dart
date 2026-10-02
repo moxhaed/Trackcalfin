@@ -42,18 +42,18 @@ void main() {
         firstTransactionAt: DateTime(2026, 8, 20, 12),
       ),
     );
-    expect(s.weekFood, 4000);
-    expect(s.monthFood, 4000);
+    expect(s.spent.week, 4000);
+    expect(s.spent.month, 4000);
     expect(s.weeklyBudget, (30000 / 4.33).round());
     // trailing 28 days: Sep 4 04:00 .. Oct 1 -> 7000*4 + 4000 = 32000 / 28 * 7 = 8000
-    expect(s.trailingWeekly, 8000);
-    expect(s.projectedMonth, (8000 * 4.33).round());
+    expect(s.spent.trailingWeekly, 8000);
+    expect(s.spent.projectedMonth, (8000 * 4.33).round());
     // Oct 1 at 20:00: month fraction is ~0.02, so the 0.2 floor applies
-    expect(s.monthPace, closeTo(4000 / (30000 * 0.2), 1e-9));
+    expect(s.spent.monthPace, closeTo(4000 / (30000 * 0.2), 1e-9));
     final eo = s.nonFood.firstWhere((c) => c.category == SpendCategory.eatingOut);
     expect(eo.spentMinor, 1500);
     expect(eo.limitMinor, 6000);
-    expect(s.collectingData, isFalse);
+    expect(s.spent.collecting, isFalse);
   });
 
   test('cold start: fewer than 7 days of data', () {
@@ -67,8 +67,54 @@ void main() {
         firstTransactionAt: DateTime(2026, 9, 30, 10),
       ),
     );
-    expect(s.collectingData, isTrue);
-    expect(s.projectedMonth, isNull);
+    expect(s.spent.collecting, isTrue);
+    expect(s.spent.projectedMonth, isNull);
+  });
+
+  test('eaten: groceries count when they are eaten, so a big shop does not spike the week', () {
+    final logs = [
+      for (var d = DateTime(2026, 9, 4); d.isBefore(DateTime(2026, 9, 28)); d = d.add(const Duration(days: 1)))
+        dayLog(clock.dateKey(d.add(const Duration(hours: 12))), 2000, 100, costMinor: 600),
+      dayLog(20260928, 2000, 100, costMinor: 500),
+      dayLog(20260929, 2000, 100, costMinor: 600),
+      dayLog(20260930, 2000, 100, costMinor: 700),
+      dayLog(20261001, 900, 60, costMinor: 400), // today
+    ];
+    final s = DashboardAggregator.compute(
+      DashboardInput(
+        now: now,
+        clock: clock,
+        profile: profile(),
+        transactions: [tx(DateTime(2026, 9, 28, 18), 9000)],
+        logs: logs,
+        firstTransactionAt: DateTime(2026, 8, 1, 12),
+        firstMealAt: DateTime(2026, 9, 4),
+      ),
+    );
+    expect((s.spent.week, s.spent.month), (9000, 0), reason: 'the big shop lands on Monday');
+    expect((s.eaten.week, s.eaten.month), (2200, 400));
+    // 24 days at 600 + 2200 this week = 16600 over 28 days -> 4150 a week
+    expect(s.eaten.trailingWeekly, 4150);
+    expect(s.eaten.projectedMonth, (4150 * 4.33).round());
+    expect(s.eaten.monthPace, closeTo(400 / (30000 * 0.2), 1e-9));
+    expect(s.eaten.collecting, isFalse);
+    expect(s.basis, FoodBasis.eaten, reason: 'the default');
+    expect(s.food, same(s.eaten));
+  });
+
+  test('eaten: the projection waits for 7 days of logged meals', () {
+    final s = DashboardAggregator.compute(
+      DashboardInput(
+        now: now,
+        clock: clock,
+        profile: profile(),
+        transactions: const [],
+        logs: [dayLog(20260930, 2000, 100, costMinor: 700)],
+        firstMealAt: DateTime(2026, 9, 30),
+      ),
+    );
+    expect(s.eaten.collecting, isTrue);
+    expect(s.eaten.projectedMonth, isNull);
   });
 
   test('macros: average over completed logged days, today excluded, coverage', () {
@@ -86,7 +132,7 @@ void main() {
     expect(s.elapsedDays, 3);
     expect(s.coverage, closeTo(2 / 3, 1e-9));
     expect(s.today.kcal, 900);
-    expect(s.eatenWeek, 1200);
+    expect(s.eaten.week, 1200);
     expect(s.homeMealsWeek, 6);
     expect(s.costPerMeal, 200);
     expect(s.savedVsOut, (6 * 1500 - 1200));
@@ -112,6 +158,25 @@ void main() {
 
   group('VibeScorer', () {
     const money = MoneyFormat();
+
+    test('the food part goes by what the user chose to see: eaten or spent', () {
+      DashboardState state(FoodBasis basis) => DashboardAggregator.compute(
+        DashboardInput(
+          now: DateTime(2026, 10, 15, 20),
+          clock: clock,
+          profile: profile()..foodBasis = basis,
+          // Spent 20 000 on the 1st, ate 5 000 worth since.
+          transactions: [tx(DateTime(2026, 10, 1, 10), 20000)],
+          logs: [for (var d = 1; d <= 10; d++) dayLog(20261000 + d, 2000, 140, costMinor: 500)],
+          firstTransactionAt: DateTime(2026, 8, 1),
+          firstMealAt: DateTime(2026, 9, 1),
+        ),
+      );
+      final spent = VibeScorer.score(state(FoodBasis.spent), profile(), money);
+      final eaten = VibeScorer.score(state(FoodBasis.eaten), profile(), money);
+      expect(spent.components['food'], lessThan(50), reason: 'two thirds of the budget spent by mid-month');
+      expect(eaten.components['food'], 100, reason: 'a third of it eaten');
+    });
 
     test('score math and component formulas', () {
       expect(VibeScorer.paceScore(1.0), 100);
