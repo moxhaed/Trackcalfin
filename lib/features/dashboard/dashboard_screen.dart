@@ -129,8 +129,9 @@ class _StatusCard extends StatelessWidget {
     showModalBottomSheet<void>(
       context: context,
       useRootNavigator: true,
-      builder: (_) => SafeArea(
-        child: Padding(
+      // The sheet's own context: the card behind it is rebuilt whenever the numbers change.
+      builder: (context) => SafeArea(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -380,53 +381,53 @@ class _OtherSpendCard extends StatelessWidget {
           ? Text('No other spending this month.', style: context.text.bodyMedium)
           : Column(
               children: [
+                // The name and the amount on one line, the bar under them: both are always
+                // whole, whatever the name, the amount or the text size.
                 for (final c in rows)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Icon(categoryIcon(c.category), size: 18, color: context.scheme.onSurfaceVariant),
                         const SizedBox(width: 8),
-                        SizedBox(
-                          width: 116,
-                          child: Text(
-                            c.category.label,
-                            style: context.text.bodyMedium,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
                         Expanded(
-                          child: c.limitMinor > 0
-                              ? PaceBar(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(child: Text(c.category.label, style: context.text.bodyMedium)),
+                                  if (c.pace != null && c.pace! > 1.15)
+                                    Padding(
+                                      padding: const EdgeInsets.only(right: 4),
+                                      child: Icon(
+                                        Icons.warning_amber_rounded,
+                                        size: 16,
+                                        color: context.colors.serious,
+                                        semanticLabel: 'Over pace',
+                                      ),
+                                    ),
+                                  Text(
+                                    c.limitMinor > 0
+                                        ? '${money.format(c.spentMinor, whole: true)}\u00a0/\u00a0'
+                                              '${money.format(c.limitMinor, whole: true)}'
+                                        : money.format(c.spentMinor, whole: true),
+                                    style: context.text.bodyMedium,
+                                  ),
+                                ],
+                              ),
+                              if (c.limitMinor > 0) ...[
+                                const SizedBox(height: 4),
+                                PaceBar(
                                   fraction: c.spentMinor / c.limitMinor,
                                   marker: state.monthElapsedFraction,
                                   color: context.colors.forPace(c.pace),
                                   height: 6,
-                                )
-                              : const SizedBox(),
-                        ),
-                        const SizedBox(width: 10),
-                        SizedBox(
-                          width: 78,
-                          child: Text(
-                            c.limitMinor > 0
-                                ? '${money.format(c.spentMinor, whole: true)} / ${money.format(c.limitMinor, whole: true)}'
-                                : money.format(c.spentMinor, whole: true),
-                            textAlign: TextAlign.right,
-                            maxLines: 1,
-                            style: context.text.bodySmall,
+                                ),
+                              ],
+                            ],
                           ),
-                        ),
-                        SizedBox(
-                          width: 20,
-                          child: c.pace != null && c.pace! > 1.15
-                              ? Icon(
-                                  Icons.warning_amber_rounded,
-                                  size: 16,
-                                  color: context.colors.serious,
-                                  semanticLabel: 'Over pace',
-                                )
-                              : null,
                         ),
                       ],
                     ),

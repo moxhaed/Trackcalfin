@@ -532,26 +532,31 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
     return _ing.costIsEstimate ? 'About $price per $per (shop price estimate)' : 'Avg cost $price per $per';
   }
 
-  Widget _macroFields() => Row(
-    children: [
-      for (final (i, (c, l)) in [
-        (_kcal, 'kcal'),
-        (_protein, 'Protein'),
-        (_carbs, 'Carbs'),
-        (_fat, 'Fat'),
-        (_fiber, 'Fiber'),
-      ].indexed) ...[
-        if (i > 0) const SizedBox(width: 6),
-        Expanded(
-          child: TextField(
-            controller: c,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: InputDecoration(labelText: l),
-          ),
-        ),
+  /// Calories on their own row, the four macros two by two: every label is whole and a value
+  /// like 1234 or 27.5 has room next to its unit, on a narrow phone too.
+  Widget _macroFields() {
+    Widget field(TextEditingController c, String label, String unit) => TextField(
+      controller: c,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      decoration: InputDecoration(labelText: label, suffixText: unit),
+    );
+    Widget pair(Widget a, Widget b) => Row(
+      children: [
+        Expanded(child: a),
+        const SizedBox(width: 10),
+        Expanded(child: b),
       ],
-    ],
-  );
+    );
+    return Column(
+      children: [
+        field(_kcal, 'Calories', 'kcal'),
+        const SizedBox(height: 10),
+        pair(field(_protein, 'Protein', 'g'), field(_carbs, 'Carbs', 'g')),
+        const SizedBox(height: 10),
+        pair(field(_fat, 'Fat', 'g'), field(_fiber, 'Fiber', 'g')),
+      ],
+    );
+  }
 
   /// Macros with where they came from, and the three ways to confirm them.
   Widget _nutritionCard(BuildContext context, Ingredient cur) {
@@ -605,17 +610,18 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
             else
               Row(
                 children: [
+                  // A number and its unit stay on one line.
                   Expanded(
                     child: Metric(value: '${n.kcal.round()}', label: 'kcal', dotColor: c.kcal),
                   ),
                   Expanded(
-                    child: Metric(value: '${_fmt(n.proteinG)} g', label: 'protein', dotColor: c.protein),
+                    child: Metric(value: '${_fmt(n.proteinG)}\u00a0g', label: 'protein', dotColor: c.protein),
                   ),
                   Expanded(
-                    child: Metric(value: '${_fmt(n.carbsG)} g', label: 'carbs'),
+                    child: Metric(value: '${_fmt(n.carbsG)}\u00a0g', label: 'carbs'),
                   ),
                   Expanded(
-                    child: Metric(value: '${_fmt(n.fatG)} g', label: 'fat'),
+                    child: Metric(value: '${_fmt(n.fatG)}\u00a0g', label: 'fat'),
                   ),
                 ],
               ),

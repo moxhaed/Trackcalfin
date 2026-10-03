@@ -107,7 +107,8 @@ class _ExpenseSheetState extends ConsumerState<ExpenseSheet> {
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: SafeArea(
-        child: Padding(
+        // With the keyboard up there may be no room for every category: scroll to them.
+        child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
