@@ -12,6 +12,8 @@ class PromptRepository {
   static const nutritionLabel = 'nutrition_label.v1';
   static const priceLookup = 'price_lookup.v1';
   static const quickLog = 'quick_log.v2';
+  static const cookbookIndex = 'cookbook_index.v1';
+  static const cookbookImport = 'cookbook_import.v1';
 
   Future<String> load(String version) async => _cache[version] ??= await _loader('assets/prompts/$version.md');
 }

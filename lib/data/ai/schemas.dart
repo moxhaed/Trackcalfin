@@ -457,4 +457,87 @@ class AiSchemas {
       'shopping_list',
     ],
   };
+
+  /// Prompt H, first pass: the recipes in a PDF cookbook and their pages.
+  static Map<String, dynamic> get cookbookIndex => {
+    'type': 'object',
+    'properties': {
+      'schema_version': {'type': 'integer'},
+      'is_cookbook': {'type': 'boolean'},
+      'book_title': _nullable('string'),
+      'page_count': _nullable('integer'),
+      'recipes': {
+        'type': 'array',
+        'items': {
+          'type': 'object',
+          'properties': {
+            'title': {'type': 'string'},
+            'page': _nullable('integer'),
+          },
+          'required': ['title', 'page'],
+        },
+      },
+      'next_page': _nullable('integer'),
+    },
+    'required': ['schema_version', 'is_cookbook', 'book_title', 'page_count', 'recipes', 'next_page'],
+  };
+
+  /// Prompt H, later passes: a few recipes read in full, amounts for the whole recipe.
+  static Map<String, dynamic> get cookbookRecipes => {
+    'type': 'object',
+    'properties': {
+      'schema_version': {'type': 'integer'},
+      'recipes': {
+        'type': 'array',
+        'items': {
+          'type': 'object',
+          'properties': {
+            'id': {'type': 'integer'},
+            'found': {'type': 'boolean'},
+            'title': {'type': 'string'},
+            'page': _nullable('integer'),
+            'servings': _nullable('integer'),
+            'prep_minutes': _nullable('integer'),
+            'cook_minutes': _nullable('integer'),
+            'ingredients': {
+              'type': 'array',
+              'items': {
+                'type': 'object',
+                'properties': {
+                  'as_written': {'type': 'string'},
+                  'name': {'type': 'string'},
+                  'key': {'type': 'string'},
+                  'qty': {'type': 'number'},
+                  'unit': _enum(_units),
+                  'optional': {'type': 'boolean'},
+                },
+                'required': ['as_written', 'name', 'key', 'qty', 'unit', 'optional'],
+              },
+            },
+            'steps': {
+              'type': 'array',
+              'items': {'type': 'string'},
+            },
+            'tags': {
+              'type': 'array',
+              'items': {'type': 'string'},
+            },
+          },
+          'required': [
+            'id',
+            'found',
+            'title',
+            'page',
+            'servings',
+            'prep_minutes',
+            'cook_minutes',
+            'ingredients',
+            'steps',
+            'tags',
+          ],
+        },
+      },
+    },
+    'required': ['schema_version', 'recipes'],
+  };
 }

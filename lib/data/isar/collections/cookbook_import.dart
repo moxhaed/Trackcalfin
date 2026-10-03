@@ -82,7 +82,7 @@ class CookbookDraft {
   List<String> steps = [];
   List<String> tags = [];
 
-  /// What looked off: "qty_suspect:<name>", "allergen:<name>".
+  /// What looked off: `qty_suspect:<name>`, `allergen:<name>:<allergy>`.
   List<String> flags = [];
 
   /// Set once saved as a recipe.

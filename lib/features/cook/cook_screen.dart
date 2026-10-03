@@ -16,6 +16,8 @@ import '../buy/shopping_view.dart';
 import '../common/format.dart';
 import '../common/widgets.dart';
 import 'cook_actions.dart';
+import 'cookbook_import_screen.dart';
+import 'cookbooks_screen.dart';
 
 /// Tab 3: Recipe & Meal Prep.
 class CookScreen extends ConsumerWidget {
@@ -27,6 +29,11 @@ class CookScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Cook'),
         actions: [
+          IconButton(
+            tooltip: 'Import cookbook (PDF)',
+            onPressed: () => importCookbook(context, ref),
+            icon: const Icon(Icons.auto_stories_outlined),
+          ),
           IconButton(
             tooltip: 'Write a recipe',
             onPressed: () => context.push('/recipe/new'),
@@ -42,7 +49,7 @@ class CookScreen extends ConsumerWidget {
               onRefresh: () => ref.read(todayPickProvider.notifier).refresh(),
               child: ListView(
                 padding: EdgeInsets.fromLTRB(16, 4, 16, MediaQuery.paddingOf(context).bottom + 24),
-                children: const [_TodayPickCard(), SizedBox(height: 12), _FridgeStrip(), _CookAgain()],
+                children: const [_TodayPickCard(), SizedBox(height: 12), _FridgeStrip(), _CookAgain(), CookbookShelf()],
               ),
             ),
           ),
@@ -319,6 +326,8 @@ class _CookAgain extends ConsumerWidget {
     final saved =
         recipes
             .where((r) => r.id != pickId && r.status != RecipeStatus.archived && r.status != RecipeStatus.dismissed)
+            // A cookbook's recipes live under Cookbooks until one is cooked or starred.
+            .where((r) => r.origin != RecipeOrigin.cookbook || r.favorite || r.timesCooked > 0)
             .where(
               (r) =>
                   r.favorite ||

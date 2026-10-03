@@ -90,6 +90,13 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
             const SizedBox(height: 6),
             Text(r.why, style: context.text.bodySmall?.copyWith(color: context.scheme.onSurfaceVariant)),
           ],
+          if (r.sourceBook != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              'From ${r.sourceBook}${r.sourcePage != null ? ', page ${r.sourcePage}' : ''}',
+              style: context.text.bodySmall?.copyWith(color: context.scheme.onSurfaceVariant),
+            ),
+          ],
           const SizedBox(height: 14),
           SectionCard(
             title: 'Per portion',

@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import '../../core/day_clock.dart';
 import '../../core/enums.dart';
 import '../isar/collections/cook_session.dart';
+import '../isar/collections/cookbook_import.dart';
 import '../isar/collections/ingredient.dart';
 import '../isar/collections/recipe.dart';
 import '../isar/collections/scan_job.dart';
@@ -199,6 +200,35 @@ class ContextBuilders {
         for (final r in recipes) {'recipe_id': r.id, 'title': r.title},
       ],
       'said': said,
+    };
+  }
+
+  /// Prompt H, index pass: where to go on from. The PDF is sent with it.
+  static Map<String, dynamic> cookbookIndex(CookbookImport job, {required int maxRecipes}) => {
+    'file_name': job.fileName,
+    'page_count': job.pageCount,
+    'from_page': job.nextIndexPage,
+    'max_recipes': maxRecipes,
+  };
+
+  /// Prompt H, recipe pass: the recipes to read (by their index position) and the pantry
+  /// their ingredients may match. Every item counts, used up or not: it says what the user buys.
+  static Map<String, dynamic> cookbookRecipes({
+    required CookbookImport job,
+    required List<int> batch,
+    required List<Ingredient> ingredients,
+    required UserProfile profile,
+  }) {
+    final pantry = [...ingredients]..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    return {
+      'book_title': job.bookTitle,
+      'output_language': profile.outputLanguage,
+      'pantry': [
+        for (final i in pantry.take(400)) {'key': i.key, 'name': i.name, 'unit': i.baseUnit.label},
+      ],
+      'recipes_to_extract': [
+        for (final i in batch) {'id': i, 'title': job.entries[i].title, 'page': job.entries[i].page},
+      ],
     };
   }
 

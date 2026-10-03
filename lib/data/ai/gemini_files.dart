@@ -8,7 +8,13 @@ import 'gemini_client.dart';
 
 /// A file stored with the Gemini Files API.
 class GeminiFile {
-  const GeminiFile({required this.name, required this.uri, required this.mimeType, required this.state, this.expiresAt});
+  const GeminiFile({
+    required this.name,
+    required this.uri,
+    required this.mimeType,
+    required this.state,
+    this.expiresAt,
+  });
 
   /// "files/abc123": what `files/{id}` calls take.
   final String name;
