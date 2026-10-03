@@ -531,6 +531,45 @@ void main() {
       expect(jsonDecode(req)['rejected_today'], ['Pick 0', 'Pick 1']);
     });
 
+    test('two callers at once share one request', () async {
+      await seedPantry();
+      fake.reply(promptExample('daily_recipe.v2.md'));
+      final svc = DailyPickService(isar: isar, ai: ai, now: () => now);
+      final both = await Future.wait([svc.ensure(), svc.ensure(priority: AiPriority.user)]);
+      expect(fake.requests, hasLength(1));
+      expect(both[0].recipe!.id, both[1].recipe!.id);
+    });
+
+    test('a pick that failed is not asked for again until the pantry changes, unless forced', () async {
+      await seedPantry();
+      final svc = DailyPickService(isar: isar, ai: ai, now: () => now);
+      fake
+        ..reply('not json')
+        ..reply('still not json');
+      final first = await svc.ensure();
+      expect(first.recipe, isNull);
+      expect(first.error, startsWith('Response is not valid JSON'));
+      expect(fake.requests, hasLength(2));
+
+      final again = await svc.ensure();
+      expect(again.error, first.error);
+      expect(fake.requests, hasLength(2), reason: 'nothing changed since it failed');
+
+      await PantryService(isar, now: () => now).upsert(
+        Ingredient()
+          ..key = 'tofu'
+          ..name = 'tofu'
+          ..qtyOnHand = 400,
+      );
+      fake.reply(promptExample('daily_recipe.v2.md'));
+      expect((await svc.ensure()).recipe, isNotNull);
+      expect(fake.requests, hasLength(3), reason: 'the pantry changed');
+
+      fake.reply(promptExample('daily_recipe.v2.md'));
+      await svc.ensure(force: true);
+      expect(fake.requests, hasLength(4));
+    });
+
     test('ask: Dart verdict overrides the model when stock is short', () async {
       await seedPantry();
       final json = jsonDecode(promptExample('daily_recipe.v2.md'))['recipe'] as Map<String, dynamic>;

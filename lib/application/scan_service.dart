@@ -64,6 +64,9 @@ class ScanService {
 
   /// Items per price lookup call: each one may cost a Google search.
   static const priceBatch = 20;
+
+  /// A scan this young was just taken, so someone waits for it.
+  static const freshScan = Duration(minutes: 10);
   bool _busy = false;
 
   Future<int> enqueue(List<String> sourcePaths, {String? hint}) async {
@@ -128,6 +131,9 @@ class ScanService {
     final ctx = ContextBuilders.receipt(profile: profile, ingredients: ingredients, now: now(), userHint: job.userHint);
     final imgs = [for (final p in job.imagePaths) await images.read(p)];
     final prompt = await ai.prompts.load(PromptRepository.receipt);
+    // A photo just taken goes ahead of background work; one queued earlier (offline, no key,
+    // a retry after a rate limit) is background work itself.
+    final priority = now().difference(job.capturedAt) < freshScan ? AiPriority.user : AiPriority.background;
     final outcome = await runner.run<ReceiptExtraction>(
       task: AiTask.receipt,
       promptVersion: PromptRepository.receipt,
@@ -139,6 +145,7 @@ class ScanService {
         responseSchema: AiSchemas.receipt,
         maxOutputTokens: 16384,
         timeout: const Duration(seconds: 60),
+        priority: priority,
       ),
       parse: ReceiptExtraction.parse,
     );
@@ -182,7 +189,7 @@ class ScanService {
       ..lastError = null
       ..status = ScanStatus.needsReview;
     if (job.kind == ScanKind.pantry && profile.lookUpPrices) {
-      await _lookUpPrices(job, runner, profile, StockIndex(ingredients));
+      await _lookUpPrices(job, runner, profile, StockIndex(ingredients), priority);
     }
     await _findDuplicate(job);
     if (isForeign(job, profile.currency) && fx != null) {
@@ -203,7 +210,13 @@ class ScanService {
   /// the shops. A found price replaces the photo's own estimate; review asks about every one.
   /// When the lookup fails the estimates stand, and [ScanJob.priceLookupError] says why.
   /// Prices already found or confirmed are left alone, so it can run again after a failure.
-  Future<void> _lookUpPrices(ScanJob job, AiRunner runner, UserProfile profile, StockIndex pantry) async {
+  Future<void> _lookUpPrices(
+    ScanJob job,
+    AiRunner runner,
+    UserProfile profile,
+    StockIndex pantry,
+    AiPriority priority,
+  ) async {
     job.priceLookupError = null;
     final todo = <String, DraftLine>{
       for (final (i, l) in job.lines.indexed)
@@ -229,6 +242,7 @@ class ScanService {
           googleSearch: true,
           maxOutputTokens: 4096,
           timeout: const Duration(seconds: 90),
+          priority: priority,
         ),
         parse: (m) => PriceLookup.parse(m, units: {for (final e in batch.entries) e.key: e.value.unit}),
       );
@@ -354,7 +368,7 @@ class ScanService {
     if (job == null || profile == null || job.kind != ScanKind.pantry || job.status != ScanStatus.needsReview) return;
     final runner = await ai.runner();
     if (runner == null) return;
-    await _lookUpPrices(job, runner, profile, StockIndex(await isar.ingredients.where().findAll()));
+    await _lookUpPrices(job, runner, profile, StockIndex(await isar.ingredients.where().findAll()), AiPriority.user);
     await _save(job);
   }
 

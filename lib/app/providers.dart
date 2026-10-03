@@ -189,9 +189,14 @@ class TodayPickNotifier extends AsyncNotifier<PickOutcome> {
     return ref.read(dailyPickServiceProvider).ensure();
   }
 
+  /// [force] is the user asking for a new pick, so it goes ahead of background AI work.
   Future<void> refresh({bool force = false}) async {
     if (force) state = const AsyncLoading<PickOutcome>();
-    state = await AsyncValue.guard(() => ref.read(dailyPickServiceProvider).ensure(force: force));
+    state = await AsyncValue.guard(
+      () => ref
+          .read(dailyPickServiceProvider)
+          .ensure(force: force, priority: force ? AiPriority.user : AiPriority.background),
+    );
   }
 
   Future<String?> swap() async {

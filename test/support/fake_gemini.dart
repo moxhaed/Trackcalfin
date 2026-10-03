@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -52,6 +53,57 @@ class FakeGemini {
     if (responses.isEmpty) return http.Response('{"error":{"message":"no scripted response"}}', 500);
     return responses.removeAt(0)(body);
   });
+}
+
+/// The details of a free-tier 429, as Google sends them: which quota, its size and when to retry.
+List<Object> quotaDetails({required bool perDay, String limit = '15', String retryDelay = '12s'}) => [
+  {
+    '@type': 'type.googleapis.com/google.rpc.QuotaFailure',
+    'violations': [
+      {
+        'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests',
+        'quotaId': perDay
+            ? 'GenerateRequestsPerDayPerProjectPerModel-FreeTier'
+            : 'GenerateRequestsPerMinutePerProjectPerModel-FreeTier',
+        'quotaValue': limit,
+      },
+    ],
+  },
+  {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': retryDelay},
+];
+
+/// Virtual time for code that takes a clock and a delay function (GeminiGate): [advance]
+/// moves the clock and fires the delays that fall due, in order.
+class FakeTime {
+  DateTime now = DateTime.utc(2026, 10, 3, 12);
+  final _timers = <({DateTime at, Completer<void> done})>[];
+
+  Future<void> delay(Duration d) {
+    final done = Completer<void>();
+    _timers.add((at: now.add(d), done: done));
+    return done.future;
+  }
+
+  Future<void> advance(Duration d) async {
+    final end = now.add(d);
+    while (true) {
+      await settleAsync();
+      _timers.sort((a, b) => a.at.compareTo(b.at));
+      if (_timers.isEmpty || _timers.first.at.isAfter(end)) break;
+      final t = _timers.removeAt(0);
+      if (t.at.isAfter(now)) now = t.at;
+      t.done.complete();
+    }
+    now = end;
+    await settleAsync();
+  }
+}
+
+/// Lets pending futures (a fake HTTP reply, the gate's next step) run.
+Future<void> settleAsync() async {
+  for (var i = 0; i < 40; i++) {
+    await Future<void>.delayed(Duration.zero);
+  }
 }
 
 /// The example JSON lines embedded in a prompt file, in order.

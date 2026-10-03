@@ -18,12 +18,19 @@ class NutritionEstimates {
   final List<NutritionEstimateDto> items;
 
   /// [units] maps each requested key to its unit; every key must come back exactly once.
-  static ParseResult<NutritionEstimates> parse(Map<String, dynamic> m, {required Map<String, BaseUnit> units}) {
+  /// [lenient] keeps the items that pass on their own and drops the rest without an error
+  /// (what a batch that failed its repair round can still give).
+  static ParseResult<NutritionEstimates> parse(
+    Map<String, dynamic> m, {
+    required Map<String, BaseUnit> units,
+    bool lenient = false,
+  }) {
     final j = JsonReader();
     final items = <NutritionEstimateDto>[];
     final seen = <String>{};
     final raw = j.list(m, 'items', r'$');
     for (var i = 0; i < raw.length; i++) {
+      final errorsBefore = j.errors.length;
       final path = '\$.items[$i]';
       final it = raw[i];
       if (it is! Map) {
@@ -51,8 +58,10 @@ class NutritionEstimates {
       if (unit == BaseUnit.pc && (gpp == null || gpp <= 0 || gpp > 5000)) {
         j.error('$path.grams_per_piece', 'is required for "pc" items and must be between 0 and 5000');
       }
+      if (lenient && j.errors.length > errorsBefore) continue;
       items.add(NutritionEstimateDto(key: key, per100g: n, densityGPerMl: density, gramsPerPiece: gpp));
     }
+    if (lenient) return ParseResult(NutritionEstimates(items), const []);
     final missing = units.keys.where((k) => !seen.contains(k)).toList();
     if (missing.isNotEmpty) j.error(r'$.items', 'is missing keys: ${missing.join(', ')}');
     if (j.errors.isNotEmpty) return ParseResult(null, j.errors);

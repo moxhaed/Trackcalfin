@@ -29,18 +29,35 @@ Those files are the single source of truth. This document covers how they're cal
 | | Prompt A | Prompt B | Prompt C |
 |---|---|---|---|
 | Model | `gemini-3.5-flash-lite` | `gemini-3.5-flash-lite` | `gemini-3.5-flash-lite` |
-| Fallback (any API error from the main model) | `gemini-3.8-flash` | `gemini-3.8-flash` | `gemini-3.8-flash` |
+| Fallback (main model down, or out of quota while a user waits; see 5.2b) | `gemini-3.8-flash` | `gemini-3.8-flash` | `gemini-3.8-flash` |
 | Thinking level | `low` (raise to `medium` if long or crumpled receipts misread) | `medium` | `medium` |
 | Media resolution | `high` (small receipt fonts) | — | — |
 | `responseMimeType` | `application/json` | `application/json` | `application/json` |
 | Response schema | Recommended (Sprint 20) | Recommended | Recommended |
 | Temperature / topP / topK | **Leave unset.** Gemini 3.x models are tuned for the defaults. Determinism comes from the schema and Dart validation, not from sampling. | same | same |
 | `maxOutputTokens` | 16 384 | 8 192 | 8 192 |
-| Timeout | 60 s | 45 s | 45 s |
-| Approximate input tokens | system ~2.5k + known keys ~1–2k + images | system ~2k + inventory ~45 tokens/item | system ~2.3k + inventory |
+| Timeout (a timed-out request is not sent to the same model again) | 60 s | 45 s | 45 s |
+| Approximate input tokens (`test/data/request_size_test.dart`) | system ~4.3k + schema ~0.6k + ~17 tokens per pantry item + ~1.1k per image | system ~2.5k + schema ~0.6k + ~50 tokens per item in stock | system ~3k + schema ~0.7k + ~50 tokens per item in stock |
 | Typical output tokens (excluding thinking) | ~60 per receipt line | ~900 | ~1 100 |
 
 Multiply by the current per-token price of the model to budget. At ~1 pick a day, ~3 scans a week and ~1 ask a day, volume is small.
+
+### 5.2b Rate limits: one gate for every request
+
+On the free tier the limit users hit is requests per minute, per project and model (Google shows each project's numbers in AI Studio; it no longer publishes a table). Tokens are rarely the limit: the largest request, B or C with a 220-item pantry, is ~15k tokens. So every request goes through one `GeminiGate`, owned by the app's `AiGateway`:
+
+- **Pacing.** At most 2 requests in flight, at most 1 of them background work, and starts at least 1 s apart.
+- **Priority.** Waiting requests start user first, then in order. *User*: a scan taken in the last 10 minutes, Say it, Ask, a label photo, Swap, a forced refresh of the pick, Fill with AI, Try again on prices, Test connection. *Background*: macro fills, older queued scans, Today's Pick generated on its own (app start, evening plan, the morning task). `GeminiRequest.priority` defaults to user.
+- **A per-minute 429** (`quotaId` …`PerMinute`…) holds that model for the `RetryInfo.retryDelay` Google sends (30 s if it sends none), and a requests quota (`quotaValue`) becomes the model's budget for every rolling minute after that. The request is retried once on the same model if the delay is short: up to 30 s for a user request, 65 s for background work. A user request goes to the fallback instead when the wait is over 5 s and the fallback has quota, and comes back to the main model if the fallback fails too. Background work never spends the fallback's quota (Flash: ~20 requests a day). While a user request waits, the app shows "Gemini's free tier allows 15 requests a minute; trying again in 20 s…" (`GeminiGate.waits`). If it still fails: "Gemini's free tier allows 15 requests a minute on gemini-3.5-flash-lite, and they're used up. Try again in about 50 s."
+- **A per-day 429** (`quotaId` …`PerDay`…) fails at once with "Daily free-tier limit reached for gemini-3.5-flash-lite (500 requests). It resets at midnight Pacific time.", and until that midnight the model fails fast without sending anything. A user request tries the fallback first.
+- **Retries.** A 5xx or network error is retried twice (2 s, 8 s), then the fallback. A timeout goes straight to the fallback. Per `AiRunner.run` that is at most 2 rounds (answer and repair), each possibly sent again with twice the output tokens when cut off.
+
+The services keep background triggers from repeating work:
+
+| Trigger | Before | Now |
+|---|---|---|
+| `NutritionService.fillMissing` (app resume, which includes coming back from the camera; after a scan, Say it, a save in the item sheet, a new key, onboarding) | every call re-asked every item without macros, so an item that failed was asked again on every resume | calls while one runs share it; an item whose estimate failed waits 30 min, 2 h, 12 h, then 24 h; a quota or network error pauses background runs for 10 min; a batch that fails its repair round keeps the items that passed on their own. With nothing new it sends nothing. *Fill with AI* asks for every item at once. |
+| `DailyPickService.ensure` (provider build, a new key, onboarding, every app pause after 19:00, every cook after 19:00, the morning task) | a failed or "pantry too empty" pick was asked again on every call; a new key generated it twice at once | callers at once share one request; after a failure the saved-recipe fallback shows for 15 min (quota or network) or until the pantry changes (at most 4 h). Swap and a forced refresh always ask. |
 
 ### Request anatomy (REST, `generateContent`)
 
@@ -195,7 +212,7 @@ Prompt A v2 returns amounts in the receipt's own currency and minor units (¥1,2
 
 Every number in a recipe comes from `Ingredient.per100`, so an ingredient with no macros silently counts as 0 kcal. `nutritionSource == none` marks that state. Items added by hand with empty macro fields and scanned items without a profile start there (as did the onboarding staples of schema 2).
 
-- **D, estimate** (`NutritionService.fillMissing`): batches of up to 40 unknown items, `thinkingLevel: low`, no images. It runs on app resume, after the API key is saved, after onboarding, after a scan is filed, and from *Fill with AI* in the pantry. The model returns food-table values **per 100 g** plus `density_g_per_ml`, and Dart converts ml items to per 100 ml (`NutritionEngine.per100For`). The DTO rejects missing or unknown keys, macros over 100 g per 100 g, and ml or pc items without a density or piece weight, which triggers the usual repair retry. Items the user filled in while the call was running are left alone.
+- **D, estimate** (`NutritionService.fillMissing`): batches of up to 40 unknown items, `thinkingLevel: low`, no images. It runs in the background on app resume, after the API key is saved, after onboarding and after a scan is filed, and for the user from *Fill with AI* (`fillMissingNow`). Items that failed recently are left out of background runs (5.2b), and a batch that fails its repair round keeps the items that passed on their own (`NutritionEstimates.parse(lenient: true)`). The model returns food-table values **per 100 g** plus `density_g_per_ml`, and Dart converts ml items to per 100 ml (`NutritionEngine.per100For`). The DTO rejects missing or unknown keys, macros over 100 g per 100 g, and ml or pc items without a density or piece weight, which triggers the usual repair retry. Items the user filled in while the call was running are left alone.
 - **E, label** (`NutritionService.readLabel`): one or more photos, `mediaResolution: high`. The model only transcribes one column (per 100 g, per 100 ml or per serving with its size) and the energy in kcal and/or kJ. Dart does the conversion (`NutritionEngine.fromLabel`): kJ → kcal, per serving → per 100, g ↔ ml by the ingredient's density, and fiber taken out of US-style total carbohydrate. It flags `energy_mismatch` (Atwater) and `too_dense` (more than 9.1 kcal or 1.05 g of macros per gram). Nothing is saved until the user checks the numbers in the ingredient sheet and taps *Save macros*.
 
 `Ingredient.nutritionConfirmedAt` is set by a saved label (`nutritionSource: label`) or typed numbers (`user`). There is no confirm step for an AI estimate: the sheet says "AI estimate", and **Edit** or **Scan label** fix it when it looks wrong. Changing an ingredient's macros, unit or piece weight refreshes the stored numbers of every non-archived recipe that uses it (`RecipeService.refreshUsing`). Cook sessions keep their snapshot.
@@ -275,3 +292,5 @@ A price check is an answer, not something to log: its line has no tick box ("Chi
 - Dart SDK status: [deprecated-generative-ai-dart](https://github.com/google-gemini/deprecated-generative-ai-dart) → [Firebase AI Logic](https://firebase.google.com/docs/ai-logic/generate-structured-output)
 - Isar community fork: [isar_community on pub.dev](https://pub.dev/packages/isar_community)
 - Grounding with Google Search (`google_search` tool, `groundingMetadata`, search suggestion display requirements): [Gemini API: Grounding with Google Search](https://ai.google.dev/gemini-api/docs/google-search)
+- Rate limits (per project and model; the free tier's numbers are shown in AI Studio): [Gemini API: Rate limits](https://ai.google.dev/gemini-api/docs/rate-limits). The 429 body (`QuotaFailure.violations[].quotaId` with `PerMinute` or `PerDay`, `RetryInfo.retryDelay`) as seen in the wild: [inspect_ai#5526](https://github.com/UKGovernmentBEIS/inspect_ai/issues/5526), [claude-mem#4242](https://github.com/thedotmack/claude-mem/issues/4242)
+- Media resolution (Gemini 3: high ≈ 1120 tokens per image, medium ≈ 560; medium recommended for PDFs): [Gemini API: Media resolution](https://ai.google.dev/gemini-api/docs/generate-content/media-resolution)

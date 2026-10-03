@@ -16,7 +16,9 @@ class AiGateway {
     this.model = GeminiClient.defaultPrimaryModel,
     this.fallbackModel = GeminiClient.defaultFallbackModel,
     this.baseUrl = GeminiClient.defaultBaseUrl,
-  }) : httpClient = httpClient ?? http.Client();
+    GeminiGate? gate,
+  }) : httpClient = httpClient ?? http.Client(),
+       gate = gate ?? GeminiGate();
 
   final Isar isar;
   final SecretStore secrets;
@@ -30,6 +32,10 @@ class AiGateway {
   /// Google's endpoint, or a local stand-in for UI checks (`--dart-define=GEMINI_BASE_URL`).
   final String baseUrl;
 
+  /// Paces every request of every runner this gateway builds. The app has one gateway
+  /// (aiGatewayProvider), so all of its Gemini traffic goes through this one gate.
+  final GeminiGate gate;
+
   Future<bool> get hasKey async => ((await secrets.readApiKey()) ?? '').trim().isNotEmpty;
 
   Future<AiRunner?> runner() async {
@@ -40,6 +46,7 @@ class AiGateway {
       model: model,
       fallbackModel: fallbackModel,
       baseUrl: baseUrl,
+      gate: gate,
     );
     return AiRunner(isar, client);
   }

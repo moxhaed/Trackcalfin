@@ -41,7 +41,21 @@ class DailyPickService {
 
   static const maxSwaps = 2;
 
+  /// After a failed pick, [ensure] shows the saved-recipe fallback instead of asking again, for
+  /// this long after a quota or network error...
+  static const retryAfterTransient = Duration(minutes: 15);
+
+  /// ...and, after an answer that didn't work out, until the pantry changes or this has passed.
+  static const retryAfterFailure = Duration(hours: 4);
+
+  final _generating = <int, Future<PickOutcome>>{};
+  final _failed = <int, ({DateTime at, int pantry, bool transient, PickOutcome outcome})>{};
+
   Future<DayClock> _clock() async => ProfileService.clockFor((await isar.userProfiles.get(1))!);
+
+  /// Changes when anything is bought, used or counted.
+  static int _pantryStamp(Iterable<Ingredient> all) =>
+      Object.hashAllUnordered(all.map((i) => Object.hash(i.key, i.qtyOnHand.round())));
 
   Future<Recipe?> pickFor(int dateKey) async {
     final list = await isar.recipes.where().suggestedForDateKeyEqualTo(dateKey).findAll();
@@ -54,12 +68,20 @@ class DailyPickService {
       .where((r) => r.status == RecipeStatus.dismissed)
       .length;
 
-  /// Existing pick if still cookable, otherwise a fresh one (AI or fallback).
-  Future<PickOutcome> ensure({DateTime? forDate, bool force = false, List<String> rejected = const []}) async {
+  /// Existing pick if still cookable, otherwise a fresh one (AI or fallback). Without [force],
+  /// a pick that failed a moment ago isn't asked for again until [retryAfterTransient] or, for
+  /// an answer that didn't work out, until the pantry changes ([retryAfterFailure] at most).
+  Future<PickOutcome> ensure({
+    DateTime? forDate,
+    bool force = false,
+    List<String> rejected = const [],
+    AiPriority priority = AiPriority.background,
+  }) async {
     final clock = await _clock();
     final target = forDate ?? now();
     final key = clock.dateKey(target);
-    final stock = StockIndex(await isar.ingredients.where().findAll());
+    final ingredients = await isar.ingredients.where().findAll();
+    final stock = StockIndex(ingredients);
     final existing = await pickFor(key);
     if (existing != null && !force) {
       final cookedToday = existing.lastCookedAt != null && clock.dateKey(existing.lastCookedAt!) == key;
@@ -68,7 +90,17 @@ class DailyPickService {
     }
     final runner = await ai.runner();
     if (runner == null) return _fallback(stock, error: 'No API key: showing a saved recipe.');
-    final outcome = await generate(key, rejected: rejected);
+    final failed = _failed[key];
+    if (failed != null && !force) {
+      final age = now().difference(failed.at);
+      final recent = failed.transient
+          ? age < retryAfterTransient
+          : age < retryAfterFailure && failed.pantry == _pantryStamp(ingredients);
+      if (recent) {
+        return failed.outcome.shopping.isNotEmpty ? failed.outcome : _fallback(stock, error: failed.outcome.error);
+      }
+    }
+    final outcome = await generate(key, rejected: rejected, priority: priority);
     if (outcome.recipe != null || outcome.shopping.isNotEmpty) {
       if (existing != null && outcome.recipe != null && existing.timesCooked == 0) {
         await isar.writeTxn(() => isar.recipes.put(existing..status = RecipeStatus.dismissed));
@@ -106,8 +138,26 @@ class DailyPickService {
     return recent.map((r) => r.title).toSet().take(20).toList();
   }
 
-  /// Calls Prompt B for [dateKey] and stores the validated recipe.
-  Future<PickOutcome> generate(int dateKey, {List<String> rejected = const []}) async {
+  /// Calls Prompt B for [dateKey] and stores the validated recipe. Callers asking for the same
+  /// day at once (a new key rebuilds the pick and refreshes it) share one request.
+  Future<PickOutcome> generate(
+    int dateKey, {
+    List<String> rejected = const [],
+    AiPriority priority = AiPriority.background,
+  }) async {
+    final shared = rejected.isEmpty;
+    final running = shared ? _generating[dateKey] : null;
+    if (running != null) return running;
+    final run = _generate(dateKey, rejected, priority);
+    if (shared) _generating[dateKey] = run;
+    try {
+      return await run;
+    } finally {
+      _generating.removeWhere((_, f) => identical(f, run));
+    }
+  }
+
+  Future<PickOutcome> _generate(int dateKey, List<String> rejected, AiPriority priority) async {
     final runner = await ai.runner();
     if (runner == null) return PickOutcome(error: 'No API key');
     final profile = (await isar.userProfiles.get(1))!;
@@ -134,6 +184,7 @@ class DailyPickService {
         thinkingLevel: 'medium',
         responseSchema: AiSchemas.daily,
         maxOutputTokens: 8192,
+        priority: priority,
       ),
       parse: (json) {
         final parsed = DailyRecipeOutput.parse(json);
@@ -151,11 +202,21 @@ class DailyPickService {
         return parsed;
       },
     );
-    if (!outcome.ok) return PickOutcome(error: outcome.errors.firstOrNull ?? 'AI error');
+    PickOutcome failed(PickOutcome o, {bool transient = false}) {
+      _failed[dateKey] = (at: now(), pantry: _pantryStamp(ingredients), transient: transient, outcome: o);
+      return o;
+    }
+
+    if (!outcome.ok) {
+      return failed(PickOutcome(error: outcome.errors.firstOrNull ?? 'AI error'), transient: outcome.transient);
+    }
     final out = outcome.value!;
     if (out.status == 'insufficient_stock' || validation == null) {
-      return PickOutcome(shopping: out.shoppingSuggestions, error: 'Not enough in the pantry for a proper meal.');
+      return failed(
+        PickOutcome(shopping: out.shoppingSuggestions, error: 'Not enough in the pantry for a proper meal.'),
+      );
     }
+    _failed.remove(dateKey);
     final recipe = validation!.recipe!
       ..suggestedForDateKey = dateKey
       ..promptVersion = PromptRepository.daily
@@ -178,7 +239,7 @@ class DailyPickService {
         .where((r) => r.status == RecipeStatus.dismissed)
         .map((r) => r.title)
         .toList();
-    final res = await generate(key, rejected: rejected);
+    final res = await generate(key, rejected: rejected, priority: AiPriority.user);
     if (res.recipe == null && current != null) {
       // Put the old one back rather than leaving the card empty.
       await isar.writeTxn(() => isar.recipes.put(current..status = RecipeStatus.suggested));
