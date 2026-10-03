@@ -89,7 +89,15 @@ class FoodHistory {
     while (starts.length < maxMonths && starts.first.isAfter(first)) {
       starts.insert(0, clock.previousMonthStart(starts.first));
     }
-    final data = _Data(transactions, {for (final l in logs) l.dateKey: l.foodCostMinor}, uses);
+    final data = _Data(
+      transactions,
+      {for (final l in logs) l.dateKey: l.foodCostMinor},
+      UsedUp.spans(uses, clock),
+      [
+        for (final u in uses)
+          if (u.kind == UseKind.thrownAway) (clock.dateKey(u.to), u.costMinor),
+      ],
+    );
     final from = firstData == null ? null : clock.dayStart(firstData);
     return [
       for (final start in starts)
@@ -162,25 +170,27 @@ class FoodHistory {
       meals += data.mealCost[k] ?? 0;
     }
     var thrown = 0;
-    for (final u in data.uses) {
-      if (u.kind != UseKind.thrownAway) continue;
-      final k = clock.dateKey(u.to);
-      if (k >= fromKey && k <= toKey) thrown += u.costMinor;
+    for (final (k, cost) in data.thrown) {
+      if (k >= fromKey && k <= toKey) thrown += cost;
     }
     return FoodPeriod(
       start: start,
       end: end,
       spentMinor: spent,
-      eatenMinor: meals + UsedUp.eatenIn(data.uses, fromKey, toKey, clock).round(),
+      eatenMinor: meals + UsedUp.eatenInSpans(data.eaten, fromKey, toKey).round(),
       thrownMinor: thrown,
       current: now.isBefore(end),
     );
   }
 }
 
+/// The inputs, with the uses' days worked out once for all the weeks.
 class _Data {
-  _Data(this.transactions, this.mealCost, this.uses);
+  _Data(this.transactions, this.mealCost, this.eaten, this.thrown);
   final List<Transaction> transactions;
   final Map<int, int> mealCost;
-  final List<FoodUse> uses;
+  final List<UseSpan> eaten;
+
+  /// Thrown-away uses: the day each was found gone, and its cost.
+  final List<(int, int)> thrown;
 }

@@ -21,7 +21,7 @@ class DashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final view = ref.watch(dashboardProvider);
-    final checks = ref.watch(quickCheckProvider).length;
+    final checks = ref.watch(quickCheckProvider.select((l) => l.length));
     return Scaffold(
       appBar: AppBar(
         title: Text(DateFormat('EEE d MMM').format(DateTime.now())),

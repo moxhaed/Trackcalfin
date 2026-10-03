@@ -90,6 +90,11 @@ class DayClock {
     return out;
   }
 
+  /// Days since 1970-01-01 of the calendar day [key]: keys to count days between with plain
+  /// subtraction. UTC, so it is cheap (a local DateTime looks up the time zone).
+  static int dayNumber(int key) =>
+      DateTime.utc(key ~/ 10000, (key ~/ 100) % 100, key % 100).millisecondsSinceEpoch ~/ Duration.millisecondsPerDay;
+
   static int addDaysToKey(int key, int days) {
     final d = dateOfKey(key);
     return keyOf(DateTime(d.year, d.month, d.day + days));

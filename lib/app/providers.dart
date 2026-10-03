@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:async/async.dart';
+import 'package:collection/collection.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
@@ -104,6 +105,56 @@ final quickLogServiceProvider = Provider(
 // ---------------------------------------------------------------------------
 // Live data
 
+/// Runs [load] when [triggers] fire, but once for a burst instead of once a trigger. One commit
+/// fires a watcher for every collection it touched, and a hidden tab's paused watchers hold
+/// every write until the tab shows again: `asyncMap` would load (and rebuild the screen) once
+/// for each of them in turn. Here the burst lands first, and triggers that come in while a load
+/// runs make one more load after it.
+Stream<T> _latest<T>(Stream<void> triggers, Future<T> Function() load) {
+  late final StreamController<T> out;
+  StreamSubscription<void>? sub;
+  var running = false;
+  var again = false;
+
+  Future<void> run() async {
+    running = true;
+    do {
+      // The rest of a burst is already queued behind its first trigger.
+      await Future<void>.delayed(Duration.zero);
+      again = false;
+      if (sub == null) break;
+      try {
+        final value = await load();
+        if (sub != null) out.add(value);
+      } catch (e, s) {
+        if (sub != null) out.addError(e, s);
+      }
+    } while (again && sub != null);
+    running = false;
+  }
+
+  out = StreamController<T>(
+    onListen: () => sub = triggers.listen((_) {
+      if (running) {
+        again = true;
+      } else {
+        unawaited(run());
+      }
+    }, onError: out.addError),
+    onPause: () => sub?.pause(),
+    onResume: () => sub?.resume(),
+    onCancel: () {
+      final cancel = sub?.cancel();
+      sub = null;
+      return cancel;
+    },
+  );
+  return out.stream;
+}
+
+/// [query]'s results, now and after each change, a burst of changes at a time ([_latest]).
+Stream<List<T>> _watch<T>(Query<T> query) => _latest(query.watchLazy(fireImmediately: true), query.findAll);
+
 final profileProvider = StreamProvider<UserProfile>((ref) {
   final isar = ref.watch(isarProvider);
   return isar.userProfiles.watchObject(1, fireImmediately: true).map((p) => p ?? ProfileService.defaults());
@@ -118,35 +169,37 @@ final hasApiKeyProvider = FutureProvider<bool>((ref) => ref.watch(aiGatewayProvi
 
 final ingredientsProvider = StreamProvider<List<Ingredient>>((ref) {
   final isar = ref.watch(isarProvider);
-  return isar.ingredients.where().sortByName().watch(fireImmediately: true);
+  return _watch(isar.ingredients.where().sortByName().build());
 });
 
 final transactionsProvider = StreamProvider<List<Transaction>>((ref) {
   final isar = ref.watch(isarProvider);
-  return isar.transactions.where(sort: Sort.desc).anyOccurredAt().limit(500).watch(fireImmediately: true);
+  return _watch(isar.transactions.where(sort: Sort.desc).anyOccurredAt().limit(500).build());
 });
 
 final recipesProvider = StreamProvider<List<Recipe>>((ref) {
   final isar = ref.watch(isarProvider);
-  return isar.recipes.where().watch(fireImmediately: true);
+  return _watch(isar.recipes.where().build());
 });
 
 final fridgeProvider = StreamProvider<List<CookSession>>((ref) {
   final isar = ref.watch(isarProvider);
-  return isar.cookSessions.where().statusEqualTo(CookStatus.active).sortByCookedAt().watch(fireImmediately: true);
+  return _watch(isar.cookSessions.where().statusEqualTo(CookStatus.active).sortByCookedAt().build());
 });
 
 final scanJobsProvider = StreamProvider<List<ScanJob>>((ref) {
   final isar = ref.watch(isarProvider);
-  return isar.scanJobs
-      .filter()
-      .not()
-      .statusEqualTo(ScanStatus.committed)
-      .and()
-      .not()
-      .statusEqualTo(ScanStatus.discarded)
-      .sortByCapturedAtDesc()
-      .watch(fireImmediately: true);
+  return _watch(
+    isar.scanJobs
+        .filter()
+        .not()
+        .statusEqualTo(ScanStatus.committed)
+        .and()
+        .not()
+        .statusEqualTo(ScanStatus.discarded)
+        .sortByCapturedAtDesc()
+        .build(),
+  );
 });
 
 final inboxCountProvider = Provider<int>((ref) {
@@ -157,21 +210,40 @@ final inboxCountProvider = Provider<int>((ref) {
 final todayLogProvider = StreamProvider<DailyLog?>((ref) {
   final isar = ref.watch(isarProvider);
   final key = ref.watch(dayClockProvider).dateKey(ref.watch(nowProvider)());
-  return isar.dailyLogs.where().dateKeyEqualTo(key).watch(fireImmediately: true).map((l) => l.firstOrNull);
+  return _watch(isar.dailyLogs.where().dateKeyEqualTo(key).build()).map((l) => l.firstOrNull);
 });
 
 /// The shopping list, oldest first.
 final shoppingListProvider = StreamProvider<List<ShoppingListItem>>((ref) {
   final isar = ref.watch(isarProvider);
-  return isar.shoppingListItems.where().sortByAddedAt().watch(fireImmediately: true);
+  return _watch(isar.shoppingListItems.where().sortByAddedAt().build());
 });
+
+/// Each pantry item's unit, by key. Equal while no item is added, removed or changes unit, so a
+/// count or a cooked meal doesn't work the price book out again.
+final _unitsProvider = Provider<_Units>((ref) {
+  final items = ref.watch(ingredientsProvider).value ?? const <Ingredient>[];
+  return _Units({for (final i in items) i.key: i.baseUnit});
+});
+
+class _Units {
+  _Units(this.byKey);
+  final Map<String, BaseUnit> byKey;
+
+  static const _eq = MapEquality<String, BaseUnit>();
+
+  @override
+  bool operator ==(Object other) => other is _Units && _eq.equals(other.byKey, byKey);
+
+  @override
+  int get hashCode => _eq.hash(byKey);
+}
 
 /// Each store's latest price per item, from the ledger (the last 500 transactions are months
 /// of shopping), in the units the items use now.
 final priceBookProvider = Provider<PriceBook>((ref) {
   final txs = ref.watch(transactionsProvider).value ?? const [];
-  final items = ref.watch(ingredientsProvider).value ?? const <Ingredient>[];
-  return PriceBook.from(txs, now: ref.watch(nowProvider)(), units: {for (final i in items) i.key: i.baseUnit});
+  return PriceBook.from(txs, now: ref.watch(nowProvider)(), units: ref.watch(_unitsProvider).byKey);
 });
 
 final quickCheckProvider = Provider<List<Ingredient>>((ref) {
@@ -271,7 +343,7 @@ final dashboardProvider = StreamProvider<DashboardView>((ref) {
     isar.userProfiles.watchLazy(),
     Stream<void>.periodic(const Duration(minutes: 10)),
   ]);
-  return triggers.asyncMap((_) => loadDashboard(isar, now(), pick: pick));
+  return _latest(triggers, () => loadDashboard(isar, now(), pick: pick));
 });
 
 // ---------------------------------------------------------------------------
@@ -319,5 +391,5 @@ final foodHistoryProvider = StreamProvider.autoDispose<FoodHistoryView>((ref) {
     isar.foodUses.watchLazy(),
     isar.userProfiles.watchLazy(),
   ]);
-  return triggers.asyncMap((_) => loadFoodHistory(isar, now()));
+  return _latest(triggers, () => loadFoodHistory(isar, now()));
 });

@@ -18,6 +18,10 @@ class TrackcalfinApp extends ConsumerStatefulWidget {
 class _TrackcalfinAppState extends ConsumerState<TrackcalfinApp> with WidgetsBindingObserver {
   late final AppIntegrations _integrations = AppIntegrations(ref, widget.router);
 
+  // Built once: a color scheme from a seed takes a moment, and the app rebuilds on theme changes.
+  final _light = AppTheme.build(Brightness.light);
+  final _dark = AppTheme.build(Brightness.dark);
+
   @override
   void initState() {
     super.initState();
@@ -40,7 +44,7 @@ class _TrackcalfinAppState extends ConsumerState<TrackcalfinApp> with WidgetsBin
 
   @override
   Widget build(BuildContext context) {
-    final mode = switch (ref.watch(profileProvider).value?.themeMode) {
+    final mode = switch (ref.watch(profileProvider.select((p) => p.value?.themeMode))) {
       'light' => ThemeMode.light,
       'dark' => ThemeMode.dark,
       _ => ThemeMode.system,
@@ -49,8 +53,8 @@ class _TrackcalfinAppState extends ConsumerState<TrackcalfinApp> with WidgetsBin
       themeMode: mode,
       title: 'Trackcalfin',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.build(Brightness.light),
-      darkTheme: AppTheme.build(Brightness.dark),
+      theme: _light,
+      darkTheme: _dark,
       scaffoldMessengerKey: appMessengerKey,
       routerConfig: widget.router,
     );

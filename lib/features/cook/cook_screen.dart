@@ -40,9 +40,24 @@ class CookScreen extends ConsumerWidget {
           Expanded(
             child: RefreshIndicator(
               onRefresh: () => ref.read(todayPickProvider.notifier).refresh(),
-              child: ListView(
-                padding: EdgeInsets.fromLTRB(16, 4, 16, MediaQuery.paddingOf(context).bottom + 24),
-                children: const [_TodayPickCard(), SizedBox(height: 12), _FridgeStrip(), _CookAgain()],
+              child: CustomScrollView(
+                slivers: [
+                  SliverPadding(
+                    padding: EdgeInsets.fromLTRB(16, 4, 16, MediaQuery.paddingOf(context).bottom + 24),
+                    sliver: const SliverMainAxisGroup(
+                      slivers: [
+                        SliverList(
+                          delegate: SliverChildListDelegate.fixed([
+                            _TodayPickCard(),
+                            SizedBox(height: 12),
+                            _FridgeStrip(),
+                          ]),
+                        ),
+                        _CookAgain(),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -343,42 +358,69 @@ class _CookAgain extends ConsumerWidget {
             return b.$2.readiness.compareTo(a.$2.readiness);
           });
     if (saved.isEmpty) {
-      return const EmptyState(
-        icon: Icons.menu_book_outlined,
-        title: 'Your recipe rotation lives here',
-        message: 'Recipes you cook, save or ask for come back here with "ready now" badges.',
+      return const SliverToBoxAdapter(
+        child: EmptyState(
+          icon: Icons.menu_book_outlined,
+          title: 'Your recipe rotation lives here',
+          message: 'Recipes you cook, save or ask for come back here with "ready now" badges.',
+        ),
       );
     }
-    return SectionCard(
-      title: 'Cook again',
-      padding: const EdgeInsets.fromLTRB(16, 14, 8, 8),
-      child: Column(
-        children: [
-          for (final (r, f) in saved)
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(
-                r.favorite ? Icons.star : Icons.restaurant_menu,
-                color: r.favorite ? context.colors.warning : null,
+    // A card like SectionCard, but a lazy list: a long rotation builds only the rows on screen.
+    final card = CardTheme.of(context);
+    return DecoratedSliver(
+      decoration: ShapeDecoration(
+        color: card.color ?? context.scheme.surfaceContainerLow,
+        shape: card.shape ?? RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      ),
+      sliver: SliverPadding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 8, 8),
+        sliver: SliverMainAxisGroup(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Text(
+                  'COOK AGAIN',
+                  style: context.text.labelMedium?.copyWith(letterSpacing: 0.8, color: context.scheme.onSurfaceVariant),
+                ),
               ),
-              title: Text(r.title),
-              subtitle: Text(
-                f.ready
-                    ? 'Ready · up to ${f.maxPortionsNow >= 99 ? 'many' : f.maxPortionsNow} portions'
-                    : (f.missing.isNotEmpty
-                          ? 'Missing ${f.missing.take(2).join(', ')}'
-                          : 'Short on ${f.shortfalls.first.item.name}'),
-              ),
-              trailing: f.ready
-                  ? Icon(Icons.check_circle, color: context.colors.good, semanticLabel: 'Ready')
-                  : IconButton(
-                      tooltip: 'Add what is missing to the shopping list',
-                      onPressed: () => addToShoppingList(context, ref, Shopping.forRecipe(r, f)),
-                      icon: Icon(Icons.add_shopping_cart, color: context.scheme.onSurfaceVariant),
-                    ),
-              onTap: () => context.push('/recipe/${r.id}'),
             ),
-        ],
+            SliverList.builder(
+              itemCount: saved.length,
+              itemBuilder: (context, i) {
+                final (r, f) = saved[i];
+                // Ink shows on the row's own Material, over the card's color.
+                return Material(
+                  type: MaterialType.transparency,
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      r.favorite ? Icons.star : Icons.restaurant_menu,
+                      color: r.favorite ? context.colors.warning : null,
+                    ),
+                    title: Text(r.title),
+                    subtitle: Text(
+                      f.ready
+                          ? 'Ready · up to ${f.maxPortionsNow >= 99 ? 'many' : f.maxPortionsNow} portions'
+                          : (f.missing.isNotEmpty
+                                ? 'Missing ${f.missing.take(2).join(', ')}'
+                                : 'Short on ${f.shortfalls.first.item.name}'),
+                    ),
+                    trailing: f.ready
+                        ? Icon(Icons.check_circle, color: context.colors.good, semanticLabel: 'Ready')
+                        : IconButton(
+                            tooltip: 'Add what is missing to the shopping list',
+                            onPressed: () => addToShoppingList(context, ref, Shopping.forRecipe(r, f)),
+                            icon: Icon(Icons.add_shopping_cart, color: context.scheme.onSurfaceVariant),
+                          ),
+                    onTap: () => context.push('/recipe/${r.id}'),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
