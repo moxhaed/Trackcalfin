@@ -131,13 +131,7 @@ class _JobCard extends ConsumerWidget {
                       },
                       child: const Text('Retake'),
                     ),
-                  FilledButton.tonal(
-                    onPressed: () async {
-                      await scans.retry(job.id);
-                      await processScansInBackground(ref);
-                    },
-                    child: const Text('Try again'),
-                  ),
+                  FilledButton.tonal(onPressed: () => retryScan(ref, job.id), child: const Text('Try again')),
                 ],
               ),
             ),

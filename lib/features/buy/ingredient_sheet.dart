@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
@@ -153,11 +152,13 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
   }
 
   Future<void> _scanLabel() async {
+    final store = ref.read(imageStoreProvider);
+    final nutrition = ref.read(nutritionServiceProvider);
     List<String> paths;
     try {
       paths = await PhotoCapture.pick(camera: true);
     } catch (e) {
-      setState(() => _macroError = 'Could not open the camera: $e');
+      if (mounted) setState(() => _macroError = 'Could not open the camera: $e');
       return;
     }
     if (paths.isEmpty || !mounted) return;
@@ -165,8 +166,9 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
       _busy = true;
       _macroError = null;
     });
-    final images = [for (final p in paths) await File(p).readAsBytes()];
-    final draft = await ref.read(nutritionServiceProvider).readLabel(_ing.id, images);
+    // Scaled down like scan photos: the camera's full-size photo is several MB.
+    final images = [for (final p in paths) await store.readScaled(p)];
+    final draft = await nutrition.readLabel(_ing.id, images);
     if (!mounted) return;
     setState(() {
       _busy = false;

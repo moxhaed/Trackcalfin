@@ -277,8 +277,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             child: OutlinedButton.icon(
               style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
               onPressed: () async {
-                await startScan(context, ref, hint: hint);
-                setState(() => _sweeps++);
+                final queued = await startScan(context, ref, hint: hint);
+                if (queued && mounted) setState(() => _sweeps++);
               },
               icon: Icon(icon),
               label: Text(label),

@@ -15,6 +15,7 @@ import '../../application/profile_service.dart';
 import '../../core/enums.dart';
 import '../../core/region.dart';
 import '../../data/isar/collections/schemas.dart';
+import '../capture/scan_flow.dart';
 import '../common/format.dart';
 import '../common/pickers.dart';
 import '../common/text_prompt.dart';
@@ -622,7 +623,7 @@ class _ApiKeyTile extends ConsumerWidget {
             await ref.read(secretStoreProvider).writeApiKey(v.trim().isEmpty ? null : v.trim());
             ref.invalidate(hasApiKeyProvider);
             if (v.trim().isNotEmpty) {
-              unawaited(ref.read(scanServiceProvider).processQueue());
+              unawaited(processScansInBackground(ref));
               unawaited(ref.read(nutritionServiceProvider).fillMissing());
               unawaited(ref.read(todayPickProvider.notifier).refresh());
             }
