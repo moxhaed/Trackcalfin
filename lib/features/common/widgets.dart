@@ -18,7 +18,8 @@ class SectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      clipBehavior: Clip.antiAlias,
+      // Only a tappable card needs its ink clipped to the corners; a clip costs on every frame.
+      clipBehavior: onTap == null ? Clip.none : Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         child: Padding(

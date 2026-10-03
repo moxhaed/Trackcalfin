@@ -237,13 +237,14 @@ class DashboardAggregator {
       input.firstTransactionAt,
     );
     final todayKeyForFood = clock.dateKey(now);
+    final useSpans = UsedUp.spans(input.uses, clock);
     final eaten = food((from) {
       final fromKey = clock.dateKey(from);
       final meals = input.logs
           .where((l) => l.dateKey >= fromKey && l.dateKey <= todayKeyForFood)
           .fold(0, (a, l) => a + l.foodCostMinor);
       // Plus what counts and old receipts found eaten without a logged meal.
-      return meals + UsedUp.eatenIn(input.uses, fromKey, todayKeyForFood, clock).round();
+      return meals + UsedUp.eatenInSpans(useSpans, fromKey, todayKeyForFood).round();
     }, input.firstMealAt);
 
     // --- Non-food ---------------------------------------------------------

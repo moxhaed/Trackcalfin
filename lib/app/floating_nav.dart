@@ -51,9 +51,15 @@ final bool _nativeGlass =
     Platform.isIOS &&
     (int.tryParse(RegExp(r'Version (\d+)').firstMatch(Platform.operatingSystemVersion)?.group(1) ?? '') ?? 0) >= 26;
 
+/// A backdrop blur has to blur what scrolls under the pill again on every frame. iOS takes that
+/// in stride (and iOS users expect glass); on Android it breaks the GPU's render pass and blurs
+/// a fresh copy of the screen behind the pill each frame while scrolling, a classic jank source
+/// there. So outside iOS the pill is solid, in the color the glass shows over the page.
+final bool _blurBackdrop = !kIsWeb && Platform.isIOS;
+
 /// Floating bottom navigation: a pill of tabs with a round capture button beside it.
 /// On iOS 26+ both are native Liquid Glass (`ios/Runner/GlassNav.swift`); elsewhere
-/// the pill is drawn in Flutter over a light backdrop blur.
+/// the pill is drawn in Flutter, over a light backdrop blur on iOS and solid elsewhere.
 ///
 /// Use it with `Scaffold(extendBody: true)` so content scrolls behind it; the
 /// Scaffold then reports the bar's height as bottom `MediaQuery` padding.
@@ -173,62 +179,69 @@ class _BlurPillState extends State<_BlurPill> with SingleTickerProviderStateMixi
   Widget build(BuildContext context) {
     final scheme = context.scheme;
     final n = widget.tabs.length;
+    final border = StadiumBorder(side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5), width: 0.5));
+    final content = Padding(
+      padding: const EdgeInsets.all(4),
+      child: LayoutBuilder(
+        builder: (context, box) => AnimatedBuilder(
+          animation: _move,
+          builder: (context, _) {
+            final (left, right) = _span();
+            final w = box.maxWidth / n;
+            return Stack(
+              children: [
+                Positioned(
+                  left: left * w,
+                  width: (right - left) * w,
+                  top: 0,
+                  bottom: 0,
+                  child: DecoratedBox(
+                    decoration: ShapeDecoration(color: scheme.secondaryContainer, shape: const StadiumBorder()),
+                  ),
+                ),
+                Row(
+                  children: [
+                    for (var i = 0; i < n; i++)
+                      Expanded(
+                        child: _PillTab(
+                          tab: widget.tabs[i],
+                          // How much of this tab the indicator covers right now.
+                          glow: (math.min(right, i + 1.0) - math.max(left, i.toDouble())).clamp(0.0, 1.0),
+                          current: i == widget.index,
+                          onTap: () => widget.onSelect(i),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
     return DecoratedBox(
       decoration: ShapeDecoration(
         shape: const StadiumBorder(),
         shadows: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 20, offset: const Offset(0, 6))],
       ),
-      child: ClipPath(
-        clipper: const ShapeBorderClipper(shape: StadiumBorder()),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: DecoratedBox(
-            decoration: ShapeDecoration(
-              color: scheme.surfaceContainer.withValues(alpha: 0.72),
-              shape: StadiumBorder(side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5), width: 0.5)),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(4),
-              child: LayoutBuilder(
-                builder: (context, box) => AnimatedBuilder(
-                  animation: _move,
-                  builder: (context, _) {
-                    final (left, right) = _span();
-                    final w = box.maxWidth / n;
-                    return Stack(
-                      children: [
-                        Positioned(
-                          left: left * w,
-                          width: (right - left) * w,
-                          top: 0,
-                          bottom: 0,
-                          child: DecoratedBox(
-                            decoration: ShapeDecoration(color: scheme.secondaryContainer, shape: const StadiumBorder()),
-                          ),
-                        ),
-                        Row(
-                          children: [
-                            for (var i = 0; i < n; i++)
-                              Expanded(
-                                child: _PillTab(
-                                  tab: widget.tabs[i],
-                                  // How much of this tab the indicator covers right now.
-                                  glow: (math.min(right, i + 1.0) - math.max(left, i.toDouble())).clamp(0.0, 1.0),
-                                  current: i == widget.index,
-                                  onTap: () => widget.onSelect(i),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ],
-                    );
-                  },
+      child: _blurBackdrop
+          ? ClipPath(
+              clipper: const ShapeBorderClipper(shape: StadiumBorder()),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                child: DecoratedBox(
+                  decoration: ShapeDecoration(color: scheme.surfaceContainer.withValues(alpha: 0.72), shape: border),
+                  child: content,
                 ),
               ),
+            )
+          : DecoratedBox(
+              decoration: ShapeDecoration(
+                color: Color.alphaBlend(scheme.surfaceContainer.withValues(alpha: 0.72), scheme.surface),
+                shape: border,
+              ),
+              child: content,
             ),
-          ),
-        ),
-      ),
     );
   }
 }

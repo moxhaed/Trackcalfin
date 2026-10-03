@@ -80,15 +80,30 @@ class UsedUp {
 
   /// What the eaten [uses] were worth on the days [fromKey] to [toKey] (inclusive), each
   /// spread evenly over the days from its `from` to its `to`.
-  static double eatenIn(Iterable<FoodUse> uses, int fromKey, int toKey, DayClock clock) {
-    var total = 0.0;
+  static double eatenIn(Iterable<FoodUse> uses, int fromKey, int toKey, DayClock clock) =>
+      eatenInSpans(spans(uses, clock), fromKey, toKey);
+
+  /// The eaten [uses] with their days worked out, for [eatenInSpans]: summing many periods
+  /// (a year of weeks) works the days out once, not once a period.
+  static List<UseSpan> spans(Iterable<FoodUse> uses, DayClock clock) {
+    final out = <UseSpan>[];
     for (final u in uses) {
       if (u.kind != UseKind.eaten || u.costMinor <= 0) continue;
-      final a = clock.dateKey(u.from);
-      final b = clock.dateKey(u.to);
-      final days = DayClock.keysBetween(a, b < a ? a : b);
-      final inside = days.where((k) => k >= fromKey && k <= toKey).length;
-      if (inside > 0) total += u.costMinor * inside / days.length;
+      final a = DayClock.dayNumber(clock.dateKey(u.from));
+      final b = DayClock.dayNumber(clock.dateKey(u.to));
+      out.add(UseSpan(a, b < a ? a : b, u.costMinor));
+    }
+    return out;
+  }
+
+  /// [eatenIn] over [spans]: each one's share of its days that fall from [fromKey] to [toKey].
+  static double eatenInSpans(Iterable<UseSpan> spans, int fromKey, int toKey) {
+    final lo = DayClock.dayNumber(fromKey);
+    final hi = DayClock.dayNumber(toKey);
+    var total = 0.0;
+    for (final s in spans) {
+      final inside = math.min(s.last, hi) - math.max(s.first, lo) + 1;
+      if (inside > 0) total += s.costMinor * inside / (s.last - s.first + 1);
     }
     return total;
   }
@@ -155,4 +170,12 @@ class CountedUse {
 
   /// The count left nothing: the item was marked out.
   final bool markedOut;
+}
+
+/// An eaten use's days as [DayClock.dayNumber]s, first to last (inclusive), and its cost.
+class UseSpan {
+  const UseSpan(this.first, this.last, this.costMinor);
+  final int first;
+  final int last;
+  final int costMinor;
 }
