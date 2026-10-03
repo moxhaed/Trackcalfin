@@ -108,19 +108,21 @@ void main() {
     return fake.client.post(req.url, headers: req.headers, body: req.body);
   });
 
-  CookbookImportService service({String? key = 'test-key', int batchSize = 2}) => CookbookImportService(
-    isar: isar,
-    ai: AiGateway(
-      isar: isar,
-      secrets: MemorySecretStore(key),
-      prompts: PromptRepository(loadPromptAsset),
-      httpClient: withFiles(),
-    ),
-    dir: () async => '${tmp.path}/cookbooks',
-    now: () => now,
-    batchSize: batchSize,
-    delay: (_) async {},
-  );
+  CookbookImportService service({String? key = 'test-key', int batchSize = 2, GeminiGate? gate}) =>
+      CookbookImportService(
+        isar: isar,
+        ai: AiGateway(
+          isar: isar,
+          secrets: MemorySecretStore(key),
+          prompts: PromptRepository(loadPromptAsset),
+          httpClient: withFiles(),
+          gate: gate,
+        ),
+        dir: () async => '${tmp.path}/cookbooks',
+        now: () => now,
+        batchSize: batchSize,
+        delay: (_) async {},
+      );
 
   Future<void> pantry() => isar.writeTxn(() async {
     Ingredient ing(String key, String name, BaseUnit unit, double qty, double cost, {double? gpp}) => Ingredient()
@@ -255,18 +257,21 @@ void main() {
       ..reply(promptExample('cookbook_import.v1.md'))
       ..status(429, 'quota', details: daily)
       ..status(429, 'quota', details: daily);
-    final s = service();
+    // The gate keeps both models off for the rest of Google's day; Continue comes the day after.
+    var later = Duration.zero;
+    final s = service(gate: GeminiGate(clock: () => DateTime.now().add(later)));
     final id = await s.create(fileName: 'book.pdf', bytes: fakePdf());
     await s.step(id);
     await s.step(id);
     final p = await s.step(id);
     expect((p.transient, p.more), (true, true));
     var job = (await s.get(id))!;
-    expect(job.lastError, contains('Daily free-tier limit'));
+    expect(job.lastError, contains('Daily limits reached'));
     expect(job.drafts, hasLength(1), reason: 'what was read stays');
     expect(job.entries[2].state, CookbookEntryState.pending);
     expect(job.entries[2].attempts, 0, reason: 'a limit is not the answer failing');
 
+    later = const Duration(days: 1);
     fake.replyJson({
       'schema_version': 1,
       'recipes': [cauliflower(2)],
