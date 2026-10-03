@@ -14,12 +14,34 @@ class GeminiException implements Exception {
   String toString() => 'GeminiException(${status ?? '-'}): $message';
 }
 
+/// A document sent with a turn: its bytes inline, or a file uploaded with the Files API
+/// (`GeminiFiles`), which later calls point at instead of sending it again.
+class Attachment {
+  const Attachment.inline(this.mimeType, Uint8List this.bytes) : fileUri = null;
+  const Attachment.uploaded(this.mimeType, String this.fileUri) : bytes = null;
+  final String mimeType;
+  final Uint8List? bytes;
+  final String? fileUri;
+
+  Map<String, dynamic> toPart() => bytes != null
+      ? {
+          'inlineData': {'mimeType': mimeType, 'data': base64Encode(bytes!)},
+        }
+      : {
+          'fileData': {'mimeType': mimeType, 'fileUri': fileUri},
+        };
+}
+
 class Turn {
-  const Turn.user(this.text, [this.images = const []]) : role = 'user';
-  const Turn.model(this.text) : role = 'model', images = const [];
+  const Turn.user(this.text, [this.images = const [], this.documents = const []]) : role = 'user';
+  const Turn.model(this.text) : role = 'model', images = const [], documents = const [];
   final String role;
   final String text;
   final List<Uint8List> images;
+
+  /// Sent before the text: Google advises putting the prompt after a document, and calls
+  /// over the same document then share a prefix.
+  final List<Attachment> documents;
 }
 
 class GeminiRequest {
@@ -175,6 +197,7 @@ class GeminiClient {
           {
             'role': t.role,
             'parts': [
+              for (final d in t.documents) d.toPart(),
               {'text': t.text},
               for (final img in t.images)
                 {

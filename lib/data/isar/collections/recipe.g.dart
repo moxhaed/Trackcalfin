@@ -119,37 +119,47 @@ const RecipeSchema = CollectionSchema(
 
       target: r'ShoppingItem',
     ),
-    r'sourceQuery': PropertySchema(
+    r'sourceBook': PropertySchema(
       id: 21,
+      name: r'sourceBook',
+      type: IsarType.string,
+    ),
+    r'sourcePage': PropertySchema(
+      id: 22,
+      name: r'sourcePage',
+      type: IsarType.long,
+    ),
+    r'sourceQuery': PropertySchema(
+      id: 23,
       name: r'sourceQuery',
       type: IsarType.string,
     ),
     r'status': PropertySchema(
-      id: 22,
+      id: 24,
       name: r'status',
       type: IsarType.string,
       enumMap: _RecipestatusEnumValueMap,
     ),
-    r'steps': PropertySchema(id: 23, name: r'steps', type: IsarType.stringList),
+    r'steps': PropertySchema(id: 25, name: r'steps', type: IsarType.stringList),
     r'suggestedForDateKey': PropertySchema(
-      id: 24,
+      id: 26,
       name: r'suggestedForDateKey',
       type: IsarType.long,
     ),
-    r'summary': PropertySchema(id: 25, name: r'summary', type: IsarType.string),
-    r'tags': PropertySchema(id: 26, name: r'tags', type: IsarType.stringList),
+    r'summary': PropertySchema(id: 27, name: r'summary', type: IsarType.string),
+    r'tags': PropertySchema(id: 28, name: r'tags', type: IsarType.stringList),
     r'timesCooked': PropertySchema(
-      id: 27,
+      id: 29,
       name: r'timesCooked',
       type: IsarType.long,
     ),
-    r'title': PropertySchema(id: 28, name: r'title', type: IsarType.string),
+    r'title': PropertySchema(id: 30, name: r'title', type: IsarType.string),
     r'validationFlags': PropertySchema(
-      id: 29,
+      id: 31,
       name: r'validationFlags',
       type: IsarType.stringList,
     ),
-    r'why': PropertySchema(id: 30, name: r'why', type: IsarType.string),
+    r'why': PropertySchema(id: 32, name: r'why', type: IsarType.string),
   },
 
   estimateSize: _recipeEstimateSize,
@@ -279,6 +289,12 @@ int _recipeEstimateSize(
     }
   }
   {
+    final value = object.sourceBook;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
     final value = object.sourceQuery;
     if (value != null) {
       bytesCount += 3 + value.length * 3;
@@ -364,16 +380,18 @@ void _recipeSerialize(
     ShoppingItemSchema.serialize,
     object.shoppingList,
   );
-  writer.writeString(offsets[21], object.sourceQuery);
-  writer.writeString(offsets[22], object.status.name);
-  writer.writeStringList(offsets[23], object.steps);
-  writer.writeLong(offsets[24], object.suggestedForDateKey);
-  writer.writeString(offsets[25], object.summary);
-  writer.writeStringList(offsets[26], object.tags);
-  writer.writeLong(offsets[27], object.timesCooked);
-  writer.writeString(offsets[28], object.title);
-  writer.writeStringList(offsets[29], object.validationFlags);
-  writer.writeString(offsets[30], object.why);
+  writer.writeString(offsets[21], object.sourceBook);
+  writer.writeLong(offsets[22], object.sourcePage);
+  writer.writeString(offsets[23], object.sourceQuery);
+  writer.writeString(offsets[24], object.status.name);
+  writer.writeStringList(offsets[25], object.steps);
+  writer.writeLong(offsets[26], object.suggestedForDateKey);
+  writer.writeString(offsets[27], object.summary);
+  writer.writeStringList(offsets[28], object.tags);
+  writer.writeLong(offsets[29], object.timesCooked);
+  writer.writeString(offsets[30], object.title);
+  writer.writeStringList(offsets[31], object.validationFlags);
+  writer.writeString(offsets[32], object.why);
 }
 
 Recipe _recipeDeserialize(
@@ -431,18 +449,20 @@ Recipe _recipeDeserialize(
         ShoppingItem(),
       ) ??
       [];
-  object.sourceQuery = reader.readStringOrNull(offsets[21]);
+  object.sourceBook = reader.readStringOrNull(offsets[21]);
+  object.sourcePage = reader.readLongOrNull(offsets[22]);
+  object.sourceQuery = reader.readStringOrNull(offsets[23]);
   object.status =
-      _RecipestatusValueEnumMap[reader.readStringOrNull(offsets[22])] ??
+      _RecipestatusValueEnumMap[reader.readStringOrNull(offsets[24])] ??
       RecipeStatus.suggested;
-  object.steps = reader.readStringList(offsets[23]) ?? [];
-  object.suggestedForDateKey = reader.readLongOrNull(offsets[24]);
-  object.summary = reader.readStringOrNull(offsets[25]);
-  object.tags = reader.readStringList(offsets[26]) ?? [];
-  object.timesCooked = reader.readLong(offsets[27]);
-  object.title = reader.readString(offsets[28]);
-  object.validationFlags = reader.readStringList(offsets[29]) ?? [];
-  object.why = reader.readString(offsets[30]);
+  object.steps = reader.readStringList(offsets[25]) ?? [];
+  object.suggestedForDateKey = reader.readLongOrNull(offsets[26]);
+  object.summary = reader.readStringOrNull(offsets[27]);
+  object.tags = reader.readStringList(offsets[28]) ?? [];
+  object.timesCooked = reader.readLong(offsets[29]);
+  object.title = reader.readString(offsets[30]);
+  object.validationFlags = reader.readStringList(offsets[31]) ?? [];
+  object.why = reader.readString(offsets[32]);
   return object;
 }
 
@@ -525,24 +545,28 @@ P _recipeDeserializeProp<P>(
     case 21:
       return (reader.readStringOrNull(offset)) as P;
     case 22:
+      return (reader.readLongOrNull(offset)) as P;
+    case 23:
+      return (reader.readStringOrNull(offset)) as P;
+    case 24:
       return (_RecipestatusValueEnumMap[reader.readStringOrNull(offset)] ??
               RecipeStatus.suggested)
           as P;
-    case 23:
-      return (reader.readStringList(offset) ?? []) as P;
-    case 24:
-      return (reader.readLongOrNull(offset)) as P;
     case 25:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readStringList(offset) ?? []) as P;
     case 26:
-      return (reader.readStringList(offset) ?? []) as P;
+      return (reader.readLongOrNull(offset)) as P;
     case 27:
-      return (reader.readLong(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 28:
-      return (reader.readString(offset)) as P;
-    case 29:
       return (reader.readStringList(offset) ?? []) as P;
+    case 29:
+      return (reader.readLong(offset)) as P;
     case 30:
+      return (reader.readString(offset)) as P;
+    case 31:
+      return (reader.readStringList(offset) ?? []) as P;
+    case 32:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -553,11 +577,13 @@ const _RecipeoriginEnumValueMap = {
   r'dailyAuto': r'dailyAuto',
   r'spontaneous': r'spontaneous',
   r'manual': r'manual',
+  r'cookbook': r'cookbook',
 };
 const _RecipeoriginValueEnumMap = {
   r'dailyAuto': RecipeOrigin.dailyAuto,
   r'spontaneous': RecipeOrigin.spontaneous,
   r'manual': RecipeOrigin.manual,
+  r'cookbook': RecipeOrigin.cookbook,
 };
 const _RecipestatusEnumValueMap = {
   r'suggested': r'suggested',
@@ -2689,6 +2715,243 @@ extension RecipeQueryFilter on QueryBuilder<Recipe, Recipe, QFilterCondition> {
     });
   }
 
+  QueryBuilder<Recipe, Recipe, QAfterFilterCondition> sourceBookIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'sourceBook'),
+      );
+    });
+  }
+
+  QueryBuilder<Recipe, Recipe, QAfterFilterCondition> sourceBookIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'sourceBook'),
+      );
+    });
+  }
+
+  QueryBuilder<Recipe, Recipe, QAfterFilterCondition> sourceBookEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'sourceBook',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Recipe, Recipe, QAfterFilterCondition> sourceBookGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'sourceBook',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Recipe, Recipe, QAfterFilterCondition> sourceBookLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'sourceBook',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Recipe, Recipe, QAfterFilterCondition> sourceBookBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'sourceBook',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Recipe, Recipe, QAfterFilterCondition> sourceBookStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'sourceBook',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Recipe, Recipe, QAfterFilterCondition> sourceBookEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'sourceBook',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Recipe, Recipe, QAfterFilterCondition> sourceBookContains(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'sourceBook',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Recipe, Recipe, QAfterFilterCondition> sourceBookMatches(
+    String pattern, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'sourceBook',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Recipe, Recipe, QAfterFilterCondition> sourceBookIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'sourceBook', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<Recipe, Recipe, QAfterFilterCondition> sourceBookIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'sourceBook', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<Recipe, Recipe, QAfterFilterCondition> sourcePageIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'sourcePage'),
+      );
+    });
+  }
+
+  QueryBuilder<Recipe, Recipe, QAfterFilterCondition> sourcePageIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'sourcePage'),
+      );
+    });
+  }
+
+  QueryBuilder<Recipe, Recipe, QAfterFilterCondition> sourcePageEqualTo(
+    int? value,
+  ) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'sourcePage', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<Recipe, Recipe, QAfterFilterCondition> sourcePageGreaterThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'sourcePage',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Recipe, Recipe, QAfterFilterCondition> sourcePageLessThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'sourcePage',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Recipe, Recipe, QAfterFilterCondition> sourcePageBetween(
+    int? lower,
+    int? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'sourcePage',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
+    });
+  }
+
   QueryBuilder<Recipe, Recipe, QAfterFilterCondition> sourceQueryIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
@@ -4414,6 +4677,30 @@ extension RecipeQuerySortBy on QueryBuilder<Recipe, Recipe, QSortBy> {
     });
   }
 
+  QueryBuilder<Recipe, Recipe, QAfterSortBy> sortBySourceBook() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'sourceBook', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Recipe, Recipe, QAfterSortBy> sortBySourceBookDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'sourceBook', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Recipe, Recipe, QAfterSortBy> sortBySourcePage() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'sourcePage', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Recipe, Recipe, QAfterSortBy> sortBySourcePageDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'sourcePage', Sort.desc);
+    });
+  }
+
   QueryBuilder<Recipe, Recipe, QAfterSortBy> sortBySourceQuery() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'sourceQuery', Sort.asc);
@@ -4704,6 +4991,30 @@ extension RecipeQuerySortThenBy on QueryBuilder<Recipe, Recipe, QSortThenBy> {
     });
   }
 
+  QueryBuilder<Recipe, Recipe, QAfterSortBy> thenBySourceBook() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'sourceBook', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Recipe, Recipe, QAfterSortBy> thenBySourceBookDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'sourceBook', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Recipe, Recipe, QAfterSortBy> thenBySourcePage() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'sourcePage', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Recipe, Recipe, QAfterSortBy> thenBySourcePageDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'sourcePage', Sort.desc);
+    });
+  }
+
   QueryBuilder<Recipe, Recipe, QAfterSortBy> thenBySourceQuery() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'sourceQuery', Sort.asc);
@@ -4905,6 +5216,20 @@ extension RecipeQueryWhereDistinct on QueryBuilder<Recipe, Recipe, QDistinct> {
         r'promptVersion',
         caseSensitive: caseSensitive,
       );
+    });
+  }
+
+  QueryBuilder<Recipe, Recipe, QDistinct> distinctBySourceBook({
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'sourceBook', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<Recipe, Recipe, QDistinct> distinctBySourcePage() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'sourcePage');
     });
   }
 
@@ -5111,6 +5436,18 @@ extension RecipeQueryProperty on QueryBuilder<Recipe, Recipe, QQueryProperty> {
   shoppingListProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'shoppingList');
+    });
+  }
+
+  QueryBuilder<Recipe, String?, QQueryOperations> sourceBookProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'sourceBook');
+    });
+  }
+
+  QueryBuilder<Recipe, int?, QQueryOperations> sourcePageProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'sourcePage');
     });
   }
 
