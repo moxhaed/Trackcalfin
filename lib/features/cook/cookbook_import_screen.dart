@@ -134,9 +134,10 @@ class CookbookRow {
 /// The unsaved drafts of an import, matched to the pantry as it is now.
 final cookbookRowsProvider = Provider.family<List<CookbookRow>, int>((ref, id) {
   final job = ref.watch(cookbookImportProvider(id)).value;
-  if (job == null) return const [];
-  final pantry = ref.watch(ingredientsProvider).value ?? const <Ingredient>[];
-  final saved = ref.watch(recipesProvider).value ?? const <Recipe>[];
+  final pantry = ref.watch(ingredientsProvider).value;
+  final saved = ref.watch(recipesProvider).value;
+  // Wait for both: a draft first seen without the saved recipes would start ticked as new.
+  if (job == null || pantry == null || saved == null) return const [];
   final titles = {
     for (final r in saved)
       if (r.status != RecipeStatus.dismissed) CookbookPlanner.normalizeTitle(r.title),
