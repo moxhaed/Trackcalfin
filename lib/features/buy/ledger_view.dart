@@ -8,6 +8,7 @@ import '../../core/enums.dart';
 import '../../data/isar/collections/schemas.dart';
 import '../common/category_style.dart';
 import '../common/format.dart';
+import '../common/swipe_away.dart';
 import '../common/widgets.dart';
 import 'fx_widgets.dart';
 import 'transaction_sheet.dart';
@@ -112,9 +113,8 @@ class _TxTile extends ConsumerWidget {
     final money = ref.watch(moneyProvider);
     final title = tx.merchant ?? tx.note ?? (tx.lines.length == 1 ? tx.lines.first.name : tx.primaryCategory.label);
     final stocked = tx.lines.where((l) => l.ingredientId != null).length;
-    return Dismissible(
+    return SwipeAway(
       key: ValueKey('tx-${tx.id}'),
-      direction: DismissDirection.endToStart,
       background: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 24),

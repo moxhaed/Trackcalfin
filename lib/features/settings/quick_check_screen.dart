@@ -64,12 +64,20 @@ class _QuickCheckScreenState extends ConsumerState<QuickCheckScreen> {
 
   Future<void> _answer(Ingredient ing, bool have) async {
     final pantry = ref.read(pantryServiceProvider);
+    final metrics = ref.read(metricsServiceProvider);
+    // Next card first, in this frame: a swiped Dismissible must leave the tree before it
+    // rebuilds, or it throws ("A dismissed Dismissible widget is still part of the tree").
+    tick();
+    setState(() {
+      _i++;
+      if (!have) _fixed++;
+    });
+    if (_i >= _deck!.length) unawaited(metrics.record('quick_check', _timer.elapsed));
     if (have) {
       await pantry.verify(ing.id);
     } else {
       // Gone without a logged meal: it counts as eaten since it was last counted or bought.
       final use = await pantry.markOut(ing.id);
-      _fixed++;
       if (use != null && mounted) {
         final messenger = ScaffoldMessenger.of(context)..hideCurrentSnackBar();
         messenger.showSnackBar(
@@ -82,9 +90,6 @@ class _QuickCheckScreenState extends ConsumerState<QuickCheckScreen> {
         );
       }
     }
-    tick();
-    setState(() => _i++);
-    if (_i >= _deck!.length) unawaited(ref.read(metricsServiceProvider).record('quick_check', _timer.elapsed));
   }
 
   Widget _card(BuildContext context, Ingredient ing) {
@@ -151,8 +156,11 @@ class _QuickCheckScreenState extends ConsumerState<QuickCheckScreen> {
                   child: OutlinedButton.icon(
                     onPressed: () async {
                       await showIngredientSheet(context, ingredient: ing);
-                      _fixed++;
-                      setState(() => _i++);
+                      if (!mounted) return;
+                      setState(() {
+                        _fixed++;
+                        _i++;
+                      });
                     },
                     icon: const Icon(Icons.tune),
                     label: const Text('Adjust'),

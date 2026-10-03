@@ -211,6 +211,7 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
     final next = (_ing.qtyOnHand + delta).clamp(0, 100000).toDouble();
     await ref.read(pantryServiceProvider).setQuantity(_ing.id, next);
     tick();
+    if (!mounted) return;
     setState(() {
       _ing.qtyOnHand = next;
       _qty.text = _fmt(next);
@@ -226,7 +227,11 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
       return;
     }
     final newQty = _num(_qty) ?? 0;
+    // Everything from ref before the first await: the sheet can be swiped away while it saves.
     final pantry = ref.read(pantryServiceProvider);
+    final ledger = ref.read(ledgerServiceProvider);
+    final nutrition = ref.read(nutritionServiceProvider);
+    final currency = ref.read(profileProvider).value?.currency ?? 'EUR';
     if (isNew) {
       // Blank macros stay unknown so the AI fills them in; typed ones are the user's own.
       final typed = _typedMacros();
@@ -262,15 +267,7 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
       final id = await pantry.upsert(_ing);
       if (newQty > 0) {
         if (price != null && price > 0) {
-          final profile = ref.read(profileProvider).value;
-          await ref
-              .read(ledgerServiceProvider)
-              .applyManualPurchase(
-                ingredientId: id,
-                qty: newQty,
-                totalMinor: price,
-                currency: profile?.currency ?? 'EUR',
-              );
+          await ledger.applyManualPurchase(ingredientId: id, qty: newQty, totalMinor: price, currency: currency);
         } else {
           await pantry.setQuantity(id, newQty);
         }
@@ -287,7 +284,7 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
       await pantry.upsert(_ing);
       if ((newQty - _ing.qtyOnHand).abs() > 1e-9) await pantry.setQuantity(_ing.id, newQty);
     }
-    if (_ing.needsNutrition) unawaited(ref.read(nutritionServiceProvider).fillMissing());
+    if (_ing.needsNutrition) unawaited(nutrition.fillMissing());
     if (mounted) Navigator.of(context).pop();
   }
 
@@ -498,7 +495,8 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
                           final nav = Navigator.of(context);
                           final messenger = ScaffoldMessenger.of(context);
                           final removed = await pantry.delete(_ing.id);
-                          nav.pop();
+                          // Already swiped away: popping would close the screen under it.
+                          if (mounted) nav.pop();
                           if (removed != null) {
                             showUndoOn(messenger, '${removed.name} deleted', onUndo: () => pantry.restore(removed));
                           }

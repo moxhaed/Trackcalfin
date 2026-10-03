@@ -13,6 +13,7 @@ import 'package:trackcalfin/core/enums.dart';
 import 'package:trackcalfin/data/ai/prompt_repository.dart';
 import 'package:trackcalfin/data/isar/collections/schemas.dart';
 import 'package:trackcalfin/features/capture/say_it_sheet.dart';
+import 'package:trackcalfin/features/common/swipe_away.dart';
 import 'package:trackcalfin/features/common/text_prompt.dart';
 import 'package:trackcalfin/platform/image_store.dart';
 import 'package:trackcalfin/platform/secret_store.dart';
@@ -168,5 +169,39 @@ void main() {
 
     expect(answers, ['350', '360', null]);
     expect(find.byType(AlertDialog), findsNothing);
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  testWidgets('a swiped row may be rebuilt before its delete lands', (tester) async {
+    final rows = ValueNotifier<List<String>>(['milk', 'eggs']);
+    final dismissed = <String>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ValueListenableBuilder(
+            valueListenable: rows,
+            builder: (_, list, _) => ListView(
+              children: [
+                for (final r in list)
+                  SwipeAway(
+                    key: ValueKey(r),
+                    onDismissed: (_) => dismissed.add(r),
+                    child: ListTile(title: Text(r)),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.drag(find.text('milk'), const Offset(-600, 0));
+    await frames(tester);
+    expect(dismissed, ['milk']);
+    // Something else the list watches changes first: the same rows, milk still in them.
+    rows.value = [...rows.value];
+    await frames(tester);
+    expect(find.text('milk'), findsNothing);
+    rows.value = ['eggs'];
+    await frames(tester);
+    expect(find.text('eggs'), findsOneWidget);
   }, timeout: const Timeout(Duration(seconds: 60)));
 }

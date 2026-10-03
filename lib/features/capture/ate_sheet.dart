@@ -97,6 +97,7 @@ class _AteSheetState extends ConsumerState<AteSheet> {
     final protein = double.tryParse(_protein.text.replaceAll(',', '.')) ?? 0;
     final cost = ref.read(moneyProvider).parse(_cost.text) ?? 0;
     final cook = ref.read(cookServiceProvider);
+    final metrics = ref.read(metricsServiceProvider);
     final nav = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
     final id = await cook.quickAddMeal(
@@ -106,7 +107,7 @@ class _AteSheetState extends ConsumerState<AteSheet> {
       costMinor: cost,
     );
     celebrate();
-    unawaited(ref.read(metricsServiceProvider).record('eat', _timer.elapsed));
+    unawaited(metrics.record('eat', _timer.elapsed));
     if (!mounted) return;
     final key = ref.read(dayClockProvider).dateKey(DateTime.now());
     nav.pop();
