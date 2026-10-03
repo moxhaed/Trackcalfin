@@ -15,8 +15,10 @@
 // EVAL_MODELS    Comma-separated (default gemini-3.5-flash-lite,gemini-3.8-flash).
 //
 // The report lands in build/model_eval/<timestamp>/report.md, raw responses next to it.
-// Free tier: gemini-3.8-flash allows 20 requests a day and 5 a minute. The eval waits
-// out a per-minute limit once and skips a model's remaining cases after its daily limit.
+// Free tier: gemini-3.8-flash allows 20 requests a day and 5 a minute. Like the app, the
+// eval's requests go through one GeminiGate, which waits out a short per-minute 429 and
+// then keeps the model under its limit; a longer one is waited out once more here. After a
+// model's daily limit its remaining cases are skipped.
 
 // ignore_for_file: avoid_print
 
@@ -187,12 +189,22 @@ class _Eval {
     return isar;
   }
 
-  AiGateway _gateway(Isar isar, String model) =>
-      AiGateway(isar: isar, secrets: MemorySecretStore(apiKey), prompts: prompts, model: model, fallbackModel: null);
+  /// One gate for the whole run, as in the app: it learns each model's per-minute limit from
+  /// the first 429 and paces the remaining cases under it.
+  final _gate = GeminiGate();
+
+  AiGateway _gateway(Isar isar, String model) => AiGateway(
+    isar: isar,
+    secrets: MemorySecretStore(apiKey),
+    prompts: prompts,
+    model: model,
+    fallbackModel: null,
+    gate: _gate,
+  );
 
   static bool _isRateLimit(String e) {
     final m = e.toLowerCase();
-    return m.contains('quota') || m.contains('rate limit') || m.contains('exhausted');
+    return m.contains('quota') || m.contains('rate limit') || m.contains('exhausted') || m.contains('a minute');
   }
 
   /// Runs one case, waiting out a per-minute limit once. After a daily limit the

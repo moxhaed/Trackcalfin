@@ -108,6 +108,66 @@ void main() {
     expect(fake.requests.length, 1, reason: 'nothing left to ask');
   });
 
+  group('asking again', () {
+    Map<String, dynamic> estimate(String key, {double? density}) => {
+      'key': key,
+      'per_100g': {'kcal': 348, 'protein_g': 10, 'carbs_g': 72, 'fat_g': 1, 'fiber_g': 4},
+      'density_g_per_ml': density,
+      'grams_per_piece': null,
+    };
+    Map<String, dynamic> answer(List<Map<String, dynamic>> items) => {'schema_version': 1, 'items': items};
+    Set<String> asked(int i) => {
+      for (final it in jsonDecode(fake.requests[i]['contents'][0]['parts'][0]['text'])['items'] as List)
+        it['key'] as String,
+    };
+
+    test('a batch that fails its repair round keeps what checked out; the rest waits to be asked again', () async {
+      var t = now;
+      final s = NutritionService(isar: isar, ai: ai, now: () => t);
+      await addUnknown('flour', 'Flour');
+      await addUnknown('salt', 'Salt');
+      await addUnknown('olive_oil', 'Olive oil', unit: BaseUnit.ml);
+      final noDensity = answer([estimate('flour'), estimate('salt'), estimate('olive_oil')]);
+      fake
+        ..replyJson(noDensity)
+        ..replyJson(noDensity);
+      final r = await s.fillMissing();
+      expect(r.filled, 2);
+      expect(r.error, contains('density_g_per_ml'));
+      expect(fake.requests, hasLength(2), reason: 'the answer and its repair round');
+      expect((await byKey('flour')).needsNutrition, isFalse);
+      expect((await byKey('olive_oil')).needsNutrition, isTrue);
+
+      expect((await s.fillMissing()).filled, 0);
+      expect(fake.requests, hasLength(2), reason: 'olive oil failed a moment ago: app resumes ask nothing');
+
+      t = t.add(NutritionService.backoff.first);
+      fake.replyJson(answer([estimate('olive_oil', density: 0.91)]));
+      expect((await s.fillMissing()).filled, 1);
+      expect(asked(2), {'olive_oil'});
+    });
+
+    test('calls while one runs share its request', () async {
+      await addUnknown('flour', 'Flour');
+      fake.replyJson(answer([estimate('flour')]));
+      final results = await Future.wait([svc.fillMissing(), svc.fillMissing(), svc.fillMissingNow()]);
+      expect([for (final r in results) r.filled], [1, 1, 1]);
+      expect(fake.requests, hasLength(1));
+    });
+
+    test('a quota error pauses background runs; Fill with AI still asks, on the fallback if it must', () async {
+      await addUnknown('flour', 'Flour');
+      fake.status(429, 'Quota exceeded', details: quotaDetails(perDay: true, limit: '500'));
+      expect((await svc.fillMissing()).error, startsWith('Daily free-tier limit reached'));
+      expect((await svc.fillMissing()).error, isNull);
+      expect(fake.requests, hasLength(1), reason: 'background runs pause, and never spend the fallback');
+      fake.replyJson(answer([estimate('flour')]));
+      expect((await svc.fillMissingNow()).filled, 1);
+      expect(fake.requestedUris.last.path, contains(GeminiClient.defaultFallbackModel));
+      expect(fake.requests, hasLength(2), reason: 'the spent model is not asked again today');
+    });
+  });
+
   test('without a key nothing is asked and items stay unknown', () async {
     await addUnknown('flour', 'Flour');
     final noKey = NutritionService(

@@ -26,7 +26,7 @@ class _PantryViewState extends ConsumerState<PantryView> {
 
   Future<void> _fillMacros() async {
     setState(() => _filling = true);
-    final r = await ref.read(nutritionServiceProvider).fillMissing();
+    final r = await ref.read(nutritionServiceProvider).fillMissingNow();
     if (!mounted) return;
     setState(() => _filling = false);
     // 0 without an error: a background lookup is already on it.

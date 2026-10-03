@@ -144,7 +144,7 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
       _busy = true;
       _macroError = null;
     });
-    final r = await ref.read(nutritionServiceProvider).fillMissing();
+    final r = await ref.read(nutritionServiceProvider).fillMissingNow();
     if (!mounted) return;
     setState(() {
       _busy = false;

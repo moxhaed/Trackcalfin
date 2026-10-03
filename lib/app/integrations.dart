@@ -14,6 +14,7 @@ import '../features/capture/cooked_sheet.dart';
 import '../features/capture/expense_sheet.dart';
 import '../features/capture/say_it_sheet.dart';
 import '../features/capture/scan_flow.dart';
+import 'messenger.dart';
 import 'providers.dart';
 import 'router.dart';
 
@@ -32,6 +33,14 @@ class AppIntegrations {
       HabitScheduler(isar: ref.read(isarProvider), picks: ref.read(dailyPickServiceProvider));
 
   Future<void> start() async {
+    // A user request held back by Gemini's per-minute limit says so instead of just spinning.
+    _subs.add(
+      ref
+          .read(aiGatewayProvider)
+          .gate
+          .waits
+          .listen((w) => notifyApp(w.message, duration: Duration(seconds: w.wait.inSeconds.clamp(3, 8)))),
+    );
     if (_mobile) {
       _quickActions();
       _shareIntake();
