@@ -26,7 +26,9 @@ class TransactionSheet extends ConsumerStatefulWidget {
 }
 
 class _TransactionSheetState extends ConsumerState<TransactionSheet> {
-  late final _amount = TextEditingController(text: ref.read(moneyProvider).toInput(widget.tx.totalMinor));
+  // Made in initState: a multi-line receipt never shows the amount field, so a lazy one was
+  // first built in dispose, where reading a provider throws.
+  late final TextEditingController _amount;
   late final _merchant = TextEditingController(text: widget.tx.merchant ?? widget.tx.note ?? '');
   late SpendCategory _category = widget.tx.primaryCategory;
   late DateTime _date = widget.tx.occurredAt;
@@ -39,6 +41,7 @@ class _TransactionSheetState extends ConsumerState<TransactionSheet> {
   @override
   void initState() {
     super.initState();
+    _amount = TextEditingController(text: ref.read(moneyProvider).toInput(widget.tx.totalMinor));
     final jobId = widget.tx.scanJobId;
     if (jobId != null) {
       ref.read(isarProvider).scanJobs.get(jobId).then((job) {

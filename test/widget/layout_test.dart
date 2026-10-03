@@ -69,6 +69,11 @@ void main() {
           showTransactionSheet(p.context, tx).ignore();
           await p.visit('transaction sheet');
           await p.back();
+          // And a receipt: no amount field, so closing it must not make one.
+          final receipt = (await p.isar.transactions.where().findAll()).firstWhere((t) => t.lines.length > 1);
+          showTransactionSheet(p.context, receipt).ignore();
+          await p.visit('receipt sheet');
+          await p.back();
           p.router.go('/cook');
           await p.visit('cook');
           p.router.go('/settings');
