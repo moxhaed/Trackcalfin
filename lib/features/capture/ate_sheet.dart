@@ -85,59 +85,11 @@ class _AteSheetState extends ConsumerState<AteSheet> {
     );
   }
 
-  Future<double?> _askAmount(Ingredient ing) async {
-    final presets = ing.baseUnit == BaseUnit.ml
-        ? const <double>[100, 200, 250, 330, 500]
-        : const <double>[30, 50, 100, 150, 200];
-    final other = TextEditingController();
-    double? typed() {
-      final v = double.tryParse(other.text.replaceAll(',', '.'));
-      return v != null && v > 0 ? v : null;
-    }
-
-    final out = await showDialog<double>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('How much ${ing.name}?'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                for (final p in presets)
-                  ActionChip(label: Text(qty(p, ing.baseUnit)), onPressed: () => Navigator.of(context).pop(p)),
-              ],
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: other,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: InputDecoration(labelText: 'Other amount', suffixText: ing.baseUnit.label),
-              onSubmitted: (_) {
-                final v = typed();
-                if (v != null) Navigator.of(context).pop(v);
-              },
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () {
-              final v = typed();
-              if (v != null) Navigator.of(context).pop(v);
-            },
-            child: const Text('Eat'),
-          ),
-        ],
-      ),
-    );
-    other.dispose();
-    return out;
-  }
+  /// The dialog owns its text controller (see showTextPrompt for why).
+  Future<double?> _askAmount(Ingredient ing) => showDialog<double>(
+    context: context,
+    builder: (_) => _AmountDialog(ing: ing),
+  );
 
   Future<void> _logManual() async {
     final kcal = double.tryParse(_kcal.text.replaceAll(',', '.'));
@@ -283,6 +235,66 @@ class _AteSheetState extends ConsumerState<AteSheet> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// How much of a gram/ml pantry item was eaten: a preset, or a typed amount.
+class _AmountDialog extends StatefulWidget {
+  const _AmountDialog({required this.ing});
+  final Ingredient ing;
+
+  @override
+  State<_AmountDialog> createState() => _AmountDialogState();
+}
+
+class _AmountDialogState extends State<_AmountDialog> {
+  final _other = TextEditingController();
+
+  @override
+  void dispose() {
+    _other.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final v = double.tryParse(_other.text.replaceAll(',', '.'));
+    if (v != null && v > 0) Navigator.of(context).pop(v);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ing = widget.ing;
+    final presets = ing.baseUnit == BaseUnit.ml
+        ? const <double>[100, 200, 250, 330, 500]
+        : const <double>[30, 50, 100, 150, 200];
+    return AlertDialog(
+      title: Text('How much ${ing.name}?'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final p in presets)
+                ActionChip(label: Text(qty(p, ing.baseUnit)), onPressed: () => Navigator.of(context).pop(p)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _other,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(labelText: 'Other amount', suffixText: ing.baseUnit.label),
+            onSubmitted: (_) => _submit(),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+        FilledButton(onPressed: _submit, child: const Text('Eat')),
+      ],
     );
   }
 }

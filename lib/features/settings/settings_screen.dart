@@ -17,6 +17,7 @@ import '../../core/region.dart';
 import '../../data/isar/collections/schemas.dart';
 import '../common/format.dart';
 import '../common/pickers.dart';
+import '../common/text_prompt.dart';
 import '../common/widgets.dart';
 
 const dietOptions = ['vegetarian', 'vegan', 'pescatarian', 'halal', 'gluten_free', 'high_protein', 'low_carb'];
@@ -403,27 +404,16 @@ Future<String?> _prompt(
   String? prefix,
   String? hint,
   bool obscure = false,
-}) {
-  final c = TextEditingController(text: initial);
-  return showDialog<String>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: Text(title),
-      content: TextField(
-        controller: c,
-        autofocus: true,
-        obscureText: obscure,
-        keyboardType: keyboard,
-        decoration: InputDecoration(suffixText: suffix, prefixText: prefix, hintText: hint),
-        onSubmitted: (v) => Navigator.pop(ctx, v),
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-        FilledButton(onPressed: () => Navigator.pop(ctx, c.text), child: const Text('Save')),
-      ],
-    ),
-  );
-}
+}) => showTextPrompt(
+  context,
+  title: title,
+  initial: initial,
+  keyboard: keyboard,
+  suffix: suffix,
+  prefix: prefix,
+  hint: hint,
+  obscure: obscure,
+);
 
 class _NumberTile extends StatelessWidget {
   const _NumberTile({required this.title, required this.value, required this.onSave, this.suffix, this.subtitle});

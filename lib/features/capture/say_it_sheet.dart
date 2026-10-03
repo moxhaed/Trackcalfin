@@ -9,6 +9,7 @@ import '../../application/quick_log_service.dart';
 import '../../data/ai/dto/quick_log_dto.dart';
 import '../../domain/quick_log.dart';
 import '../../platform/speech.dart';
+import '../common/text_prompt.dart';
 import '../common/widgets.dart';
 
 Future<void> showSayIt(BuildContext context) => showModalBottomSheet(
@@ -127,26 +128,16 @@ class _SayItSheetState extends ConsumerState<SayItSheet> {
 
   Future<void> _price(QuickStep step) async {
     final money = ref.read(moneyProvider);
-    final c = TextEditingController();
-    final typed = await showDialog<int>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('What did you pay?'),
-        content: TextField(
-          controller: c,
-          autofocus: true,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: InputDecoration(prefixText: '${money.symbol} ', helperText: step.title),
-          onSubmitted: (v) => Navigator.of(context).pop(money.parse(v)),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.of(context).pop(money.parse(c.text)), child: const Text('Save')),
-        ],
-      ),
+    // The dialog owns its text controller (see showTextPrompt).
+    final text = await showTextPrompt(
+      context,
+      title: 'What did you pay?',
+      keyboard: const TextInputType.numberWithOptions(decimal: true),
+      prefix: '${money.symbol} ',
+      helper: step.title,
     );
-    c.dispose();
-    if (typed == null || typed <= 0) return;
+    final typed = text == null ? null : money.parse(text);
+    if (!mounted || typed == null || typed <= 0) return;
     _paid[step.action] = typed;
     await _replan();
   }

@@ -169,35 +169,59 @@ class ShoppingView extends ConsumerWidget {
   }
 
   Future<void> _edit(BuildContext context, WidgetRef ref, ShoppingListItem l) async {
-    final name = TextEditingController(text: l.name);
-    final amount = TextEditingController(text: l.amount ?? '');
-    final ok = await showDialog<bool>(
+    final shopping = ref.read(shoppingServiceProvider);
+    // The dialog owns its text controllers (see showTextPrompt for why).
+    final edited = await showDialog<(String, String)>(
       context: context,
-      builder: (c) => AlertDialog(
-        title: const Text('Edit'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: name,
-              decoration: const InputDecoration(labelText: 'What'),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: amount,
-              decoration: const InputDecoration(labelText: 'How much (optional)', hintText: '2 l, 6, 500 g'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Save')),
+      builder: (_) => _EditDialog(item: l),
+    );
+    if (edited != null) await shopping.rename(l.id, edited.$1, amount: edited.$2);
+  }
+}
+
+/// Rename a list line or change its amount. Returns (name, amount), or null on Cancel.
+class _EditDialog extends StatefulWidget {
+  const _EditDialog({required this.item});
+  final ShoppingListItem item;
+
+  @override
+  State<_EditDialog> createState() => _EditDialogState();
+}
+
+class _EditDialogState extends State<_EditDialog> {
+  late final _name = TextEditingController(text: widget.item.name);
+  late final _amount = TextEditingController(text: widget.item.amount ?? '');
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _amount.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Edit'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _name,
+            decoration: const InputDecoration(labelText: 'What'),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _amount,
+            decoration: const InputDecoration(labelText: 'How much (optional)', hintText: '2 l, 6, 500 g'),
+          ),
         ],
       ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        FilledButton(onPressed: () => Navigator.pop(context, (_name.text, _amount.text)), child: const Text('Save')),
+      ],
     );
-    if (ok == true) await ref.read(shoppingServiceProvider).rename(l.id, name.text, amount: amount.text);
-    name.dispose();
-    amount.dispose();
   }
 }
 

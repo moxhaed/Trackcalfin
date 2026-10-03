@@ -273,8 +273,32 @@ Future<String?> showCurrencySheet(BuildContext context, {required String current
   context: context,
   useRootNavigator: true,
   isScrollControlled: true,
-  builder: (context) {
-    final ctrl = TextEditingController();
+  builder: (_) => _CurrencySheet(current: current),
+);
+
+/// Owns its text controller: the sheet's builder runs again whenever the keyboard moves, and a
+/// controller made there was replaced (losing what was typed) and never disposed.
+class _CurrencySheet extends StatefulWidget {
+  const _CurrencySheet({required this.current});
+  final String current;
+
+  @override
+  State<_CurrencySheet> createState() => _CurrencySheetState();
+}
+
+class _CurrencySheetState extends State<_CurrencySheet> {
+  final _ctrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final current = widget.current;
+    final ctrl = _ctrl;
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: SafeArea(
@@ -310,5 +334,5 @@ Future<String?> showCurrencySheet(BuildContext context, {required String current
         ),
       ),
     );
-  },
-);
+  }
+}
