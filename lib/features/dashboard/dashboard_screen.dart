@@ -292,9 +292,16 @@ class _FoodCard extends ConsumerWidget {
       );
     }
 
+    // Early in a month the week began in the last one, so it can hold more than the month so
+    // far: then both say when they began.
+    final straddles = s.weekDaysBeforeMonth > 0;
+    final weekSpan = straddles
+        ? 'Since ${DateFormat('EEE d MMM').format(s.weekStart)}, so it includes the end of '
+              '${s.customMonth ? 'last month' : DateFormat('MMMM').format(s.weekStart)}'
+        : null;
     final projection = [
       // A month from payday to payday says when it began.
-      if (s.customMonth) 'Since ${DateFormat('EEE d MMM').format(s.monthStart)}',
+      if (s.customMonth || straddles) 'Since ${DateFormat('EEE d MMM').format(s.monthStart)}',
       f.collecting
           ? 'A month estimate after a week of data'
           : 'Heading for ${money.compact(f.projectedMonth ?? 0)} this month',
@@ -325,7 +332,7 @@ class _FoodCard extends ConsumerWidget {
               style: muted,
             ),
           ),
-          row('Week', f.week, s.weeklyBudget, f.weekPace, s.weekElapsedFraction),
+          row('Week', f.week, s.weeklyBudget, f.weekPace, s.weekElapsedFraction, extra: weekSpan),
           row('Month', f.month, s.monthlyBudget, f.monthPace, s.monthElapsedFraction, extra: projection),
           Row(
             children: [

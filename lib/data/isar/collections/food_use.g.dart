@@ -22,28 +22,43 @@ const FoodUseSchema = CollectionSchema(
       name: r'costMinor',
       type: IsarType.long,
     ),
-    r'createdAt': PropertySchema(
+    r'countLeft': PropertySchema(
       id: 1,
+      name: r'countLeft',
+      type: IsarType.double,
+    ),
+    r'countedBefore': PropertySchema(
+      id: 2,
+      name: r'countedBefore',
+      type: IsarType.dateTime,
+    ),
+    r'createdAt': PropertySchema(
+      id: 3,
       name: r'createdAt',
       type: IsarType.dateTime,
     ),
-    r'from': PropertySchema(id: 2, name: r'from', type: IsarType.dateTime),
+    r'expiresBefore': PropertySchema(
+      id: 4,
+      name: r'expiresBefore',
+      type: IsarType.dateTime,
+    ),
+    r'from': PropertySchema(id: 5, name: r'from', type: IsarType.dateTime),
     r'ingredientKey': PropertySchema(
-      id: 3,
+      id: 6,
       name: r'ingredientKey',
       type: IsarType.string,
     ),
     r'kind': PropertySchema(
-      id: 4,
+      id: 7,
       name: r'kind',
       type: IsarType.string,
       enumMap: _FoodUsekindEnumValueMap,
     ),
-    r'name': PropertySchema(id: 5, name: r'name', type: IsarType.string),
-    r'qtyBase': PropertySchema(id: 6, name: r'qtyBase', type: IsarType.double),
-    r'to': PropertySchema(id: 7, name: r'to', type: IsarType.dateTime),
+    r'name': PropertySchema(id: 8, name: r'name', type: IsarType.string),
+    r'qtyBase': PropertySchema(id: 9, name: r'qtyBase', type: IsarType.double),
+    r'to': PropertySchema(id: 10, name: r'to', type: IsarType.dateTime),
     r'transactionId': PropertySchema(
-      id: 8,
+      id: 11,
       name: r'transactionId',
       type: IsarType.long,
     ),
@@ -110,14 +125,17 @@ void _foodUseSerialize(
   Map<Type, List<int>> allOffsets,
 ) {
   writer.writeLong(offsets[0], object.costMinor);
-  writer.writeDateTime(offsets[1], object.createdAt);
-  writer.writeDateTime(offsets[2], object.from);
-  writer.writeString(offsets[3], object.ingredientKey);
-  writer.writeString(offsets[4], object.kind.name);
-  writer.writeString(offsets[5], object.name);
-  writer.writeDouble(offsets[6], object.qtyBase);
-  writer.writeDateTime(offsets[7], object.to);
-  writer.writeLong(offsets[8], object.transactionId);
+  writer.writeDouble(offsets[1], object.countLeft);
+  writer.writeDateTime(offsets[2], object.countedBefore);
+  writer.writeDateTime(offsets[3], object.createdAt);
+  writer.writeDateTime(offsets[4], object.expiresBefore);
+  writer.writeDateTime(offsets[5], object.from);
+  writer.writeString(offsets[6], object.ingredientKey);
+  writer.writeString(offsets[7], object.kind.name);
+  writer.writeString(offsets[8], object.name);
+  writer.writeDouble(offsets[9], object.qtyBase);
+  writer.writeDateTime(offsets[10], object.to);
+  writer.writeLong(offsets[11], object.transactionId);
 }
 
 FoodUse _foodUseDeserialize(
@@ -128,17 +146,20 @@ FoodUse _foodUseDeserialize(
 ) {
   final object = FoodUse();
   object.costMinor = reader.readLong(offsets[0]);
-  object.createdAt = reader.readDateTime(offsets[1]);
-  object.from = reader.readDateTime(offsets[2]);
+  object.countLeft = reader.readDoubleOrNull(offsets[1]);
+  object.countedBefore = reader.readDateTimeOrNull(offsets[2]);
+  object.createdAt = reader.readDateTime(offsets[3]);
+  object.expiresBefore = reader.readDateTimeOrNull(offsets[4]);
+  object.from = reader.readDateTime(offsets[5]);
   object.id = id;
-  object.ingredientKey = reader.readString(offsets[3]);
+  object.ingredientKey = reader.readString(offsets[6]);
   object.kind =
-      _FoodUsekindValueEnumMap[reader.readStringOrNull(offsets[4])] ??
+      _FoodUsekindValueEnumMap[reader.readStringOrNull(offsets[7])] ??
       UseKind.eaten;
-  object.name = reader.readString(offsets[5]);
-  object.qtyBase = reader.readDouble(offsets[6]);
-  object.to = reader.readDateTime(offsets[7]);
-  object.transactionId = reader.readLongOrNull(offsets[8]);
+  object.name = reader.readString(offsets[8]);
+  object.qtyBase = reader.readDouble(offsets[9]);
+  object.to = reader.readDateTime(offsets[10]);
+  object.transactionId = reader.readLongOrNull(offsets[11]);
   return object;
 }
 
@@ -152,22 +173,28 @@ P _foodUseDeserializeProp<P>(
     case 0:
       return (reader.readLong(offset)) as P;
     case 1:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readDoubleOrNull(offset)) as P;
     case 2:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readDateTimeOrNull(offset)) as P;
     case 3:
-      return (reader.readString(offset)) as P;
+      return (reader.readDateTime(offset)) as P;
     case 4:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 5:
+      return (reader.readDateTime(offset)) as P;
+    case 6:
+      return (reader.readString(offset)) as P;
+    case 7:
       return (_FoodUsekindValueEnumMap[reader.readStringOrNull(offset)] ??
               UseKind.eaten)
           as P;
-    case 5:
-      return (reader.readString(offset)) as P;
-    case 6:
-      return (reader.readDouble(offset)) as P;
-    case 7:
-      return (reader.readDateTime(offset)) as P;
     case 8:
+      return (reader.readString(offset)) as P;
+    case 9:
+      return (reader.readDouble(offset)) as P;
+    case 10:
+      return (reader.readDateTime(offset)) as P;
+    case 11:
       return (reader.readLongOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -578,6 +605,170 @@ extension FoodUseQueryFilter
     });
   }
 
+  QueryBuilder<FoodUse, FoodUse, QAfterFilterCondition> countLeftIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'countLeft'),
+      );
+    });
+  }
+
+  QueryBuilder<FoodUse, FoodUse, QAfterFilterCondition> countLeftIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'countLeft'),
+      );
+    });
+  }
+
+  QueryBuilder<FoodUse, FoodUse, QAfterFilterCondition> countLeftEqualTo(
+    double? value, {
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'countLeft',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<FoodUse, FoodUse, QAfterFilterCondition> countLeftGreaterThan(
+    double? value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'countLeft',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<FoodUse, FoodUse, QAfterFilterCondition> countLeftLessThan(
+    double? value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'countLeft',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<FoodUse, FoodUse, QAfterFilterCondition> countLeftBetween(
+    double? lower,
+    double? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'countLeft',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<FoodUse, FoodUse, QAfterFilterCondition> countedBeforeIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'countedBefore'),
+      );
+    });
+  }
+
+  QueryBuilder<FoodUse, FoodUse, QAfterFilterCondition>
+  countedBeforeIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'countedBefore'),
+      );
+    });
+  }
+
+  QueryBuilder<FoodUse, FoodUse, QAfterFilterCondition> countedBeforeEqualTo(
+    DateTime? value,
+  ) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'countedBefore', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<FoodUse, FoodUse, QAfterFilterCondition>
+  countedBeforeGreaterThan(DateTime? value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'countedBefore',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<FoodUse, FoodUse, QAfterFilterCondition> countedBeforeLessThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'countedBefore',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<FoodUse, FoodUse, QAfterFilterCondition> countedBeforeBetween(
+    DateTime? lower,
+    DateTime? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'countedBefore',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
+    });
+  }
+
   QueryBuilder<FoodUse, FoodUse, QAfterFilterCondition> createdAtEqualTo(
     DateTime value,
   ) {
@@ -628,6 +819,80 @@ extension FoodUseQueryFilter
       return query.addFilterCondition(
         FilterCondition.between(
           property: r'createdAt',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<FoodUse, FoodUse, QAfterFilterCondition> expiresBeforeIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'expiresBefore'),
+      );
+    });
+  }
+
+  QueryBuilder<FoodUse, FoodUse, QAfterFilterCondition>
+  expiresBeforeIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'expiresBefore'),
+      );
+    });
+  }
+
+  QueryBuilder<FoodUse, FoodUse, QAfterFilterCondition> expiresBeforeEqualTo(
+    DateTime? value,
+  ) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'expiresBefore', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<FoodUse, FoodUse, QAfterFilterCondition>
+  expiresBeforeGreaterThan(DateTime? value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'expiresBefore',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<FoodUse, FoodUse, QAfterFilterCondition> expiresBeforeLessThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'expiresBefore',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<FoodUse, FoodUse, QAfterFilterCondition> expiresBeforeBetween(
+    DateTime? lower,
+    DateTime? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'expiresBefore',
           lower: lower,
           includeLower: includeLower,
           upper: upper,
@@ -1420,6 +1685,30 @@ extension FoodUseQuerySortBy on QueryBuilder<FoodUse, FoodUse, QSortBy> {
     });
   }
 
+  QueryBuilder<FoodUse, FoodUse, QAfterSortBy> sortByCountLeft() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'countLeft', Sort.asc);
+    });
+  }
+
+  QueryBuilder<FoodUse, FoodUse, QAfterSortBy> sortByCountLeftDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'countLeft', Sort.desc);
+    });
+  }
+
+  QueryBuilder<FoodUse, FoodUse, QAfterSortBy> sortByCountedBefore() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'countedBefore', Sort.asc);
+    });
+  }
+
+  QueryBuilder<FoodUse, FoodUse, QAfterSortBy> sortByCountedBeforeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'countedBefore', Sort.desc);
+    });
+  }
+
   QueryBuilder<FoodUse, FoodUse, QAfterSortBy> sortByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.asc);
@@ -1429,6 +1718,18 @@ extension FoodUseQuerySortBy on QueryBuilder<FoodUse, FoodUse, QSortBy> {
   QueryBuilder<FoodUse, FoodUse, QAfterSortBy> sortByCreatedAtDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<FoodUse, FoodUse, QAfterSortBy> sortByExpiresBefore() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'expiresBefore', Sort.asc);
+    });
+  }
+
+  QueryBuilder<FoodUse, FoodUse, QAfterSortBy> sortByExpiresBeforeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'expiresBefore', Sort.desc);
     });
   }
 
@@ -1531,6 +1832,30 @@ extension FoodUseQuerySortThenBy
     });
   }
 
+  QueryBuilder<FoodUse, FoodUse, QAfterSortBy> thenByCountLeft() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'countLeft', Sort.asc);
+    });
+  }
+
+  QueryBuilder<FoodUse, FoodUse, QAfterSortBy> thenByCountLeftDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'countLeft', Sort.desc);
+    });
+  }
+
+  QueryBuilder<FoodUse, FoodUse, QAfterSortBy> thenByCountedBefore() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'countedBefore', Sort.asc);
+    });
+  }
+
+  QueryBuilder<FoodUse, FoodUse, QAfterSortBy> thenByCountedBeforeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'countedBefore', Sort.desc);
+    });
+  }
+
   QueryBuilder<FoodUse, FoodUse, QAfterSortBy> thenByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.asc);
@@ -1540,6 +1865,18 @@ extension FoodUseQuerySortThenBy
   QueryBuilder<FoodUse, FoodUse, QAfterSortBy> thenByCreatedAtDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'createdAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<FoodUse, FoodUse, QAfterSortBy> thenByExpiresBefore() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'expiresBefore', Sort.asc);
+    });
+  }
+
+  QueryBuilder<FoodUse, FoodUse, QAfterSortBy> thenByExpiresBeforeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'expiresBefore', Sort.desc);
     });
   }
 
@@ -1648,9 +1985,27 @@ extension FoodUseQueryWhereDistinct
     });
   }
 
+  QueryBuilder<FoodUse, FoodUse, QDistinct> distinctByCountLeft() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'countLeft');
+    });
+  }
+
+  QueryBuilder<FoodUse, FoodUse, QDistinct> distinctByCountedBefore() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'countedBefore');
+    });
+  }
+
   QueryBuilder<FoodUse, FoodUse, QDistinct> distinctByCreatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'createdAt');
+    });
+  }
+
+  QueryBuilder<FoodUse, FoodUse, QDistinct> distinctByExpiresBefore() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'expiresBefore');
     });
   }
 
@@ -1720,9 +2075,27 @@ extension FoodUseQueryProperty
     });
   }
 
+  QueryBuilder<FoodUse, double?, QQueryOperations> countLeftProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'countLeft');
+    });
+  }
+
+  QueryBuilder<FoodUse, DateTime?, QQueryOperations> countedBeforeProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'countedBefore');
+    });
+  }
+
   QueryBuilder<FoodUse, DateTime, QQueryOperations> createdAtProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'createdAt');
+    });
+  }
+
+  QueryBuilder<FoodUse, DateTime?, QQueryOperations> expiresBeforeProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'expiresBefore');
     });
   }
 

@@ -5,8 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
 import '../../app/theme.dart';
-import '../../core/enums.dart';
 import '../../data/isar/collections/schemas.dart';
+import '../buy/count_undo.dart';
 import '../buy/ingredient_sheet.dart';
 import '../common/category_style.dart';
 import '../common/format.dart';
@@ -68,19 +68,9 @@ class _QuickCheckScreenState extends ConsumerState<QuickCheckScreen> {
       await pantry.verify(ing.id);
     } else {
       // Gone without a logged meal: it counts as eaten since it was last counted or bought.
-      final use = await pantry.markOut(ing.id);
+      // Undo takes it back (a swipe the wrong way); "Thrown away" says it wasn't eaten.
+      await markOutWithUndo(ref, ScaffoldMessenger.of(context), ing, thrownAway: true);
       _fixed++;
-      if (use != null && mounted) {
-        final messenger = ScaffoldMessenger.of(context)..hideCurrentSnackBar();
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text('${ing.name} counts as eaten'),
-            duration: const Duration(seconds: 4),
-            action: SnackBarAction(label: 'Thrown away', onPressed: () => pantry.setUseKind(use, UseKind.thrownAway)),
-            persist: false,
-          ),
-        );
-      }
     }
     tick();
     setState(() => _i++);

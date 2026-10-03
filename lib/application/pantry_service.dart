@@ -1,5 +1,8 @@
+import 'dart:math' as math;
+
 import 'package:isar_community/isar.dart';
 
+import '../core/day_clock.dart';
 import '../data/isar/collections/schemas.dart';
 import '../core/enums.dart';
 import '../domain/costing.dart';
@@ -117,6 +120,64 @@ class PantryService {
 
   Future<int?> markOut(int id, {UseKind kind = UseKind.eaten}) => setQuantity(id, 0, kind: kind);
 
+  /// What the last count of item [id] found gone, while it can be taken back (its sheet shows it).
+  Future<CountedUse?> lastCount(int id) async {
+    final ing = await isar.ingredients.get(id);
+    if (ing == null) return null;
+    final uses = await isar.foodUses
+        .filter()
+        .ingredientKeyEqualTo(ing.key)
+        .transactionIdIsNull()
+        .createdAtGreaterThan(DayClock.addDays(now(), -UsedUp.takeBackDays))
+        .findAll();
+    return UsedUp.lastCount(ing, uses, now());
+  }
+
+  /// "I'm not out after all", at any time later: the use count [useId] recorded is deleted, so
+  /// it no longer counts as eaten anywhere. When the item wasn't counted since, what the count
+  /// found gone is back on hand as it was ([UsedUp.putBack]); otherwise the later count holds
+  /// the amount. Returns what [redoCount] needs for Undo.
+  Future<UndoneCount?> undoCount(int useId) async {
+    final t = now();
+    return isar.writeTxn(() async {
+      final use = await isar.foodUses.get(useId);
+      if (use == null || use.transactionId != null) return null;
+      final ing = await isar.ingredients.getByKey(use.ingredientKey);
+      final putsBack = ing != null && !UsedUp.countedSince(ing, use);
+      final undone = UndoneCount(
+        use,
+        ingredientId: ing?.id,
+        putBack: putsBack,
+        expiresAt: ing?.expiresAt,
+        lastCountedAt: ing?.lastCountedAt,
+        updatedAt: ing?.updatedAt ?? t,
+      );
+      if (putsBack) {
+        UsedUp.putBack(ing, use, t);
+        await isar.ingredients.put(ing);
+      }
+      await isar.foodUses.delete(useId);
+      return undone;
+    });
+  }
+
+  /// Undo for [undoCount]: the use is back, and the item as it was before.
+  Future<void> redoCount(UndoneCount undone) async {
+    await isar.writeTxn(() async {
+      final use = undone.use;
+      await isar.foodUses.put(use);
+      final id = undone.ingredientId;
+      final ing = id == null ? null : await isar.ingredients.get(id);
+      if (ing == null || !undone.putBack) return;
+      ing
+        ..qtyOnHand = math.max(0.0, ing.qtyOnHand - use.qtyBase)
+        ..expiresAt = undone.expiresAt
+        ..lastCountedAt = undone.lastCountedAt
+        ..updatedAt = undone.updatedAt;
+      await isar.ingredients.put(ing);
+    });
+  }
+
   /// "Thrown away, not eaten" after a count: the use stops counting as eaten.
   Future<void> setUseKind(int useId, UseKind kind) async {
     await isar.writeTxn(() async {
@@ -150,4 +211,28 @@ class PantryService {
   Future<void> restore(Ingredient ing) async {
     await isar.writeTxn(() => isar.ingredients.put(ing));
   }
+}
+
+/// What [PantryService.undoCount] took back, to put it back on Undo.
+class UndoneCount {
+  UndoneCount(
+    this.use, {
+    required this.ingredientId,
+    required this.putBack,
+    required this.expiresAt,
+    required this.lastCountedAt,
+    required this.updatedAt,
+  });
+
+  /// The deleted use, with its id.
+  final FoodUse use;
+  final int? ingredientId;
+
+  /// The amount went back on hand.
+  final bool putBack;
+
+  /// The item before it was undone (its amount goes back down by the use).
+  final DateTime? expiresAt;
+  final DateTime? lastCountedAt;
+  final DateTime updatedAt;
 }

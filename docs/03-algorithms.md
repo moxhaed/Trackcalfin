@@ -23,7 +23,7 @@ double elapsedFraction(DateTime start, DateTime end, DateTime now); // 0..1
 ```
 Test cases: 23:59 and 03:59 on the next day share a key, while 04:00 starts a new one. Weeks that span a month boundary. DST transition days.
 
-**Budget months.** `UserProfile.monthStartDay` (1–31, asked in onboarding and in Settings) is the day money resets, like payday. With 17, the month of 2 Oct runs from 17 Sep to 17 Oct (at the rollover hour). A month without that day starts on its last day: with 31, February's month starts on the 28th. Everything that says "month" follows it: the food budget and its pace, other-spend limits, the projection and the status circle. The dashboard says "Since Thu 17 Sep" when a month isn't a calendar month. A stored profile reads the new field as 0, which counts as 1 (calendar months).
+**Budget months.** `UserProfile.monthStartDay` (1–31, asked in onboarding and in Settings) is the day money resets, like payday. With 17, the month of 2 Oct runs from 17 Sep to 17 Oct (at the rollover hour). A month without that day starts on its last day: with 31, February's month starts on the 28th. Everything that says "month" follows it: the food budget and its pace, other-spend limits, the projection and the status circle. The dashboard says "Since Thu 17 Sep" when a month isn't a calendar month. Early in a month the week began in the last one (on Sat 3 Oct the week runs from Mon 28 Sep, the month from 1 Oct), so the week can hold more than the month so far; the Food card then says when each began: "Since Mon 28 Sep, so it includes the end of September" under Week and "Since Thu 1 Oct" under Month (`DashboardState.weekDaysBeforeMonth`). A stored profile reads the new field as 0, which counts as 1 (calendar months).
 
 ## 3.2 UnitConverter
 
@@ -386,7 +386,7 @@ from, to   = purchase, min(found, purchase + shelfLife)   // perishables went be
 kind       = thrownAway if "Thrown away", else eaten
 transactionId = the receipt's: deleting it deletes the uses (undo puts them back)
 ```
-Counts do the same: Quick Check's **Gone** or a lower amount, a pantry photo that shows less, and Say it's "we're out of milk" all record what the pantry had more as a `FoodUse` (cost = gone × average cost) from the last count or purchase (at most 60 days back; a week when neither is known) to the count. Quick Check offers **Thrown away** right after. A use without a price is skipped: it changes no money.
+Counts do the same: Quick Check's **Gone** or a lower amount, a pantry photo that shows less, and Say it's "we're out of milk" all record what the pantry had more as a `FoodUse` (cost = gone × average cost) from the last count or purchase (at most 60 days back; a week when neither is known) to the count. Every **I'm out** (an item's sheet, a pantry swipe, Quick Check, a recipe row) shows "… marked as out · 455 g counts as eaten, €1.19" with **Undo**; Quick Check adds **Thrown away**. A use without a price is skipped: it changes no money.
 
 The dashboard's **Eaten** adds the eaten uses to the logged meals, each spread evenly over the days from `from` to `to`, so a week sees only its share (§3.9). Thrown-away uses are kept but are not food eaten.
 
@@ -405,6 +405,15 @@ on commit          → unit cost = packagePriceMinor / packageQty
 Every price to confirm holds the photo for review (pantry photos never auto-commit anyway). Merging a line into an existing item in review re-runs `checkPrice` against that item.
 
 **A count that goes back up.** Undo after **I'm out**, or a mis-tap on − in an item's sheet, is a count going back up within 2 minutes of one that found less. `PantryService.setQuantity` then shrinks the uses those counts recorded (newest first) by as much, so a correction isn't eaten food. After 2 minutes more is just more: what went before stays eaten.
+
+**Taking a count back later.** A count's use keeps what the count left (`countLeft`) and the item's expiry and last count before it (`expiresBefore`, `countedBefore`), set by `UsedUp.fromCount`. For 30 days an item's sheet shows its newest count use ("Marked out on Fri 2 Oct · 455 g counted as eaten, €1.19"; receipt uses are taken back by deleting the receipt), and one tap takes it back in one transaction (`PantryService.undoCount`), with Undo (`redoCount`):
+```
+nothing counted since   → Undo:      use deleted; qty += its qtyBase; lastCountedAt = countedBefore;
+                                      expiresAt = the sooner of expiresBefore and a purchase's since
+counted since           → Not eaten: use deleted; the later count holds the amount
+                                      (thrown away and counted since: nothing to take back)
+```
+A purchase or cooking since stays. With the use gone, nothing of it counts as eaten: the Food card, Food by month and the status follow from the uses. A count going back up still doesn't take uses back after 2 minutes on its own: it can't tell a mistake from an unlogged shop, so the user says which.
 
 ## 3.17 PriceBook: where it's cheaper
 

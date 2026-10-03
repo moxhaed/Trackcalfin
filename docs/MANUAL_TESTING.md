@@ -64,7 +64,7 @@ When something goes wrong, note the **test ID** (e.g. `R3`), what you expected, 
 
 - [ ] **P1 · Old receipt.** Scan a receipt that is a week or more old.
   *Expect:* it waits in the Inbox. The review says it's filed on that day and asks "What is left of it now?". Each food line asks "Bought 9 days ago. What's left of it?" with **All of it · Some · None: eaten · Thrown away**; fresh things that don't keep that long (meat, bread, herbs) start on **None: eaten**. Pick **Some** for one item and type what's left. After **Looks good**: the Ledger shows the full amount on the printed date, the pantry has only what's left, and on the Food card (**Eaten**) the rest shows up spread over the days since the purchase.
-- [ ] **P1b · Gone in Quick Check.** In **Quick check**, tap **Gone** on something with a price. *Expect:* "… counts as eaten" with **Thrown away**. Eaten this week goes up a little (its share of the days since it was counted); tapping **Thrown away** takes that back.
+- [ ] **P1b · Gone in Quick Check.** In **Quick check**, tap **Gone** on something with a price. *Expect:* "… marked as out" and "… counts as eaten, €…" with **Thrown away** and **Undo**. Eaten this week goes up a little (its share of the days since it was counted); tapping **Thrown away** takes that back, and **Undo** puts the item back as it was.
 - [ ] **P2 · Change the date.** In a receipt's review, tap **Date** and pick another day.
   *Expect:* the header changes, and the "used up" questions follow the new date.
 - [ ] **P3 · Same receipt twice.** Scan a receipt you already filed.
@@ -134,7 +134,8 @@ When something goes wrong, note the **test ID** (e.g. `R3`), what you expected, 
 - [ ] **C7 · Ran out.** Cook something whose ingredient you have less of than the app thinks.
   *Expect:* a "ran out sooner than expected" note, and the item appears in **Quick check**.
 - [ ] **C8 · "I'm out".** On a recipe, long-press an ingredient → **I'm out of …**.
-  *Expect:* the pantry shows it as out. If it was in today's pick, the pick refreshes.
+  *Expect:* "… marked as out" with **Undo**, and the pantry shows it as out. If it was in today's pick, the pick refreshes.
+- [ ] **C8b · Not out after all.** Mark a priced item out in its sheet (**I'm out**), let the message go, and come back later (the next day is best). Search for it in the pantry. *Expect:* it shows under **Out of stock**, newest first. Open it: "Marked out on … · 450 g counted as eaten, €…" with **Undo**. Tap it: the amount is back with the same days left as before, the Food card's Eaten no longer counts it, and the message offers **Undo**. If you set the amount back by hand first, the line offers **Not eaten** instead and leaves the amount as you set it.
 - [ ] **C9 · Eat from the pantry.** ⊕ → **I ate** → From the pantry → **Eat 1** on a piece (banana, can). *Expect:* "Ate … · 1 pc" with calories and Undo; the pantry has one less. For grams or ml it asks how much. The Undo bar goes away by itself after a few seconds.
 
 ## 4b · Macros on pantry items (new)
@@ -217,6 +218,7 @@ When something goes wrong, note the **test ID** (e.g. `R3`), what you expected, 
 - [ ] **D1 · Week spend.** On the Food card, pick **Spent**. Add up this week's grocery lines in the Ledger. *Expect:* it matches "Week".
 - [ ] **D1b · Week eaten.** Pick **Eaten** (the default). Eat a portion from the fridge. *Expect:* "Week" goes up by that portion's cost, and a big grocery shop doesn't change it until you eat from it. The small number below says what was spent.
 - [ ] **D2 · Budget.** *Expect:* the weekly budget = monthly budget ÷ 4.33.
+- [ ] **D2a · Week across the month's start.** In the first days of a month, while the week began in the last one, look at the Food card. *Expect:* under Week "Since Mon 28 Sep, so it includes the end of September", under Month "Since Thu 1 Oct · Heading for …". Week can be more than Month; Food by month shows those days in last month's last week.
 - [ ] **D2b · Payday month.** In **Settings → Month starts on**, pick the 17th. *Expect:* the Food card says "Since … 17 …", its Month row and Other spend only count from that day, and the 16th's shopping is last month.
 - [ ] **D2c · Past months.** On the Food card, tap **Past months: eaten and spent**. *Expect:* a pair of columns per month (eaten, spent) with the budget as a dashed line, and a card per month below. Tap a month in the chart: its numbers show above it. Open last month's card: its weeks add up to the month, and it says how much more was bought than eaten (or the other way round) and what was thrown away. A first month you only used for part of shows no over/under pill.
 - [ ] **D2d · Where it's cheaper.** File receipts from two stores that both have an item (the same milk, say), the pricier one last, at least 10% and 0.30 apart. *Expect:* the "filed" message adds "Milk: N% cheaper at …" with **See**, which shows both prices per litre and the saving. Open the item in the pantry: **Where it's cheapest** lists both stores, cheapest first. In **Say it**, ask "where is milk cheaper?". *Expect:* the same answer, with **Done** and nothing logged.

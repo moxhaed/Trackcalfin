@@ -43,7 +43,11 @@ class UsedUp {
       ..qtyBase = gone
       ..costMinor = cost
       ..kind = kind
-      ..createdAt = at;
+      ..createdAt = at
+      // What undoing this count needs to put the item back as it was.
+      ..countLeft = after < 0 ? 0 : after
+      ..expiresBefore = ing.expiresAt
+      ..countedBefore = ing.lastCountedAt;
   }
 
   /// An old receipt's item, [gone] of it no longer there when the receipt is filed at [found]:
@@ -89,8 +93,66 @@ class UsedUp {
     return total;
   }
 
+  /// How long what a count found gone can be taken back from the item's sheet.
+  static const takeBackDays = 30;
+
+  /// The newest use a count of [ing] recorded (not a receipt's), while it can be taken back:
+  /// from the last [takeBackDays] days. [uses] are the item's.
+  static CountedUse? lastCount(Ingredient ing, Iterable<FoodUse> uses, DateTime now) {
+    FoodUse? last;
+    for (final u in uses) {
+      if (u.ingredientKey != ing.key || u.transactionId != null) continue;
+      if (last == null ||
+          u.createdAt.isAfter(last.createdAt) ||
+          (u.createdAt.isAtSameMomentAs(last.createdAt) && u.id > last.id)) {
+        last = u;
+      }
+    }
+    if (last == null || last.createdAt.isBefore(DayClock.addDays(now, -takeBackDays))) return null;
+    final putsBack = !countedSince(ing, last);
+    // Counted again since, and thrown away: it was never eaten, and the count since holds the amount.
+    if (!putsBack && last.kind != UseKind.eaten) return null;
+    final left = last.countLeft;
+    return CountedUse(last, putsBack: putsBack, markedOut: left != null ? left <= 0 : putsBack && ing.qtyOnHand <= 0);
+  }
+
+  /// [ing] was counted again after [use] was recorded: that count holds the amount now.
+  static bool countedSince(Ingredient ing, FoodUse use) => ing.lastCountedAt?.isAfter(use.createdAt) ?? false;
+
+  /// Undoes the count that recorded [use] on [ing], as if it never happened: what it found
+  /// gone is back on hand, with the expiry and last count the item had. What happened since
+  /// (a purchase, cooking) stays. Only when nothing was counted since ([CountedUse.putsBack]).
+  static void putBack(Ingredient ing, FoodUse use, DateTime at) {
+    final had = ing.qtyOnHand;
+    ing.qtyOnHand = had + use.qtyBase;
+    // Counts from before the snapshot was kept: the latest purchase's expiry, as onDeplete does.
+    final back =
+        use.expiresBefore ??
+        (use.countLeft == null && ing.lastPurchasedAt != null
+            ? DayClock.addDays(ing.lastPurchasedAt!, ing.shelfLifeDays)
+            : null);
+    // The soonest expiry of what is on hand: what came back, or a purchase since.
+    final since = had > 0 ? ing.expiresAt : null;
+    ing.expiresAt = since == null || (back != null && back.isBefore(since)) ? back : since;
+    if (use.countLeft != null) ing.lastCountedAt = use.countedBefore;
+    ing.updatedAt = at;
+  }
+
   static DateTime _clamp(DateTime since, DateTime at) {
     final earliest = DayClock.addDays(at, -maxDays);
     return since.isBefore(earliest) ? earliest : since;
   }
+}
+
+/// What the last count of an item found gone ([use]), and how it is taken back.
+class CountedUse {
+  const CountedUse(this.use, {required this.putsBack, required this.markedOut});
+  final FoodUse use;
+
+  /// Nothing was counted since: taking it back also puts the amount back on hand. Otherwise
+  /// a later count holds the amount, and only the use goes (it wasn't eaten after all).
+  final bool putsBack;
+
+  /// The count left nothing: the item was marked out.
+  final bool markedOut;
 }
