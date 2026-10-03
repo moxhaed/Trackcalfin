@@ -282,7 +282,10 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
         _ing
           ..avgCostPerUnitMinor = _ing.avgCostPerUnitMinor / f
           ..lastPurchaseQty = _ing.lastPurchaseQty * f;
-        if (!_qtyTouched) _ing.qtyOnHand = newQty;
+        // A typed amount is a count in the new unit, from what the field showed for the switch
+        // (1980 ml as 6 cans). Left in ml, the count below took 1974 "cans" as eaten.
+        final shown = double.tryParse(_fmtIn(_origQty * f, _unit).replaceAll(',', '.')) ?? _origQty * f;
+        _ing.qtyOnHand = _qtyTouched ? shown : newQty;
       }
       await pantry.upsert(_ing);
       if ((newQty - _ing.qtyOnHand).abs() > 1e-9) await pantry.setQuantity(_ing.id, newQty);

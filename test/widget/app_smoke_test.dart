@@ -445,6 +445,46 @@ void main() {
     expect(after.needsNutrition, isTrue, reason: 'per 100 ml numbers are not per 100 g');
   }, timeout: const Timeout(Duration(seconds: 60)));
 
+  testWidgets('switching to cans and counting them records only the cans that are gone', (tester) async {
+    await DemoSeed.run(isar);
+    await isar.writeTxn(
+      () => isar.ingredients.put(
+        Ingredient()
+          ..key = 'cola_zero'
+          ..name = 'Cola Zero'
+          ..category = IngredientCategory.beverages
+          ..baseUnit = BaseUnit.ml
+          ..qtyOnHand = 1980
+          ..avgCostPerUnitMinor = 449 / 1980
+          ..lastPurchaseQty = 1980
+          ..nutritionSource = DataSource.aiEstimate,
+      ),
+    );
+    await pumpApp(tester, initial: '/buy');
+    final cola = (await isar.ingredients.getByKey('cola_zero'))!;
+    unawaited(showIngredientSheet(tester.element(find.byType(Scaffold).first), ingredient: cola));
+    await settle(tester);
+    await tester.tap(find.byTooltip('Edit details'));
+    await settle(tester);
+    await tester.tap(find.descendant(of: find.byType(SegmentedButton<BaseUnit>), matching: find.text('pc')));
+    await settle(tester);
+    await tester.enterText(find.widgetWithText(TextField, 'Grams per piece'), '340');
+    await settle(tester);
+    // 1980 ml are 6 cans; only 4 are left.
+    await tester.enterText(find.widgetWithText(TextField, '6'), '4');
+    await settle(tester);
+    await tester.ensureVisible(find.text('Save'));
+    await settle(tester);
+    await tester.tap(find.text('Save'));
+    await settle(tester);
+
+    final after = (await isar.ingredients.getByKey('cola_zero'))!;
+    expect((after.baseUnit, after.qtyOnHand), (BaseUnit.pc, 4.0));
+    final uses = await isar.foodUses.filter().ingredientKeyEqualTo('cola_zero').findAll();
+    expect(uses.map((u) => u.qtyBase), [closeTo(2, 1e-6)], reason: '2 cans gone, not 1976');
+    expect(uses.single.costMinor, closeTo(449 / 1980 * 340 * 2, 1), reason: 'about €1.54');
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
   testWidgets('pantry photo review asks "same one or extra?" and prices what it found', (tester) async {
     await pumpApp(tester, initial: '/inbox');
     await tester.tap(find.textContaining('Pantry photo ·'));
