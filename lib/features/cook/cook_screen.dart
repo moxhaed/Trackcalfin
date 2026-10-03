@@ -409,8 +409,9 @@ class _AskBarState extends ConsumerState<_AskBar> {
     FocusScope.of(context).unfocus();
     setState(() => _busy = true);
     final timer = LogTimer();
+    final metrics = ref.read(metricsServiceProvider);
     final out = await ref.read(askServiceProvider).ask(q);
-    unawaited(ref.read(metricsServiceProvider).record('ask', timer.elapsed));
+    unawaited(metrics.record('ask', timer.elapsed));
     if (!mounted) return;
     setState(() => _busy = false);
     if (out.recipe != null) {

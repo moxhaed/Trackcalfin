@@ -147,6 +147,8 @@ class _SayItSheetState extends ConsumerState<SayItSheet> {
     if (log == null || _saving) return;
     setState(() => _saving = true);
     final service = ref.read(quickLogServiceProvider);
+    final metrics = ref.read(metricsServiceProvider);
+    final nutrition = ref.read(nutritionServiceProvider);
     final messenger = ScaffoldMessenger.of(context);
     final nav = Navigator.of(context);
     final QuickLogReceipt r;
@@ -162,9 +164,10 @@ class _SayItSheetState extends ConsumerState<SayItSheet> {
       return;
     }
     celebrate();
-    unawaited(ref.read(metricsServiceProvider).record('say_it', _timer.elapsed));
-    unawaited(ref.read(nutritionServiceProvider).fillMissing());
-    nav.pop();
+    unawaited(metrics.record('say_it', _timer.elapsed));
+    unawaited(nutrition.fillMissing());
+    // Swiped away while saving: popping now would close the screen under the sheet.
+    if (mounted) nav.pop();
     // Price checks were answers on the card, not things logged.
     final logged = r.steps.where((s) => !s.info).toList();
     final n = logged.length;

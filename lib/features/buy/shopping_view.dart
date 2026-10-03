@@ -10,6 +10,7 @@ import '../../app/theme.dart';
 import '../../data/isar/collections/schemas.dart';
 import '../../domain/price_book.dart';
 import '../../domain/shopping.dart';
+import '../common/swipe_away.dart';
 import '../common/widgets.dart';
 
 /// Adds [items] to the shopping list (what is already on it is skipped), with Undo.
@@ -63,9 +64,8 @@ class ShoppingView extends ConsumerWidget {
         if (l.amount != null) l.amount!,
         if (best != null && unit != null && !ticked) PriceBook.perUnit(money, best.unitMinor, unit),
       ].join(' · ');
-      return Dismissible(
+      return SwipeAway(
         key: ValueKey('shop-${l.id}'),
-        direction: DismissDirection.endToStart,
         background: Container(
           alignment: Alignment.centerRight,
           padding: const EdgeInsets.only(right: 24),

@@ -81,6 +81,8 @@ class _ExpenseSheetState extends ConsumerState<ExpenseSheet> {
     final learn = parsed.keyword != null && parsed.note.isNotEmpty && parsed.category != cat ? parsed.keyword : null;
     final ledger = ref.read(ledgerServiceProvider);
     final profile = ref.read(profileProvider).value;
+    final metrics = ref.read(metricsServiceProvider);
+    final money = ref.read(moneyProvider);
     final nav = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
     final id = await ledger.logQuickExpense(
@@ -91,10 +93,9 @@ class _ExpenseSheetState extends ConsumerState<ExpenseSheet> {
       currency: profile?.currency ?? 'EUR',
       learnKeyword: learn ?? (parsed.category == null && parsed.keyword != null ? parsed.keyword : null),
     );
-    unawaited(ref.read(metricsServiceProvider).record('expense', _timer.elapsed));
+    unawaited(metrics.record('expense', _timer.elapsed));
     celebrate();
     if (!mounted) return;
-    final money = ref.read(moneyProvider);
     nav.pop();
     showUndoOn(messenger, '${money.format(parsed.amountMinor)} · ${cat.label}', onUndo: () => ledger.delete(id));
   }

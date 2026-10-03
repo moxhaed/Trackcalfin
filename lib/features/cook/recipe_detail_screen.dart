@@ -65,7 +65,8 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                 final nav = GoRouter.of(context);
                 final messenger = ScaffoldMessenger.of(context);
                 final removed = await recipes.delete(r.id);
-                nav.pop();
+                // Already gone back: popping now would close the screen under it.
+                if (context.mounted) nav.pop();
                 if (removed != null) showUndoOn(messenger, 'Recipe deleted', onUndo: () => recipes.restore(removed));
               }
             },

@@ -45,11 +45,17 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
   /// so nothing jumps away mid-edit.
   Set<int> _check = {};
 
+  /// The scan is gone (discarded or cleaned up): say so instead of loading forever.
+  bool _gone = false;
+
   @override
   void initState() {
     super.initState();
     _reload();
   }
+
+  // Each handler below reads what it needs from `ref` before its first await, and checks
+  // `mounted` after: the user can leave while it works, and Riverpod's ref throws after dispose.
 
   Future<void> _persist() async {
     if (_job != null) await ref.read(scanServiceProvider).updateJob(_job!);
@@ -60,8 +66,13 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
   int get _sum => _job!.lines.where((l) => l.include).fold(0, (a, l) => a + l.totalMinor);
 
   Future<void> _reload() async {
+    if (!mounted) return;
     final j = await ref.read(isarProvider).scanJobs.get(widget.jobId);
-    if (j == null) return;
+    if (!mounted) return;
+    if (j == null) {
+      setState(() => _gone = true);
+      return;
+    }
     final duplicate = j.maybeDuplicate ? await _describeDuplicate(j) : null;
     if (mounted) {
       setState(() {
@@ -77,6 +88,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
 
   Future<String?> _describeDuplicate(ScanJob job) async {
     final isar = ref.read(isarProvider);
+    final money = ref.read(moneyProvider);
     var txId = job.duplicateOfTxId;
     if (job.duplicateOfJobId != null) {
       final other = await isar.scanJobs.get(job.duplicateOfJobId!);
@@ -88,7 +100,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
     final tx = txId == null ? null : await isar.transactions.get(txId);
     if (tx == null) return null;
     final amount = tx.originalCurrency == null
-        ? ref.read(moneyProvider).format(tx.totalMinor)
+        ? money.format(tx.totalMinor)
         : moneyFor(tx.originalCurrency!).format(tx.originalTotalMinor ?? 0);
     final what = [?tx.merchant, dateLabel(tx.occurredAt, DateTime.now()), amount].join(' · ');
     return 'This looks like a receipt you already filed: $what.';
@@ -97,9 +109,12 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
   Future<void> _commit() async {
     final job = _job!;
     if (ScanService.isForeign(job, _home) && job.fxRate == null) return _setRate();
-    setState(() => _saving = true);
-    await _persist();
+    final scans = ref.read(scanServiceProvider);
+    final isar = ref.read(isarProvider);
+    final prices = ref.read(priceServiceProvider);
+    final nutrition = ref.read(nutritionServiceProvider);
     final money = ref.read(moneyProvider);
+    setState(() => _saving = true);
     final stocked = job.lines
         .where(
           (l) => l.include && l.ingredientKey != null && (l.qty ?? 0) > 0 && l.effectFor(job.kind) != StockEffect.none,
@@ -107,17 +122,25 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
         .length;
     int? txId;
     try {
-      txId = await ref.read(scanServiceProvider).commit(job.id);
+      await scans.updateJob(job);
+      txId = await scans.commit(job.id);
     } on MissingExchangeRate {
+      if (!mounted) return;
       setState(() => _saving = false);
       return _setRate();
+    } catch (e) {
+      // Not filed: keep the review open and say why, instead of a button stuck on saving.
+      if (!mounted) return;
+      setState(() => _saving = false);
+      showInfo(context, 'Could not file it: $e');
+      return;
     }
-    final tx = txId == null ? null : await ref.read(isarProvider).transactions.get(txId);
-    final tips = txId == null ? const <PriceTip>[] : await ref.read(priceServiceProvider).tipsFor(txId);
-    unawaited(ref.read(nutritionServiceProvider).fillMissing());
+    final tx = txId == null ? null : await isar.transactions.get(txId);
+    final tips = txId == null ? const <PriceTip>[] : await prices.tipsFor(txId);
+    unawaited(nutrition.fillMissing());
     celebrate();
-    if (!mounted) return;
-    Navigator.of(context).pop();
+    // Filed even when the user left meanwhile: still say so (the app-wide messenger).
+    if (mounted) Navigator.of(context).pop();
     final original = tx?.originalCurrency != null
         ? ' (${moneyFor(tx!.originalCurrency!).format(tx.originalTotalMinor ?? 0)})'
         : '';
@@ -132,9 +155,9 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
   }
 
   Future<void> _discard() async {
-    final nav = Navigator.of(context);
     await ref.read(scanServiceProvider).discard(widget.jobId);
-    nav.pop();
+    // Already closed with Back: popping now would close the screen under it.
+    if (mounted) Navigator.of(context).pop();
   }
 
   /// The receipt's date, set by hand; the time of day is kept.
@@ -151,18 +174,21 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
       lastDate: now,
       helpText: 'Date on the receipt',
     );
-    if (picked == null) return;
+    if (picked == null || !mounted) return;
+    final scans = ref.read(scanServiceProvider);
     await _persist();
     final date = DateTime(picked.year, picked.month, picked.day, current.hour, current.minute);
-    await ref.read(scanServiceProvider).setPurchaseDate(job.id, date);
+    await scans.setPurchaseDate(job.id, date);
     await _reload();
   }
 
   Future<void> _setRate() async {
-    await _persist();
+    final fx = ref.read(fxServiceProvider);
+    final scans = ref.read(scanServiceProvider);
     final job = _job!;
     final home = _home;
-    final remembered = await ref.read(fxServiceProvider).remembered(job.currency!, home);
+    await _persist();
+    final remembered = await fx.remembered(job.currency!, home);
     if (!mounted) return;
     final q = await showRateSheet(
       context,
@@ -173,14 +199,16 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
       remembered: remembered,
     );
     if (q == null) return;
-    await ref.read(scanServiceProvider).applyRate(job.id, q);
+    await scans.applyRate(job.id, q);
     await _reload();
   }
 
   Future<void> _retryRate() async {
+    final scans = ref.read(scanServiceProvider);
     await _persist();
+    if (!mounted) return;
     setState(() => _fxBusy = true);
-    final q = await ref.read(scanServiceProvider).refreshRate(widget.jobId);
+    final q = await scans.refreshRate(widget.jobId);
     if (!mounted) return;
     setState(() => _fxBusy = false);
     if (q == null) showInfo(context, 'Still no rate. Enter what your card was charged instead.');
@@ -188,9 +216,11 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
   }
 
   Future<void> _retryPrices() async {
+    final scans = ref.read(scanServiceProvider);
     await _persist();
+    if (!mounted) return;
     setState(() => _pricesBusy = true);
-    await ref.read(scanServiceProvider).retryPrices(widget.jobId);
+    await scans.retryPrices(widget.jobId);
     if (!mounted) return;
     setState(() => _pricesBusy = false);
     await _reload();
@@ -200,7 +230,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
     final job = _job!;
     final home = _home;
     final code = await showCurrencySheet(context, current: job.currency ?? home);
-    if (code == null) return;
+    if (code == null || !mounted) return;
     job
       ..currency = code
       ..fxRate = null
@@ -218,7 +248,18 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
   @override
   Widget build(BuildContext context) {
     final job = _job;
-    if (job == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (job == null) {
+      return Scaffold(
+        appBar: AppBar(),
+        body: _gone
+            ? const EmptyState(
+                icon: Icons.inbox_outlined,
+                title: 'This scan is gone',
+                message: 'It was filed or discarded. Anything still waiting is in the Inbox.',
+              )
+            : const Center(child: CircularProgressIndicator()),
+      );
+    }
     final money = ref.watch(moneyProvider);
     final home = ref.watch(profileProvider).value?.currency ?? 'EUR';
     final pantry = job.kind == ScanKind.pantry;

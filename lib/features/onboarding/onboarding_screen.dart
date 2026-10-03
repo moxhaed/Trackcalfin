@@ -79,13 +79,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   Future<void> _finish() async {
+    final pick = ref.read(todayPickProvider.notifier);
     await ref.read(profileServiceProvider).update((p) {
       p.defaultPortions = _portions;
       p.dailyPickMinuteOfDay = _pickMinute;
       p.onboardingDone = true;
     });
     await Notifications.instance.requestPermission();
-    unawaited(ref.read(todayPickProvider.notifier).refresh());
+    unawaited(pick.refresh());
     if (mounted) context.go('/cook');
   }
 

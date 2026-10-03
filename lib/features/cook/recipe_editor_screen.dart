@@ -75,7 +75,7 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
       }
     }
     if (_rows.isEmpty) _rows.add(_Row());
-    setState(() => _loaded = true);
+    if (mounted) setState(() => _loaded = true);
   }
 
   @override
