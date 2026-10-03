@@ -64,8 +64,9 @@ class VibeScorer {
       c['food'] = paceScore(s.food.monthPace!);
     }
     if (s.nonFoodLimit > 0) {
-      final pace =
-          s.nonFoodSpent / (s.nonFoodLimit * (s.monthElapsedFraction < paceFloor ? paceFloor : s.monthElapsedFraction));
+      // Only categories with a limit: spending where no goal is set isn't over anything.
+      final spent = s.nonFood.where((c) => c.limitMinor > 0).fold(0, (a, c) => a + c.spentMinor);
+      final pace = spent / (s.nonFoodLimit * (s.monthElapsedFraction < paceFloor ? paceFloor : s.monthElapsedFraction));
       c['nonfood'] = paceScore(pace);
     }
     if (p.dailyProteinTargetG > 0 && s.avgProtein != null) {

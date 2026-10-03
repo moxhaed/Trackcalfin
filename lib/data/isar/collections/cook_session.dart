@@ -32,6 +32,12 @@ class CookSession {
   CookStatus status = CookStatus.active;
 
   DateTime? fridgeExpiresAt;
+
+  /// The recipe as it was before this cook, so undo can put it back. Null on older sessions.
+  @Enumerated(EnumType.name)
+  RecipeStatus? recipeStatusBefore;
+  DateTime? recipeLastCookedBefore;
+  int recipeLastPortionsBefore = 0;
 }
 
 @embedded
@@ -47,4 +53,8 @@ class StockDelta {
 
   /// requested - deducted; > 0 means stock was under-counted.
   double shortfall = 0;
+
+  /// The ingredient's last check and expiry before the deduction, for undo.
+  DateTime? verifiedBefore;
+  DateTime? expiresBefore;
 }

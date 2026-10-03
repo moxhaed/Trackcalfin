@@ -72,6 +72,9 @@ class AppIntegrations {
       unawaited(Housekeeping(ref.read(isarProvider), images: ref.read(imageStoreProvider)).run());
     }
     try {
+      // A pick left over from yesterday (the app stayed open past the rollover) is looked up again.
+      final day = ref.read(todayPickProvider).value?.recipe?.suggestedForDateKey;
+      if (day != null && day != ref.read(dayClockProvider).dateKey(t)) ref.invalidate(todayPickProvider);
       final pick = await ref.read(todayPickProvider.future);
       if (pick.recipe != null && pick.fromAi) await _scheduler.scheduleTodayPick(pick.recipe);
       await _scheduler.refreshMealReminders();

@@ -62,13 +62,29 @@ const CookSessionSchema = CollectionSchema(
       type: IsarType.long,
     ),
     r'recipeId': PropertySchema(id: 8, name: r'recipeId', type: IsarType.long),
-    r'recipeTitle': PropertySchema(
+    r'recipeLastCookedBefore': PropertySchema(
       id: 9,
+      name: r'recipeLastCookedBefore',
+      type: IsarType.dateTime,
+    ),
+    r'recipeLastPortionsBefore': PropertySchema(
+      id: 10,
+      name: r'recipeLastPortionsBefore',
+      type: IsarType.long,
+    ),
+    r'recipeStatusBefore': PropertySchema(
+      id: 11,
+      name: r'recipeStatusBefore',
+      type: IsarType.string,
+      enumMap: _CookSessionrecipeStatusBeforeEnumValueMap,
+    ),
+    r'recipeTitle': PropertySchema(
+      id: 12,
       name: r'recipeTitle',
       type: IsarType.string,
     ),
     r'status': PropertySchema(
-      id: 10,
+      id: 13,
       name: r'status',
       type: IsarType.string,
       enumMap: _CookSessionstatusEnumValueMap,
@@ -141,6 +157,12 @@ int _cookSessionEstimateSize(
         allOffsets[Nutrition]!,
         allOffsets,
       );
+  {
+    final value = object.recipeStatusBefore;
+    if (value != null) {
+      bytesCount += 3 + value.name.length * 3;
+    }
+  }
   bytesCount += 3 + object.recipeTitle.length * 3;
   bytesCount += 3 + object.status.name.length * 3;
   return bytesCount;
@@ -171,8 +193,11 @@ void _cookSessionSerialize(
   writer.writeLong(offsets[6], object.portionsDiscarded);
   writer.writeLong(offsets[7], object.portionsRemaining);
   writer.writeLong(offsets[8], object.recipeId);
-  writer.writeString(offsets[9], object.recipeTitle);
-  writer.writeString(offsets[10], object.status.name);
+  writer.writeDateTime(offsets[9], object.recipeLastCookedBefore);
+  writer.writeLong(offsets[10], object.recipeLastPortionsBefore);
+  writer.writeString(offsets[11], object.recipeStatusBefore?.name);
+  writer.writeString(offsets[12], object.recipeTitle);
+  writer.writeString(offsets[13], object.status.name);
 }
 
 CookSession _cookSessionDeserialize(
@@ -205,9 +230,15 @@ CookSession _cookSessionDeserialize(
   object.portionsDiscarded = reader.readLong(offsets[6]);
   object.portionsRemaining = reader.readLong(offsets[7]);
   object.recipeId = reader.readLong(offsets[8]);
-  object.recipeTitle = reader.readString(offsets[9]);
+  object.recipeLastCookedBefore = reader.readDateTimeOrNull(offsets[9]);
+  object.recipeLastPortionsBefore = reader.readLong(offsets[10]);
+  object.recipeStatusBefore =
+      _CookSessionrecipeStatusBeforeValueEnumMap[reader.readStringOrNull(
+        offsets[11],
+      )];
+  object.recipeTitle = reader.readString(offsets[12]);
   object.status =
-      _CookSessionstatusValueEnumMap[reader.readStringOrNull(offsets[10])] ??
+      _CookSessionstatusValueEnumMap[reader.readStringOrNull(offsets[13])] ??
       CookStatus.active;
   return object;
 }
@@ -251,8 +282,16 @@ P _cookSessionDeserializeProp<P>(
     case 8:
       return (reader.readLong(offset)) as P;
     case 9:
-      return (reader.readString(offset)) as P;
+      return (reader.readDateTimeOrNull(offset)) as P;
     case 10:
+      return (reader.readLong(offset)) as P;
+    case 11:
+      return (_CookSessionrecipeStatusBeforeValueEnumMap[reader
+              .readStringOrNull(offset)])
+          as P;
+    case 12:
+      return (reader.readString(offset)) as P;
+    case 13:
       return (_CookSessionstatusValueEnumMap[reader.readStringOrNull(offset)] ??
               CookStatus.active)
           as P;
@@ -261,6 +300,18 @@ P _cookSessionDeserializeProp<P>(
   }
 }
 
+const _CookSessionrecipeStatusBeforeEnumValueMap = {
+  r'suggested': r'suggested',
+  r'saved': r'saved',
+  r'dismissed': r'dismissed',
+  r'archived': r'archived',
+};
+const _CookSessionrecipeStatusBeforeValueEnumMap = {
+  r'suggested': RecipeStatus.suggested,
+  r'saved': RecipeStatus.saved,
+  r'dismissed': RecipeStatus.dismissed,
+  r'archived': RecipeStatus.archived,
+};
 const _CookSessionstatusEnumValueMap = {
   r'active': r'active',
   r'finished': r'finished',
@@ -1057,6 +1108,299 @@ extension CookSessionQueryFilter
   }
 
   QueryBuilder<CookSession, CookSession, QAfterFilterCondition>
+  recipeLastCookedBeforeIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'recipeLastCookedBefore'),
+      );
+    });
+  }
+
+  QueryBuilder<CookSession, CookSession, QAfterFilterCondition>
+  recipeLastCookedBeforeIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'recipeLastCookedBefore'),
+      );
+    });
+  }
+
+  QueryBuilder<CookSession, CookSession, QAfterFilterCondition>
+  recipeLastCookedBeforeEqualTo(DateTime? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'recipeLastCookedBefore',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<CookSession, CookSession, QAfterFilterCondition>
+  recipeLastCookedBeforeGreaterThan(DateTime? value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'recipeLastCookedBefore',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<CookSession, CookSession, QAfterFilterCondition>
+  recipeLastCookedBeforeLessThan(DateTime? value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'recipeLastCookedBefore',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<CookSession, CookSession, QAfterFilterCondition>
+  recipeLastCookedBeforeBetween(
+    DateTime? lower,
+    DateTime? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'recipeLastCookedBefore',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<CookSession, CookSession, QAfterFilterCondition>
+  recipeLastPortionsBeforeEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'recipeLastPortionsBefore',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<CookSession, CookSession, QAfterFilterCondition>
+  recipeLastPortionsBeforeGreaterThan(int value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'recipeLastPortionsBefore',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<CookSession, CookSession, QAfterFilterCondition>
+  recipeLastPortionsBeforeLessThan(int value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'recipeLastPortionsBefore',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<CookSession, CookSession, QAfterFilterCondition>
+  recipeLastPortionsBeforeBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'recipeLastPortionsBefore',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<CookSession, CookSession, QAfterFilterCondition>
+  recipeStatusBeforeIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'recipeStatusBefore'),
+      );
+    });
+  }
+
+  QueryBuilder<CookSession, CookSession, QAfterFilterCondition>
+  recipeStatusBeforeIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'recipeStatusBefore'),
+      );
+    });
+  }
+
+  QueryBuilder<CookSession, CookSession, QAfterFilterCondition>
+  recipeStatusBeforeEqualTo(RecipeStatus? value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'recipeStatusBefore',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<CookSession, CookSession, QAfterFilterCondition>
+  recipeStatusBeforeGreaterThan(
+    RecipeStatus? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'recipeStatusBefore',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<CookSession, CookSession, QAfterFilterCondition>
+  recipeStatusBeforeLessThan(
+    RecipeStatus? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'recipeStatusBefore',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<CookSession, CookSession, QAfterFilterCondition>
+  recipeStatusBeforeBetween(
+    RecipeStatus? lower,
+    RecipeStatus? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'recipeStatusBefore',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<CookSession, CookSession, QAfterFilterCondition>
+  recipeStatusBeforeStartsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'recipeStatusBefore',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<CookSession, CookSession, QAfterFilterCondition>
+  recipeStatusBeforeEndsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'recipeStatusBefore',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<CookSession, CookSession, QAfterFilterCondition>
+  recipeStatusBeforeContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'recipeStatusBefore',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<CookSession, CookSession, QAfterFilterCondition>
+  recipeStatusBeforeMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'recipeStatusBefore',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<CookSession, CookSession, QAfterFilterCondition>
+  recipeStatusBeforeIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'recipeStatusBefore', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<CookSession, CookSession, QAfterFilterCondition>
+  recipeStatusBeforeIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'recipeStatusBefore', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<CookSession, CookSession, QAfterFilterCondition>
   recipeTitleEqualTo(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
@@ -1461,6 +1805,48 @@ extension CookSessionQuerySortBy
     });
   }
 
+  QueryBuilder<CookSession, CookSession, QAfterSortBy>
+  sortByRecipeLastCookedBefore() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'recipeLastCookedBefore', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CookSession, CookSession, QAfterSortBy>
+  sortByRecipeLastCookedBeforeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'recipeLastCookedBefore', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CookSession, CookSession, QAfterSortBy>
+  sortByRecipeLastPortionsBefore() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'recipeLastPortionsBefore', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CookSession, CookSession, QAfterSortBy>
+  sortByRecipeLastPortionsBeforeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'recipeLastPortionsBefore', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CookSession, CookSession, QAfterSortBy>
+  sortByRecipeStatusBefore() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'recipeStatusBefore', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CookSession, CookSession, QAfterSortBy>
+  sortByRecipeStatusBeforeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'recipeStatusBefore', Sort.desc);
+    });
+  }
+
   QueryBuilder<CookSession, CookSession, QAfterSortBy> sortByRecipeTitle() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'recipeTitle', Sort.asc);
@@ -1592,6 +1978,48 @@ extension CookSessionQuerySortThenBy
     });
   }
 
+  QueryBuilder<CookSession, CookSession, QAfterSortBy>
+  thenByRecipeLastCookedBefore() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'recipeLastCookedBefore', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CookSession, CookSession, QAfterSortBy>
+  thenByRecipeLastCookedBeforeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'recipeLastCookedBefore', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CookSession, CookSession, QAfterSortBy>
+  thenByRecipeLastPortionsBefore() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'recipeLastPortionsBefore', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CookSession, CookSession, QAfterSortBy>
+  thenByRecipeLastPortionsBeforeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'recipeLastPortionsBefore', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CookSession, CookSession, QAfterSortBy>
+  thenByRecipeStatusBefore() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'recipeStatusBefore', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CookSession, CookSession, QAfterSortBy>
+  thenByRecipeStatusBeforeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'recipeStatusBefore', Sort.desc);
+    });
+  }
+
   QueryBuilder<CookSession, CookSession, QAfterSortBy> thenByRecipeTitle() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'recipeTitle', Sort.asc);
@@ -1662,6 +2090,30 @@ extension CookSessionQueryWhereDistinct
   QueryBuilder<CookSession, CookSession, QDistinct> distinctByRecipeId() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'recipeId');
+    });
+  }
+
+  QueryBuilder<CookSession, CookSession, QDistinct>
+  distinctByRecipeLastCookedBefore() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'recipeLastCookedBefore');
+    });
+  }
+
+  QueryBuilder<CookSession, CookSession, QDistinct>
+  distinctByRecipeLastPortionsBefore() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'recipeLastPortionsBefore');
+    });
+  }
+
+  QueryBuilder<CookSession, CookSession, QDistinct>
+  distinctByRecipeStatusBefore({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(
+        r'recipeStatusBefore',
+        caseSensitive: caseSensitive,
+      );
     });
   }
 
@@ -1747,6 +2199,27 @@ extension CookSessionQueryProperty
     });
   }
 
+  QueryBuilder<CookSession, DateTime?, QQueryOperations>
+  recipeLastCookedBeforeProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'recipeLastCookedBefore');
+    });
+  }
+
+  QueryBuilder<CookSession, int, QQueryOperations>
+  recipeLastPortionsBeforeProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'recipeLastPortionsBefore');
+    });
+  }
+
+  QueryBuilder<CookSession, RecipeStatus?, QQueryOperations>
+  recipeStatusBeforeProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'recipeStatusBefore');
+    });
+  }
+
   QueryBuilder<CookSession, String, QQueryOperations> recipeTitleProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'recipeTitle');
@@ -1776,21 +2249,31 @@ const StockDeltaSchema = Schema(
       name: r'deducted',
       type: IsarType.double,
     ),
-    r'ingredientId': PropertySchema(
+    r'expiresBefore': PropertySchema(
       id: 1,
+      name: r'expiresBefore',
+      type: IsarType.dateTime,
+    ),
+    r'ingredientId': PropertySchema(
+      id: 2,
       name: r'ingredientId',
       type: IsarType.long,
     ),
-    r'key': PropertySchema(id: 2, name: r'key', type: IsarType.string),
+    r'key': PropertySchema(id: 3, name: r'key', type: IsarType.string),
     r'requested': PropertySchema(
-      id: 3,
+      id: 4,
       name: r'requested',
       type: IsarType.double,
     ),
     r'shortfall': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'shortfall',
       type: IsarType.double,
+    ),
+    r'verifiedBefore': PropertySchema(
+      id: 6,
+      name: r'verifiedBefore',
+      type: IsarType.dateTime,
     ),
   },
 
@@ -1817,10 +2300,12 @@ void _stockDeltaSerialize(
   Map<Type, List<int>> allOffsets,
 ) {
   writer.writeDouble(offsets[0], object.deducted);
-  writer.writeLong(offsets[1], object.ingredientId);
-  writer.writeString(offsets[2], object.key);
-  writer.writeDouble(offsets[3], object.requested);
-  writer.writeDouble(offsets[4], object.shortfall);
+  writer.writeDateTime(offsets[1], object.expiresBefore);
+  writer.writeLong(offsets[2], object.ingredientId);
+  writer.writeString(offsets[3], object.key);
+  writer.writeDouble(offsets[4], object.requested);
+  writer.writeDouble(offsets[5], object.shortfall);
+  writer.writeDateTime(offsets[6], object.verifiedBefore);
 }
 
 StockDelta _stockDeltaDeserialize(
@@ -1831,10 +2316,12 @@ StockDelta _stockDeltaDeserialize(
 ) {
   final object = StockDelta();
   object.deducted = reader.readDouble(offsets[0]);
-  object.ingredientId = reader.readLong(offsets[1]);
-  object.key = reader.readString(offsets[2]);
-  object.requested = reader.readDouble(offsets[3]);
-  object.shortfall = reader.readDouble(offsets[4]);
+  object.expiresBefore = reader.readDateTimeOrNull(offsets[1]);
+  object.ingredientId = reader.readLong(offsets[2]);
+  object.key = reader.readString(offsets[3]);
+  object.requested = reader.readDouble(offsets[4]);
+  object.shortfall = reader.readDouble(offsets[5]);
+  object.verifiedBefore = reader.readDateTimeOrNull(offsets[6]);
   return object;
 }
 
@@ -1848,13 +2335,17 @@ P _stockDeltaDeserializeProp<P>(
     case 0:
       return (reader.readDouble(offset)) as P;
     case 1:
-      return (reader.readLong(offset)) as P;
+      return (reader.readDateTimeOrNull(offset)) as P;
     case 2:
-      return (reader.readString(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 3:
-      return (reader.readDouble(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 4:
       return (reader.readDouble(offset)) as P;
+    case 5:
+      return (reader.readDouble(offset)) as P;
+    case 6:
+      return (reader.readDateTimeOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
   }
@@ -1932,6 +2423,79 @@ extension StockDeltaQueryFilter
           includeUpper: includeUpper,
 
           epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<StockDelta, StockDelta, QAfterFilterCondition>
+  expiresBeforeIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'expiresBefore'),
+      );
+    });
+  }
+
+  QueryBuilder<StockDelta, StockDelta, QAfterFilterCondition>
+  expiresBeforeIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'expiresBefore'),
+      );
+    });
+  }
+
+  QueryBuilder<StockDelta, StockDelta, QAfterFilterCondition>
+  expiresBeforeEqualTo(DateTime? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'expiresBefore', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<StockDelta, StockDelta, QAfterFilterCondition>
+  expiresBeforeGreaterThan(DateTime? value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'expiresBefore',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<StockDelta, StockDelta, QAfterFilterCondition>
+  expiresBeforeLessThan(DateTime? value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'expiresBefore',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<StockDelta, StockDelta, QAfterFilterCondition>
+  expiresBeforeBetween(
+    DateTime? lower,
+    DateTime? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'expiresBefore',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
         ),
       );
     });
@@ -2283,6 +2847,79 @@ extension StockDeltaQueryFilter
           includeUpper: includeUpper,
 
           epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<StockDelta, StockDelta, QAfterFilterCondition>
+  verifiedBeforeIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'verifiedBefore'),
+      );
+    });
+  }
+
+  QueryBuilder<StockDelta, StockDelta, QAfterFilterCondition>
+  verifiedBeforeIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'verifiedBefore'),
+      );
+    });
+  }
+
+  QueryBuilder<StockDelta, StockDelta, QAfterFilterCondition>
+  verifiedBeforeEqualTo(DateTime? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'verifiedBefore', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<StockDelta, StockDelta, QAfterFilterCondition>
+  verifiedBeforeGreaterThan(DateTime? value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'verifiedBefore',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<StockDelta, StockDelta, QAfterFilterCondition>
+  verifiedBeforeLessThan(DateTime? value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'verifiedBefore',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<StockDelta, StockDelta, QAfterFilterCondition>
+  verifiedBeforeBetween(
+    DateTime? lower,
+    DateTime? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'verifiedBefore',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
         ),
       );
     });

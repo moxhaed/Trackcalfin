@@ -48,6 +48,9 @@ class HabitScheduler {
     final p = await _profile();
     if (!p.notificationsEnabled || pick == null) return;
     final at = _at(now(), p.dailyPickMinuteOfDay);
+    // Before the rollover hour the pick is still yesterday's: it isn't this morning's.
+    final day = pick.suggestedForDateKey;
+    if (day != null && day != ProfileService.clockFor(p).dateKey(at)) return;
     if (at.isAfter(now())) {
       await notifications.scheduleDailyPick(
         at: at,

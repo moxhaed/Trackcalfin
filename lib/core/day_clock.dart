@@ -9,10 +9,8 @@ class DayClock {
   /// that day (31 in April) starts on its last day.
   final int monthStartDay;
 
-  DateTime _logicalDate(DateTime t) {
-    final shifted = t.subtract(Duration(hours: rolloverHour));
-    return DateTime(shifted.year, shifted.month, shifted.day);
-  }
+  /// By the wall clock, not by elapsed hours: on a DST day 04:30 is still past a 04:00 rollover.
+  DateTime _logicalDate(DateTime t) => DateTime(t.year, t.month, t.hour < rolloverHour ? t.day - 1 : t.day);
 
   /// yyyymmdd of the logical day containing [t].
   int dateKey(DateTime t) => keyOf(_logicalDate(t));

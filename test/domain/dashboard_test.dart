@@ -267,6 +267,23 @@ void main() {
       expect(eaten.components['food'], 100, reason: 'a third of it eaten');
     });
 
+    test('other spend counts only in categories with a limit', () {
+      // Eating out has a 60.00 limit; 150.00 of "other" (no limit) by the 15th is over nothing.
+      final s = DashboardAggregator.compute(
+        DashboardInput(
+          now: DateTime(2026, 10, 15, 12),
+          clock: clock,
+          profile: profile(),
+          transactions: [
+            tx(DateTime(2026, 10, 2, 12), 15000, category: SpendCategory.other),
+            tx(DateTime(2026, 10, 3, 12), 1000, category: SpendCategory.eatingOut),
+          ],
+          logs: const [],
+        ),
+      );
+      expect(VibeScorer.score(s, profile(), money).components['nonfood'], 100);
+    });
+
     test('score math and component formulas', () {
       expect(VibeScorer.paceScore(1.0), 100);
       expect(VibeScorer.paceScore(1.25), 50);
