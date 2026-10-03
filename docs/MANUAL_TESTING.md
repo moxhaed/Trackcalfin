@@ -1,6 +1,6 @@
 # Manual test plan: first run on a real phone
 
-The automated tests (219 of them) cover the math, the database, the AI pipeline against a fake Gemini, and the main screens. What they **can't** cover is anything that needs a real phone: the camera, the real Gemini API, notifications, the share sheet, voice input and background work. This checklist is for that.
+The automated tests (237 of them) cover the math, the database, the AI pipeline against a fake Gemini, and the main screens. What they **can't** cover is anything that needs a real phone: the camera, the real Gemini API, notifications, the share sheet, voice input and background work. This checklist is for that.
 
 **Time:** about 60–90 minutes. You don't have to do it all at once. Sections 1–4 are the important ones.
 **Tick boxes as you go.** GitHub renders them as checkboxes when you edit the file.
@@ -156,6 +156,18 @@ When something goes wrong, note the **test ID** (e.g. `R3`), what you expected, 
 
 - [ ] **L1 · Shopping list.** Buy → **List**. *Expect:* running-low items as suggestions; tap one and type another ("Birthday candles"). Lines with a known price sit under "Cheapest at …". File a receipt that has one of them. *Expect:* it's ticked off by itself. **Send the list** opens the share sheet with the list by store.
 - [ ] **L2 · From a recipe.** Open a recipe that's missing something. *Expect:* "Add the N missing items to the shopping list", with Undo. On the Cook tab, the cart button next to a recipe that needs shopping does the same.
+
+## 4d · Cookbook import (new)
+
+You'll need a cookbook PDF you own (a small one under 2 MB and, if you have one, a big one over 2 MB).
+
+- [ ] **I1 · Import.** Cook tab → the book icon (**Import cookbook (PDF)**) → pick the PDF.
+  *Expect:* a screen with the file name, its page count (or the count once the contents are read) and size, then "Finding the recipes", then "Reading pages 41–60 · 12 recipes so far" with a progress bar. Recipes appear in the list as they are read.
+- [ ] **I2 · Have and missing.** *Expect:* each recipe says "You have 7 of 9 · missing tahini, sumac" (or "You have all 9" with a green tick) and a cost per portion. Tap one: every ingredient as printed in the book, with "have …" or "not in your pantry", and a short method. Check a few amounts against the book.
+- [ ] **I3 · Leave and come back.** Go back to the Cook tab while it reads. *Expect:* the **Cookbooks** card shows it reading. Open it again: it is still going. Tap **Stop**: it stops after the current part, and **Continue** goes on.
+- [ ] **I4 · Choose and save.** Use **Cookable now**, **Select all** / **None**, untick one, tap **Save N recipes**. *Expect:* "Saved N recipes from …" with **Undo** (try it, then save again). A recipe you already had is marked "Already in your recipes" and starts unticked. The **Cookbooks** card lists the book with how many are cookable now; a recipe opened from it says "From …, page N".
+- [ ] **I5 · Daily limit.** On a free key, import a big book until the limit hits (or turn on airplane mode while it reads). *Expect:* it stops with the reason; what was read is still there. Next day (or back online) **Continue** reads the rest without starting over.
+- [ ] **I6 · Buy something missing.** Scan a receipt with an item a saved cookbook recipe was missing, then open the book from the Cookbooks card. *Expect:* that recipe now counts it as in the pantry.
 
 ## 5 · Ask ("What do you want to cook?")
 
