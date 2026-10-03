@@ -57,12 +57,10 @@ class QuickTextParser {
     'tesco': SpendCategory.groceries, 'carrefour': SpendCategory.groceries,
   };
 
-  static final _amount = RegExp(r'(\d+(?:[.,]\d{1,2})?)');
-
   static ParsedExpense? parse(String input, {List<KeywordCategory> learned = const [], MoneyFormat? money}) {
-    final m = _amount.firstMatch(input);
+    final m = MoneyFormat.amountPattern.firstMatch(input);
     if (m == null) return null;
-    final amount = (money ?? const MoneyFormat()).parse(m.group(1)!);
+    final amount = (money ?? const MoneyFormat()).parse(m.group(0)!);
     if (amount == null || amount <= 0) return null;
     final rest = input.replaceRange(m.start, m.end, ' ').trim();
     final tokens = rest

@@ -21,6 +21,11 @@ void main() {
       expect(QuickTextParser.parse('zara 39,99 jeans')!.category, SpendCategory.clothes);
       expect(QuickTextParser.parse('no amount here'), isNull);
     });
+    test('amounts with thousands separators are read whole', () {
+      final a = QuickTextParser.parse('ikea 1.299,00 sofa')!;
+      expect((a.amountMinor, a.category, a.note), (129900, SpendCategory.household, 'ikea sofa'));
+      expect(QuickTextParser.parse('1.200 rent')!.amountMinor, 120000);
+    });
     test('learned keyword beats built-in; unknown keyword has no category', () {
       final learned = QuickTextParser.learn(const [], 'lunch', SpendCategory.other);
       expect(QuickTextParser.parse('9 lunch', learned: learned)!.category, SpendCategory.other);

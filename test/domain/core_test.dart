@@ -15,6 +15,19 @@ void main() {
       expect(clock.dateKey(DateTime(2026, 9, 29, 4, 0)), 20260929);
     });
 
+    // Only bites in a zone with DST: run with TZ=Europe/Berlin.
+    test('DST days: the rollover goes by the wall clock, not by elapsed hours', () {
+      expect(clock.dateKey(DateTime(2026, 3, 29, 4, 30)), 20260329, reason: 'spring forward');
+      expect(clock.dayStart(DateTime(2026, 3, 29, 4, 30)), DateTime(2026, 3, 29, 4));
+      expect(clock.dateKey(DateTime(2026, 10, 25, 3, 30)), 20261024, reason: 'fall back');
+      expect(
+        const DayClock(
+          weekStartsOn: DateTime.sunday,
+        ).dateKey(const DayClock(weekStartsOn: DateTime.sunday).weekStart(DateTime(2026, 4, 1, 12))),
+        20260329,
+      );
+    });
+
     test('week start is Monday at the rollover hour, across a month boundary', () {
       final ws = clock.weekStart(DateTime(2026, 10, 2, 12)); // Friday
       expect(ws, DateTime(2026, 9, 28, 4));
@@ -70,6 +83,23 @@ void main() {
       expect(m.parse('12.50'), 1250);
       expect(m.parse('€ 7'), 700);
       expect(m.parse('abc'), isNull);
+    });
+    test('parses euro formats: thousands separators and a leading decimal comma', () {
+      expect(m.parse('1,29'), 129);
+      expect(m.parse('1.29'), 129);
+      expect(m.parse('1.299,00'), 129900);
+      expect(m.parse('1,299.00'), 129900);
+      expect(m.parse('1 299,00'), 129900);
+      expect(m.parse('1.200'), 120000, reason: 'three digits after one separator group thousands');
+      expect(m.parse('1.200.000'), 120000000);
+      expect(m.parse(',50'), 50);
+      expect(m.parse('0.500'), 50);
+      expect(m.parse('12,345 €'), 1234500);
+      expect(m.parse('2,999'), 299900);
+    });
+    test('parses by the currency: no decimals in yen, three in dinars', () {
+      expect(const MoneyFormat(currency: 'JPY', digits: 0).parse('1,500'), 1500);
+      expect(const MoneyFormat(currency: 'KWD', digits: 3).parse('1.250'), 1250);
     });
   });
 

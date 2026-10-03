@@ -34,15 +34,44 @@ class MoneyFormat {
   /// Whole units from 20 up or when there are no cents ("€164", "€0", "€2.55").
   String compact(int minor) => format(minor, whole: minor.abs() >= 20 * _factor || minor % _factor == 0);
 
-  /// "12,50" / "12.5" / "€ 12" -> minor units. Returns null when no number is found.
+  /// The first amount in a text, with its thousands separators: "12,50", "1.299,00",
+  /// "1 299,00", "1,299.00", ",50".
+  static final amountPattern = RegExp("\\d{1,3}(?:[   '’]\\d{3})+(?:[.,]\\d+)?|[\\d.,]*\\d");
+
+  static final _grouping = RegExp("[   '’]");
+  static final _nonDigits = RegExp(r'\D');
+
+  /// "12,50" / "12.5" / "€ 12" / "1.299,00" / ",50" -> minor units. Returns null when no number
+  /// is found. The last separator is the decimal one, unless it is followed by exactly three
+  /// digits in a currency with fewer decimals ("1.200" is 1200 euros, "1.29" is 1.29).
   int? parse(String input) {
-    final m = RegExp(r'(\d+)(?:[.,](\d{1,2}))?').firstMatch(input);
+    final m = amountPattern.firstMatch(input);
     if (m == null) return null;
-    final whole = int.parse(m.group(1)!);
-    var frac = m.group(2) ?? '';
-    if (digits == 0) return whole;
-    frac = frac.padRight(digits, '0').substring(0, digits);
-    return whole * _factor + (frac.isEmpty ? 0 : int.parse(frac));
+    final s = m.group(0)!.replaceAll(_grouping, '');
+    final last = s.lastIndexOf(RegExp('[.,]'));
+    var whole = s;
+    var frac = '';
+    if (last >= 0) {
+      final before = s.substring(0, last).replaceAll(_nonDigits, '');
+      final after = s.substring(last + 1);
+      final sep = s[last];
+      final mixed = s.contains('.') && s.contains(',');
+      final repeated = s.indexOf(sep) != last;
+      final thousands =
+          !mixed && (repeated || (after.length == 3 && digits != 3 && before.replaceAll('0', '').isNotEmpty));
+      if (thousands) {
+        whole = s.replaceAll(_nonDigits, '');
+      } else {
+        whole = before;
+        frac = after;
+      }
+    }
+    final major = whole.isEmpty ? 0 : int.tryParse(whole);
+    if (major == null) return null;
+    // Fraction digits past the currency's are rounded half up.
+    final kept = frac.length > digits ? frac.substring(0, digits) : frac.padRight(digits, '0');
+    final up = frac.length > digits && frac.codeUnitAt(digits) >= 0x35 ? 1 : 0;
+    return major * _factor + (kept.isEmpty ? 0 : int.parse(kept)) + up;
   }
 
   /// Minor units -> plain number string for text fields ("12.50").
