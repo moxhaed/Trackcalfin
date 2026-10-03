@@ -241,6 +241,17 @@ void main() {
       expect(g.missing, ['salt']);
       expect(g.maxPortionsNow, 0);
     });
+    test('the same item on two rows draws on one stock (oil for the pan and the dressing)', () {
+      final f = FeasibilityChecker.check(
+        [ri('oil', 10, unit: BaseUnit.ml), ri('oil', 25, unit: BaseUnit.ml)],
+        1,
+        stock,
+      );
+      expect((f.ready, f.maxPortionsNow), (false, 0), reason: 'needs 35 ml, has 30');
+      expect(f.shortfalls.first.need, 35);
+      final g = FeasibilityChecker.check([ri('oil', 10, unit: BaseUnit.ml), ri('oil', 5, unit: BaseUnit.ml)], 1, stock);
+      expect((g.ready, g.maxPortionsNow), (true, 2));
+    });
     test('shortfall', () {
       final f = FeasibilityChecker.check([ri('chicken', 180)], 4, stock);
       expect(f.ready, isFalse);

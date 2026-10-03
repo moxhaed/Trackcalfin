@@ -52,6 +52,16 @@ class FeasibilityChecker {
     final missing = <String>[];
     final ratios = <double>[];
 
+    // The same pantry item on several rows (oil for the pan and for the dressing) draws on one
+    // stock: each row is checked against what all of them need.
+    final perItem = <int, double>{};
+    for (final ri in items) {
+      if (ri.role == IngredientRole.missing || ri.qtyPerPortion <= 0) continue;
+      final ing = stock.resolve(ri);
+      final q = ing == null ? null : UnitConverter.toBase(ri.qtyPerPortion, ri.unit, ing);
+      if (q != null && q > 0) perItem[ing!.id] = (perItem[ing.id] ?? 0) + q;
+    }
+
     for (final ri in items) {
       if (ri.role == IngredientRole.missing) {
         missing.add(ri.name);
@@ -67,8 +77,9 @@ class FeasibilityChecker {
         maxPortions = 0;
         continue;
       }
-      final perPortion = UnitConverter.toBase(ri.qtyPerPortion, ri.unit, ing);
-      if (perPortion == null || perPortion <= 0) continue;
+      final own = UnitConverter.toBase(ri.qtyPerPortion, ri.unit, ing);
+      if (own == null || own <= 0) continue;
+      final perPortion = perItem[ing.id]!;
       final need = perPortion * portions;
       final have = ing.qtyOnHand;
       final possible = (have / perPortion + 1e-9).floor();

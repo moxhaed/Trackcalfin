@@ -265,7 +265,7 @@ The dashboard shows **no score**: a circle in the status color with an icon (✓
 ```
 S_food     = 100 − clamp((monthPace − 1) * 200, 0, 100)      // on/under pace 100 · 25% over 50 · 50% over 0
                                                              // monthPace of the basis the Food card shows
-S_nonfood  = same formula on Σ non-food spend vs Σ limits (monthly pace)
+S_nonfood  = same formula on Σ spend vs Σ limits, over the categories with a limit (monthly pace)
 S_protein  = clamp(avgProtein / proteinTarget, 0, 1) * 100
 d          = |avgKcal − kcalTarget| / kcalTarget
 S_kcal     = 100 − clamp((d − 0.05) * 400, 0, 100)           // ±5% 100 · ±17.5% 50 · ±30% 0
