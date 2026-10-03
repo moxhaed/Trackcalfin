@@ -383,7 +383,7 @@ class CookbookImportService {
     }
     job
       ..drafts = [...job.drafts]
-      ..status = job.hasWork ? CookbookStatus.open : CookbookStatus.done
+      ..status = job.hasWork || job.unsaved.isNotEmpty ? CookbookStatus.open : CookbookStatus.done
       ..updatedAt = t;
     await isar.cookbookImports.put(job);
     return ids;
