@@ -79,6 +79,37 @@ void main() {
       return json;
     }
 
+    test('a basket coupon is filed once: the result says what the transaction came to', () async {
+      await addChicken();
+      fake.replyJson(
+        receipt((j) {
+          (j['items'] as List).add({
+            'raw_text': 'COUPON -1,00',
+            'name': 'Coupon',
+            'line_type': 'adjustment',
+            'spend_category': 'groceries',
+            'total_minor': -100,
+            'ingredient_key': null,
+            'is_new_ingredient': false,
+            'qty': null,
+            'unit': null,
+            'qty_source': 'unknown',
+            'confidence': 'high',
+            'product': null,
+            'shelf_price': null,
+            'new_ingredient': null,
+          });
+          j['receipt_total_minor'] = (j['receipt_total_minor'] as int) - 100;
+        }),
+      );
+      final s = service();
+      await s.enqueue([await photo()], hint: 'receipt');
+      final r = (await s.processQueue()).single;
+      expect(r.autoCommitted, isTrue, reason: '${r.job.status} ${r.job.flags} ${r.job.lastError}');
+      final tx = (await isar.transactions.get(r.transactionId!))!;
+      expect((tx.totalMinor, r.filedMinor), (722, 722), reason: '8.22 less the 1.00 coupon, once');
+    });
+
     test('clean receipt auto-commits: ledger, stock, WAC, new ingredient, aliases', () async {
       await addChicken();
       final list = ShoppingService(isar);

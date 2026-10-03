@@ -38,10 +38,21 @@ class MissingExchangeRate implements Exception {
 }
 
 class ScanResult {
-  ScanResult(this.job, {this.autoCommitted = false, this.transactionId, this.clean = false, this.waiting = false});
+  ScanResult(
+    this.job, {
+    this.autoCommitted = false,
+    this.transactionId,
+    this.filedMinor,
+    this.clean = false,
+    this.waiting = false,
+  });
   final ScanJob job;
   final bool autoCommitted;
   final int? transactionId;
+
+  /// What the filed transaction came to, in the home currency. The job's lines don't say:
+  /// a basket discount is spread over them and still listed on its own.
+  final int? filedMinor;
 
   /// The AI read the receipt without a flag. It may still wait for review because of what the
   /// app knows: an old date, a possible duplicate, or items already counted in the pantry.
@@ -279,7 +290,8 @@ class ScanService {
     if (draft.autoCommitEligible && !job.maybeDuplicate && profile.autoCommitCleanScans) {
       final txId = await commit(job.id);
       final fresh = (await isar.scanJobs.get(job.id))!;
-      return ScanResult(fresh, autoCommitted: true, transactionId: txId, clean: true);
+      final filed = txId == null ? null : (await isar.transactions.get(txId))?.totalMinor;
+      return ScanResult(fresh, autoCommitted: true, transactionId: txId, filedMinor: filed, clean: true);
     }
     return ScanResult(job, clean: draft.clean);
   }

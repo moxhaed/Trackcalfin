@@ -128,7 +128,7 @@ void reportScan(ScanResult r, String Function(int) fmt, {List<PriceTip> tips = c
   String msg;
   if (r.autoCommitted) {
     final items = job.lines.where((l) => l.ingredientKey != null).length;
-    final total = job.lines.where((l) => l.include).fold(0, (a, l) => a + l.totalMinor);
+    final total = r.filedMinor ?? job.lines.where((l) => l.include).fold<int>(0, (a, l) => a + l.totalMinor);
     // An older receipt is filed on its own day: say which.
     final when = job.purchasedAt == null ? '' : dayNote(job.purchasedAt!, DateTime.now());
     msg = '${job.merchant ?? 'Receipt'} ${fmt(total)}$when · ${itemCount(items)} stocked';
