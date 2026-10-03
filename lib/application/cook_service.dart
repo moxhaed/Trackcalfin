@@ -58,7 +58,10 @@ class CookService {
         ..costPerPortionMinor = plan.costPerPortionMinor
         ..deltas = plan.deltas
         ..fridgeExpiresAt = DayClock.addDays(t, recipe.fridgeLifeDays)
-        ..status = CookStatus.active;
+        ..status = CookStatus.active
+        ..recipeStatusBefore = recipe.status
+        ..recipeLastCookedBefore = recipe.lastCookedAt
+        ..recipeLastPortionsBefore = recipe.lastPortionsCooked;
       if (session.portionsRemaining <= 0) session.status = CookStatus.finished;
       final sessionId = await isar.cookSessions.put(session);
 
@@ -117,8 +120,19 @@ class CookService {
       s.portionsRemaining = 0;
       await isar.cookSessions.put(s);
       final recipe = await isar.recipes.get(s.recipeId);
-      if (recipe != null && recipe.timesCooked > 0) {
-        recipe.timesCooked -= 1;
+      if (recipe != null) {
+        if (recipe.timesCooked > 0) recipe.timesCooked -= 1;
+        // The recipe as it was before this cook, unless it was cooked again since.
+        final before = s.recipeStatusBefore;
+        if (before != null && recipe.lastCookedAt == s.cookedAt) {
+          recipe
+            ..lastCookedAt = s.recipeLastCookedBefore
+            ..lastPortionsCooked = s.recipeLastPortionsBefore;
+          if (recipe.timesCooked == 0 && recipe.status == RecipeStatus.saved && !recipe.favorite) {
+            recipe.status = before;
+          }
+        }
+        RecipeService.refreshNumbers(recipe, stock);
         await isar.recipes.put(recipe);
       }
     });
@@ -217,7 +231,8 @@ class CookService {
       log.meals = log.meals.where((m) => m.entryId != entryId).toList();
       log.recomputeTotals();
       await isar.dailyLogs.put(log);
-      if (entry.cookSessionId != null && entry.source == MealSource.fridge) {
+      // A portion eaten, from the fridge or right after cooking, goes back to its batch.
+      if (entry.cookSessionId != null && (entry.source == MealSource.fridge || entry.source == MealSource.cookedNow)) {
         final s = await isar.cookSessions.get(entry.cookSessionId!);
         if (s != null && s.status != CookStatus.undone) {
           s.portionsRemaining += entry.portions.round();

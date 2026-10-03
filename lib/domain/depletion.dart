@@ -77,6 +77,9 @@ class DepletionEngine {
     for (final d in plan.deltas) {
       final ing = stock.byId[d.ingredientId];
       if (ing == null) continue;
+      d
+        ..verifiedBefore = ing.lastVerifiedAt
+        ..expiresBefore = ing.expiresAt;
       ing.qtyOnHand = (ing.qtyOnHand - d.deducted).clamp(0, double.infinity).toDouble();
       if (d.shortfall > 1e-9) {
         // You physically had more than the app thought: a purchase was missed.
@@ -97,7 +100,11 @@ class DepletionEngine {
       if (ing == null) continue;
       final before = ing.qtyOnHand;
       ing.qtyOnHand = before + d.deducted;
-      if (before <= 0 && ing.lastPurchasedAt != null) {
+      // A shortfall sent it to Quick Check; the cook didn't happen, so the old check stands.
+      if (d.shortfall > 1e-9 && ing.lastVerifiedAt == null) ing.lastVerifiedAt = d.verifiedBefore;
+      if (d.expiresBefore != null) {
+        ing.expiresAt = d.expiresBefore;
+      } else if (before <= 0 && ing.lastPurchasedAt != null) {
         ing.expiresAt = DayClock.addDays(ing.lastPurchasedAt!, ing.shelfLifeDays);
       }
       ing.updatedAt = at;

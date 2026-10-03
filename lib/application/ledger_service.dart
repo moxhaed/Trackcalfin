@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:isar_community/isar.dart';
 
 import '../core/enums.dart';
@@ -5,13 +7,21 @@ import '../data/isar/collections/schemas.dart';
 import '../domain/costing.dart';
 import '../domain/quick_text_parser.dart';
 import 'clock.dart';
+import 'recipe_service.dart';
 import 'shopping_service.dart';
 
 /// A deleted transaction, with the used-up food its old receipt recorded, for undo.
 class DeletedTransaction {
-  DeletedTransaction(this.transaction, this.uses);
+  DeletedTransaction(this.transaction, this.uses, {this.taken = const {}, this.before = const {}});
   final Transaction transaction;
   final List<FoodUse> uses;
+
+  /// What the delete took out of each ingredient's stock (by id): less than the line added
+  /// when some of it was used since.
+  final Map<int, double> taken;
+
+  /// Each ingredient's price and expiry before the delete, put back by undo.
+  final Map<int, ({double avgCost, bool estimate, DateTime? expiresAt})> before;
 
   int get totalMinor => transaction.totalMinor;
 }
@@ -107,16 +117,30 @@ class LedgerService {
       if (tx == null) return null;
       final uses = await isar.foodUses.filter().transactionIdEqualTo(id).findAll();
       await isar.foodUses.deleteAll([for (final u in uses) u.id]);
+      final taken = <int, double>{};
+      final before = <int, ({double avgCost, bool estimate, DateTime? expiresAt})>{};
       for (final l in tx.lines) {
         if (l.ingredientId == null || l.qtyBase == null) continue;
         final ing = await isar.ingredients.get(l.ingredientId!);
         if (ing == null) continue;
-        ing.qtyOnHand = (ing.qtyOnHand - l.qtyBase!).clamp(0, double.infinity).toDouble();
+        before[ing.id] ??= (avgCost: ing.avgCostPerUnitMinor, estimate: ing.costIsEstimate, expiresAt: ing.expiresAt);
+        final had = ing.qtyOnHand;
+        final out = math.min(had, l.qtyBase!);
+        final left = had - out;
+        // What is left no longer carries this purchase's price (§3.3 in reverse). Down to
+        // nothing, the average stays as the last known price.
+        if (l.totalMinor > 0 && l.qtyBase! > 0 && left > 1e-9 && !ing.costIsEstimate) {
+          final avg = (had * ing.avgCostPerUnitMinor - out * l.totalMinor / l.qtyBase!) / left;
+          if (avg > 0) ing.avgCostPerUnitMinor = avg;
+        }
+        ing.qtyOnHand = left < 0 ? 0 : left;
         ExpiryEstimator.onDeplete(ing);
+        taken[ing.id] = (taken[ing.id] ?? 0) + out;
         await isar.ingredients.put(ing);
       }
       await isar.transactions.delete(id);
-      return DeletedTransaction(tx, uses);
+      await RecipeService.refreshUsing(isar, taken.keys.toSet());
+      return DeletedTransaction(tx, uses, taken: taken, before: before);
     });
   }
 
@@ -125,14 +149,21 @@ class LedgerService {
     final tx = deleted.transaction;
     await isar.writeTxn(() async {
       await isar.foodUses.putAll(deleted.uses);
-      for (final l in tx.lines) {
-        if (l.ingredientId == null || l.qtyBase == null) continue;
-        final ing = await isar.ingredients.get(l.ingredientId!);
+      for (final MapEntry(key: id, value: qty) in deleted.taken.entries) {
+        final ing = await isar.ingredients.get(id);
         if (ing == null) continue;
-        ing.qtyOnHand += l.qtyBase!;
+        ing.qtyOnHand += qty;
+        final was = deleted.before[id];
+        if (was != null) {
+          ing
+            ..avgCostPerUnitMinor = was.avgCost
+            ..costIsEstimate = was.estimate
+            ..expiresAt = was.expiresAt;
+        }
         await isar.ingredients.put(ing);
       }
       await isar.transactions.put(tx);
+      await RecipeService.refreshUsing(isar, deleted.taken.keys.toSet());
     });
   }
 

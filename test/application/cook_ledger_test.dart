@@ -1,12 +1,18 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:isar_community/isar.dart';
+import 'package:trackcalfin/application/ai_gateway.dart';
 import 'package:trackcalfin/application/cook_service.dart';
+import 'package:trackcalfin/application/daily_pick_service.dart';
+import 'package:trackcalfin/application/habit_scheduler.dart';
 import 'package:trackcalfin/application/ledger_service.dart';
 import 'package:trackcalfin/application/pantry_service.dart';
 import 'package:trackcalfin/application/profile_service.dart';
 import 'package:trackcalfin/application/recipe_service.dart';
 import 'package:trackcalfin/core/enums.dart';
+import 'package:trackcalfin/data/ai/prompt_repository.dart';
 import 'package:trackcalfin/data/isar/collections/schemas.dart';
+import 'package:trackcalfin/platform/notifications.dart';
+import 'package:trackcalfin/platform/secret_store.dart';
 
 import '../support/test_db.dart';
 
@@ -205,6 +211,102 @@ void main() {
     expect((after.qtyOnHand, after.lastVerifiedAt), (0, null));
   });
 
+  test('undo of a deleted purchase puts back what the delete took, not the whole line', () async {
+    final pantry = PantryService(isar, now: now);
+    final id = await pantry.upsert(
+      Ingredient()
+        ..name = 'Milk'
+        ..baseUnit = BaseUnit.ml,
+    );
+    final ledger = LedgerService(isar, now: now);
+    final txId = await ledger.applyManualPurchase(ingredientId: id, qty: 1000, totalMinor: 109);
+    await CookService(isar, now: now).eatFromPantry(id, 800);
+    final removed = await ledger.delete(txId);
+    expect((await isar.ingredients.get(id))!.qtyOnHand, 0, reason: 'only 200 ml were left to take');
+    await ledger.restore(removed!);
+    final milk = (await isar.ingredients.get(id))!;
+    expect((milk.qtyOnHand, milk.expiresAt), (200.0, DateTime(2026, 10, 5, 19)));
+  });
+
+  test('deleting a purchase takes its price out of the weighted average; undo puts it back', () async {
+    final pantry = PantryService(isar, now: now);
+    final id = await pantry.upsert(
+      Ingredient()
+        ..name = 'Chicken breast'
+        ..qtyOnHand = 500
+        ..avgCostPerUnitMinor = 1.0,
+    );
+    final ledger = LedgerService(isar, now: now);
+    // A typo: 50.00 instead of 5.00 for 500 g.
+    final txId = await ledger.applyManualPurchase(ingredientId: id, qty: 500, totalMinor: 5000);
+    expect((await isar.ingredients.get(id))!.avgCostPerUnitMinor, closeTo(5.5, 1e-9));
+    final removed = await ledger.delete(txId);
+    final after = (await isar.ingredients.get(id))!;
+    expect(after.qtyOnHand, 500);
+    expect(after.avgCostPerUnitMinor, closeTo(1.0, 1e-9), reason: 'the typo no longer prices the chicken');
+    await ledger.restore(removed!);
+    final back = (await isar.ingredients.get(id))!;
+    expect(back.qtyOnHand, 1000);
+    expect(back.avgCostPerUnitMinor, closeTo(5.5, 1e-9));
+  });
+
+  test('undoing a cook puts the recipe and the Quick Check flag back as they were', () async {
+    final recipeId = await seedRecipe();
+    await isar.writeTxn(() async {
+      final r = (await isar.recipes.get(recipeId))!;
+      await isar.recipes.put(r..status = RecipeStatus.suggested);
+    });
+    final before = (await isar.recipes.get(recipeId))!;
+    final cook = CookService(isar, now: now);
+    final res = await cook.cook(recipeId, 4); // 720 g of chicken wanted, 650 there: a shortfall
+    expect((await isar.ingredients.getByKey('chicken_breast'))!.lastVerifiedAt, isNull);
+    await cook.undoCook(res.sessionId);
+    final r = (await isar.recipes.get(recipeId))!;
+    expect(
+      (r.status, r.timesCooked, r.lastCookedAt, r.lastPortionsCooked, r.costPerPortionMinor),
+      (RecipeStatus.suggested, 0, null, 0, before.costPerPortionMinor),
+    );
+    final chicken = (await isar.ingredients.getByKey('chicken_breast'))!;
+    expect((chicken.qtyOnHand, chicken.lastVerifiedAt), (650.0, DateTime(2026, 9, 28, 19)));
+    expect(chicken.expiresAt, DateTime(2026, 10, 5, 19));
+  });
+
+  test('deleting the portion logged right after cooking puts it in the fridge', () async {
+    final recipeId = await seedRecipe();
+    final cook = CookService(isar, now: now);
+    final res = await cook.cook(recipeId, 1);
+    expect((await isar.cookSessions.get(res.sessionId))!.status, CookStatus.finished);
+    await cook.deleteMeal(20260928, res.autoLoggedEntryId!);
+    final s = (await isar.cookSessions.get(res.sessionId))!;
+    expect((s.portionsRemaining, s.status), (1, CookStatus.active));
+  });
+
+  test("a pick still from yesterday (before the rollover) isn't announced for this morning", () async {
+    clockNow = DateTime(2026, 9, 29, 1, 30); // the logical day is still 28 Sep
+    final sent = _SentNotifications();
+    final scheduler = HabitScheduler(
+      isar: isar,
+      picks: DailyPickService(
+        isar: isar,
+        ai: AiGateway(isar: isar, secrets: MemorySecretStore(), prompts: PromptRepository((_) async => '')),
+      ),
+      notifications: sent,
+      now: now,
+    );
+    await scheduler.scheduleTodayPick(
+      Recipe()
+        ..title = 'Old'
+        ..suggestedForDateKey = 20260928,
+    );
+    expect(sent.picks, isEmpty);
+    await scheduler.scheduleTodayPick(
+      Recipe()
+        ..title = 'New'
+        ..suggestedForDateKey = 20260929,
+    );
+    expect(sent.picks, [(DateTime(2026, 9, 29, 7, 30), 'Today: New')]);
+  });
+
   test('slugify and unique keys', () async {
     expect(PantryService.slugify('Greek yogurt 10%'), 'greek_yogurt');
     expect(PantryService.slugify('Crème fraîche'), 'creme_fraiche');
@@ -214,4 +316,16 @@ void main() {
     final id2 = await pantry.upsert(Ingredient()..name = 'Egg');
     expect((await isar.ingredients.get(id2))!.key, 'egg_2');
   });
+}
+
+/// Records the daily pick notifications instead of scheduling them.
+class _SentNotifications implements Notifications {
+  final picks = <(DateTime, String)>[];
+
+  @override
+  Future<void> scheduleDailyPick({required DateTime at, required String title, required String body}) async =>
+      picks.add((at, title));
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => Future<void>.value();
 }

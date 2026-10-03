@@ -441,7 +441,10 @@ class QuickLogPlanner {
       ..costPerPortionMinor = plan.costPerPortionMinor
       ..deltas = plan.deltas
       ..fridgeExpiresAt = DayClock.addDays(at, recipe.fridgeLifeDays)
-      ..status = portions - ate <= 0 ? CookStatus.finished : CookStatus.active;
+      ..status = portions - ate <= 0 ? CookStatus.finished : CookStatus.active
+      ..recipeStatusBefore = recipe.status
+      ..recipeLastCookedBefore = recipe.lastCookedAt
+      ..recipeLastPortionsBefore = recipe.lastPortionsCooked;
     w.sessions.add(session);
     if (ate > 0) {
       _meal(w, day, at, MealSource.cookedNow, recipe.title)
