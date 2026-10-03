@@ -10,6 +10,7 @@ import '../../domain/feasibility.dart';
 import '../../domain/shopping.dart';
 import '../../domain/stock_index.dart';
 import '../../domain/units.dart';
+import '../buy/count_undo.dart';
 import '../buy/ingredient_sheet.dart';
 import '../buy/shopping_view.dart';
 import '../common/format.dart';
@@ -333,8 +334,9 @@ class _IngredientRow extends ConsumerWidget {
                       leading: const Icon(Icons.remove_shopping_cart_outlined),
                       title: Text("I'm out of ${ing.name}"),
                       onTap: () async {
+                        final messenger = ScaffoldMessenger.of(context);
                         Navigator.of(context).pop();
-                        await ref.read(pantryServiceProvider).markOut(ing.id);
+                        await markOutWithUndo(ref, messenger, ing);
                         if (ref.read(todayPickProvider).value?.recipe?.ingredients.any((x) => x.key == ing.key) ??
                             false) {
                           await ref.read(todayPickProvider.notifier).refresh(force: true);

@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:trackcalfin/core/day_clock.dart';
 import 'package:trackcalfin/core/enums.dart';
 import 'package:trackcalfin/core/money.dart';
+import 'package:trackcalfin/data/isar/collections/food_use.dart';
 import 'package:trackcalfin/data/isar/collections/user_profile.dart';
 import 'package:trackcalfin/domain/dashboard.dart';
 import 'package:trackcalfin/domain/vibe.dart';
@@ -182,6 +183,66 @@ void main() {
     expect(s.avgIsLastWeek, isTrue);
     expect(s.avgKcal, 2000);
     expect(s.coverage, isNull);
+  });
+
+  test('early in a month the week reaches into the last one, so it can hold more than the month', () {
+    // The user's Food card on Sat 3 Oct: "Week €9.16 / €33" above "Month €7.34 / €145". The
+    // week runs from Mon 28 Sep, the budget month from Thu 1 Oct: three days are the week's only.
+    final saturday = DateTime(2026, 10, 3, 20);
+    // A snack at 01:30 on 1 Oct is still 30 Sep's (the day rolls over at 04:00).
+    expect(clock.dateKey(DateTime(2026, 10, 1, 1, 30)), 20260930);
+    // Rice marked out on Fri 2 Oct, last counted when bought on Sat 26 Sep: 119 over 7 days.
+    final rice = FoodUse()
+      ..from = DateTime(2026, 9, 26, 19)
+      ..to = DateTime(2026, 10, 2, 19)
+      ..ingredientKey = 'rice'
+      ..qtyBase = 455
+      ..costMinor = 119;
+    final s = DashboardAggregator.compute(
+      DashboardInput(
+        now: saturday,
+        clock: clock,
+        profile: profile()..monthlyFoodBudgetMinor = 14500,
+        transactions: [tx(DateTime(2026, 9, 28, 18), 3000)],
+        logs: [
+          dayLog(20260928, 900, 40, costMinor: 50),
+          dayLog(20260929, 900, 40, costMinor: 40),
+          dayLog(20260930, 900, 40, costMinor: 41),
+          dayLog(20261001, 1800, 90, costMinor: 200),
+          dayLog(20261002, 1800, 90, costMinor: 250),
+          dayLog(20261003, 1800, 90, costMinor: 250),
+        ],
+        uses: [rice],
+        firstTransactionAt: DateTime(2026, 8, 1),
+        firstMealAt: DateTime(2026, 9, 26, 19),
+      ),
+    );
+    expect((s.weekStart, s.monthStart), (DateTime(2026, 9, 28, 4), DateTime(2026, 10, 1, 4)));
+    expect(s.weekDaysBeforeMonth, 3);
+    // Meals plus the rice's 17 a day: 5 of its days are in the week, 2 in October.
+    expect((s.eaten.week, s.eaten.month), (916, 734));
+    expect(s.eaten.week - s.eaten.month, 50 + 40 + 41 + 3 * 17, reason: 'exactly what 28 to 30 Sep hold');
+    expect((s.spent.week, s.spent.month), (3000, 0), reason: 'spent counts the same way: a Monday shop');
+    expect(s.weeklyBudget, 3349, reason: '€145 a month is €33 a week');
+    expect(s.eaten.weekPace, lessThan(1), reason: 'on pace');
+    expect(s.eaten.monthPace, lessThan(1), reason: 'on pace');
+    expect(s.customMonth, isFalse);
+  });
+
+  test('once the week starts in the month, it is part of it', () {
+    DashboardState at(DateTime now, {int monthStartDay = 1}) => DashboardAggregator.compute(
+      DashboardInput(
+        now: now,
+        clock: DayClock(monthStartDay: monthStartDay),
+        profile: profile()..monthStartDay = monthStartDay,
+        transactions: const [],
+        logs: const [],
+      ),
+    );
+    expect(at(DateTime(2026, 10, 8, 12)).weekDaysBeforeMonth, 0, reason: 'Mon 5 Oct to Thu 8 Oct');
+    expect(at(DateTime(2026, 10, 1, 3)).weekDaysBeforeMonth, 0, reason: 'before 04:00 it is still September');
+    expect(at(DateTime(2026, 9, 19, 12), monthStartDay: 17).weekDaysBeforeMonth, 3, reason: 'payday Thu 17 Sep');
+    expect(at(DateTime(2026, 10, 3, 12), monthStartDay: 28).weekDaysBeforeMonth, 0, reason: 'both start Mon 28 Sep');
   });
 
   group('VibeScorer', () {

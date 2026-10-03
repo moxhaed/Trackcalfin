@@ -17,6 +17,7 @@ import '../../platform/photo_capture.dart';
 import '../common/format.dart';
 import '../common/store_prices.dart';
 import '../common/widgets.dart';
+import 'count_undo.dart';
 import 'shopping_view.dart';
 
 /// In review mode ([review] set) the sheet pops `true` to move on to the next item.
@@ -358,7 +359,7 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
                       avatar: const Icon(Icons.remove_shopping_cart_outlined, size: 18),
                       label: const Text("I'm out"),
                       onPressed: () async {
-                        await ref.read(pantryServiceProvider).markOut(_ing.id);
+                        await markOutWithUndo(ref, ScaffoldMessenger.of(context), _ing);
                         if (context.mounted) Navigator.of(context).pop();
                       },
                     ),
@@ -376,6 +377,13 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
                       onPressed: () => addToShoppingList(context, ref, [ShoppingSuggestion(_ing.name, _ing.key, '')]),
                     ),
                   ],
+                ),
+                // "Marked out on Fri 2 Oct · 455 g counted as eaten" with Undo, days later too.
+                LastCountLine(
+                  ingredient: _ing,
+                  onTakenBack: () {
+                    if (mounted) Navigator.of(context).pop();
+                  },
                 ),
                 const SizedBox(height: 8),
                 Text(

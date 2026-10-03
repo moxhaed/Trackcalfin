@@ -35,4 +35,11 @@ class FoodUse {
   int? transactionId;
 
   DateTime createdAt = DateTime.now();
+
+  /// For a count: what it left on hand, and the item's expiry and last count before it, so a
+  /// mistaken count can be undone as if it never happened. Null on receipt uses, and on counts
+  /// recorded before these were kept.
+  double? countLeft;
+  DateTime? expiresBefore;
+  DateTime? countedBefore;
 }

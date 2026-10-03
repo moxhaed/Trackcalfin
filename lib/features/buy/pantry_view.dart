@@ -10,6 +10,7 @@ import '../../domain/costing.dart';
 import '../common/category_style.dart';
 import '../common/format.dart';
 import '../common/widgets.dart';
+import 'count_undo.dart';
 import 'ingredient_sheet.dart';
 
 class PantryView extends ConsumerStatefulWidget {
@@ -51,7 +52,9 @@ class _PantryViewState extends ConsumerState<PantryView> {
     final soon = inStock.where((i) => ExpiryEstimator.useSoon(i, now)).toList()
       ..sort((a, b) => (ExpiryEstimator.daysLeft(a, now) ?? 99).compareTo(ExpiryEstimator.daysLeft(b, now) ?? 99));
     final low = inStock.where((i) => i.isLow).toList();
-    final empty = matches.where((i) => i.qtyOnHand <= 0).toList();
+    // Just marked out first; a search shows them open, so "I'm out" by mistake is easy to find.
+    final empty = matches.where((i) => i.qtyOnHand <= 0).sorted((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    final showEmpty = _showEmpty || q.isNotEmpty;
     final unknownMacros = all.where((i) => i.needsNutrition).length;
     // Estimates are fine as they are; only items without any macros are worth a look.
     final noMacros = all.where((i) => i.needsNutrition).sorted((a, b) => a.name.compareTo(b.name));
@@ -161,10 +164,10 @@ class _PantryViewState extends ConsumerState<PantryView> {
         if (empty.isNotEmpty) ...[
           ListTile(
             title: Text('Out of stock (${empty.length})', style: context.text.titleSmall),
-            trailing: Icon(_showEmpty ? Icons.expand_less : Icons.expand_more),
-            onTap: () => setState(() => _showEmpty = !_showEmpty),
+            trailing: Icon(showEmpty ? Icons.expand_less : Icons.expand_more),
+            onTap: q.isEmpty ? () => setState(() => _showEmpty = !_showEmpty) : null,
           ),
-          if (_showEmpty)
+          if (showEmpty)
             for (final ing in empty) _IngredientTile(ing: ing, now: now),
         ],
       ],
@@ -214,13 +217,8 @@ class _IngredientTile extends ConsumerWidget {
         ),
       ),
       confirmDismiss: (_) async {
-        final pantry = ref.read(pantryServiceProvider);
-        final before = ing.qtyOnHand;
-        await pantry.markOut(ing.id);
+        await markOutWithUndo(ref, ScaffoldMessenger.of(context), ing);
         tick();
-        if (context.mounted) {
-          showUndo(context, '${ing.name} marked as out', onUndo: () => pantry.setQuantity(ing.id, before));
-        }
         return false;
       },
       child: ListTile(

@@ -114,6 +114,7 @@ class DashboardState {
     required this.monthElapsedFraction,
     required this.daysLeftInMonth,
     required this.monthStart,
+    required this.weekStart,
   });
 
   /// Groceries paid for (cash basis): an expense counts on the day it was paid.
@@ -151,8 +152,15 @@ class DashboardState {
   /// When this budget month started: the 1st, or the user's month start day.
   final DateTime monthStart;
 
+  /// When this week started (its first day's rollover hour).
+  final DateTime weekStart;
+
   /// The budget month doesn't follow the calendar (it starts on, say, the 17th).
   bool get customMonth => monthStart.day != 1;
+
+  /// Days of this week that fall in the last budget month: the week began before the month,
+  /// so early in a month the week can hold more than the month so far. 0 otherwise.
+  int get weekDaysBeforeMonth => weekStart.isBefore(monthStart) ? DayClock.daysBetween(weekStart, monthStart) : 0;
 
   double? get coverage => elapsedDays == 0 ? null : completedDays / elapsedDays;
   FoodTotals get food => basis == FoodBasis.eaten ? eaten : spent;
@@ -324,6 +332,7 @@ class DashboardAggregator {
       monthElapsedFraction: monthFraction,
       daysLeftInMonth: DayClock.daysBetween(now, monthEnd),
       monthStart: monthStart,
+      weekStart: weekStart,
     );
   }
 }
