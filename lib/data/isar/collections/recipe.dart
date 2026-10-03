@@ -30,6 +30,10 @@ class Recipe {
   /// The user's words, for spontaneous recipes.
   String? sourceQuery;
 
+  /// Cookbook recipes: the book's title and the PDF page the recipe starts on.
+  String? sourceBook;
+  int? sourcePage;
+
   int defaultPortions = 1;
   int prepMinutes = 0;
   int cookMinutes = 0;

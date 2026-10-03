@@ -35,7 +35,8 @@ enum QtySource { printed, inferred, estimated, unknown }
 
 enum TxSource { receiptScan, manual, quickText }
 
-enum RecipeOrigin { dailyAuto, spontaneous, manual }
+/// [cookbook]: read from a PDF cookbook the user imported (Recipe.sourceBook says which).
+enum RecipeOrigin { dailyAuto, spontaneous, manual, cookbook }
 
 enum RecipeStatus { suggested, saved, dismissed, archived }
 
@@ -103,7 +104,24 @@ enum FoodBasis {
   spent,
 }
 
-enum AiTask { receipt, dailyRecipe, spontaneousRecipe, nutritionEstimate, nutritionLabel, priceLookup, quickLog }
+enum AiTask {
+  receipt,
+  dailyRecipe,
+  spontaneousRecipe,
+  nutritionEstimate,
+  nutritionLabel,
+  priceLookup,
+  quickLog,
+  cookbookImport,
+}
+
+/// A cookbook import: [open] while it is being read or reviewed, [done] once every recipe
+/// found was saved or left out.
+enum CookbookStatus { open, done, discarded }
+
+/// One recipe of a cookbook's index: still to read, read (a draft), not in the book after
+/// all, or failed (the user can try it again).
+enum CookbookEntryState { pending, done, notFound, failed }
 
 extension BaseUnitLabel on BaseUnit {
   String get label => switch (this) {

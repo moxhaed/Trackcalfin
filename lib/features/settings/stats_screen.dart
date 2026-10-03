@@ -108,6 +108,7 @@ class StatsScreen extends ConsumerWidget {
                                     AiTask.nutritionLabel => 'Nutrition labels (Prompt E)',
                                     AiTask.priceLookup => 'Shop prices via Google (Prompt F)',
                                     AiTask.quickLog => 'Say it (Prompt G)',
+                                    AiTask.cookbookImport => 'Cookbook import (Prompt H)',
                                   }, style: context.text.titleSmall),
                                   Text(
                                     '${e.value.length} calls · ${e.value.where((l) => !l.parsedOk).length} failed · '

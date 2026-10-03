@@ -1,4 +1,3 @@
-import '../core/enums.dart';
 import '../data/isar/collections/ingredient.dart';
 import '../data/isar/collections/recipe.dart';
 import '../data/isar/collections/shopping_list_item.dart';
@@ -63,8 +62,9 @@ class Shopping {
     for (final s in f.shortfalls) {
       add(s.ingredient?.name ?? s.item.name, s.ingredient?.key ?? s.item.key, 'short');
     }
-    for (final i in recipe.ingredients.where((i) => i.role == IngredientRole.missing)) {
-      add(i.name, null, 'missing');
+    // Missing rows, and rows the pantry doesn't have (a cookbook recipe's tahini).
+    for (final name in f.missing) {
+      add(name, null, 'missing');
     }
     for (final s in recipe.shoppingList) {
       add(s.name, null, s.reason);

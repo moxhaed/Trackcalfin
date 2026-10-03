@@ -5,6 +5,8 @@ import '../features/buy/buy_screen.dart';
 import '../features/buy/inbox_screen.dart';
 import '../features/buy/review_screen.dart';
 import '../features/cook/cook_screen.dart';
+import '../features/cook/cookbook_import_screen.dart';
+import '../features/cook/cookbooks_screen.dart';
 import '../features/cook/recipe_detail_screen.dart';
 import '../features/cook/recipe_editor_screen.dart';
 import '../features/dashboard/dashboard_screen.dart';
@@ -77,6 +79,16 @@ GoRouter buildRouter({required bool onboarded, String? initialLocation}) {
             builder: (_, s) => RecipeEditorScreen(id: int.parse(s.pathParameters['id']!)),
           ),
         ],
+      ),
+      GoRoute(
+        path: '/cookbook-import/:id',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, s) => CookbookImportScreen(id: int.parse(s.pathParameters['id']!)),
+      ),
+      GoRoute(
+        path: '/cookbooks',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, s) => CookbooksScreen(book: s.uri.queryParameters['book']),
       ),
       GoRoute(path: '/quick-check', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const QuickCheckScreen()),
       GoRoute(path: '/stats', parentNavigatorKey: rootNavigatorKey, builder: (_, _) => const StatsScreen()),

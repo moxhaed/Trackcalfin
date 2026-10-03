@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:trackcalfin/core/enums.dart';
 import 'package:trackcalfin/data/ai/ai_runner.dart';
 import 'package:trackcalfin/data/ai/context_builders.dart';
+import 'package:trackcalfin/data/ai/dto/cookbook_dto.dart';
 import 'package:trackcalfin/data/ai/dto/nutrition_dto.dart';
 import 'package:trackcalfin/data/ai/dto/price_dto.dart';
 import 'package:trackcalfin/data/ai/dto/quick_log_dto.dart';
@@ -102,6 +104,72 @@ void main() {
       );
       expect(r.value!.items[1].found, isFalse);
       expect(r.value!.items[1].note, 'no shop price online');
+    });
+  });
+
+  group('Cookbook import (Prompt H)', () {
+    test('the examples parse: an index, and a recipe read with one not in the book', () {
+      final index = CookbookIndexOutput.parse(jsonDecode(promptExample('cookbook_index.v1.md')));
+      expect(index.ok, isTrue, reason: index.errors.join('\n'));
+      expect(index.value!.recipes.first, ('Hummus with spiced lamb', 34));
+      expect((index.value!.bookTitle, index.value!.nextPage), ('Weeknight Middle Eastern', null));
+      final r = CookbookRecipesOutput.parse(jsonDecode(promptExample('cookbook_import.v1.md')), ids: {0, 1});
+      expect(r.ok, isTrue, reason: r.errors.join('\n'));
+      final hummus = r.value!.recipes.first;
+      expect((hummus.servings, hummus.ingredients.length), (4, 9));
+      expect((hummus.ingredients.first.key, hummus.ingredients.first.qty), ('chickpeas_canned', 480));
+      expect(hummus.ingredients.last.optional, isTrue);
+      expect(r.value!.recipes.last.found, isFalse);
+    });
+    test('every id once, amounts above 0 in g, ml or pc, snake_case keys', () {
+      final json = jsonDecode(promptExample('cookbook_import.v1.md')) as Map<String, dynamic>;
+      final recipes = json['recipes'] as List;
+      final lines = (recipes[0] as Map)['ingredients'] as List;
+      (lines[7] as Map)['qty'] = 0;
+      (lines[1] as Map)['unit'] = 'tbsp';
+      (lines[2] as Map)['key'] = 'Lemon juice';
+      recipes[1] = {...recipes[1] as Map, 'id': 7};
+      final r = CookbookRecipesOutput.parse(json, ids: {0, 1});
+      expect(r.ok, isFalse);
+      expect(r.errors, contains(startsWith(r'$.recipes[0].ingredients[7].qty must be > 0')));
+      expect(r.errors, contains(startsWith(r"$.recipes[0].ingredients[1].unit 'tbsp' is not one of g, ml, pc")));
+      expect(r.errors, contains(startsWith(r"$.recipes[0].ingredients[2].key 'Lemon juice' must be")));
+      expect(r.errors, contains(startsWith(r'$.recipes[1].id 7 was not asked for')));
+      expect(r.errors, contains(startsWith(r'$.recipes has no entry for id 1')));
+    });
+    test('schemas list every field as required', () {
+      final recipe = (AiSchemas.cookbookRecipes['properties']['recipes'] as Map)['items'] as Map;
+      expect((recipe['required'] as List).toSet(), (recipe['properties'] as Map).keys.toSet());
+      final line = (recipe['properties']['ingredients'] as Map)['items'] as Map;
+      expect((line['required'] as List).toSet(), (line['properties'] as Map).keys.toSet());
+      expect(
+        (AiSchemas.cookbookIndex['required'] as List).toSet(),
+        (AiSchemas.cookbookIndex['properties'] as Map).keys.toSet(),
+      );
+    });
+    test('a PDF goes before the text: inline bytes or the uploaded file', () {
+      final c = GeminiClient(httpClient: FakeGemini().client, apiKey: () async => 'k');
+      final pdf = Uint8List.fromList([0x25, 0x50, 0x44, 0x46]);
+      final body = c.buildBody(
+        GeminiRequest(
+          systemPrompt: 's',
+          turns: [
+            Turn.user('{}', const [], [
+              Attachment.inline('application/pdf', pdf),
+              const Attachment.uploaded('application/pdf', 'https://x/files/abc'),
+            ]),
+          ],
+        ),
+      );
+      expect((body['contents'] as List).single['parts'], [
+        {
+          'inlineData': {'mimeType': 'application/pdf', 'data': base64Encode(pdf)},
+        },
+        {
+          'fileData': {'mimeType': 'application/pdf', 'fileUri': 'https://x/files/abc'},
+        },
+        {'text': '{}'},
+      ]);
     });
   });
 

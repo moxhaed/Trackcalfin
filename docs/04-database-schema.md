@@ -51,7 +51,7 @@ enum DataSource { none, aiEstimate, user, label }   // none = macros unknown, th
 enum Confidence { high, medium, low }
 enum QtySource { printed, inferred, estimated, unknown }
 enum TxSource { receiptScan, manual, quickText }
-enum RecipeOrigin { dailyAuto, spontaneous, manual }
+enum RecipeOrigin { dailyAuto, spontaneous, manual, cookbook }
 enum RecipeStatus { suggested, saved, dismissed, archived }
 enum IngredientRole { stock, missing }               // nothing is assumed: no staples
 enum CookStatus { active, finished, discarded, undone }
@@ -63,7 +63,9 @@ enum StockCheck { onHand, counted, usedUp, whatsLeft } // why a scan line asks a
 enum UseKind { eaten, thrownAway }                  // what happened to food gone without a meal
 enum PriceSource { estimate, web }                  // a pantry photo's shop price: the model's idea, or Google
 enum FoodBasis { eaten, spent }                     // what the dashboard's food budget counts
-enum AiTask { receipt, dailyRecipe, spontaneousRecipe, nutritionEstimate, nutritionLabel, priceLookup, quickLog }
+enum AiTask { receipt, dailyRecipe, spontaneousRecipe, nutritionEstimate, nutritionLabel, priceLookup, quickLog, cookbookImport }
+enum CookbookStatus { open, done, discarded }
+enum CookbookEntryState { pending, done, notFound, failed }
 ```
 AI JSON uses snake_case (`meat_fish`, `eating_out`). The DTO layer maps with an explicit `switch` and never uses `EnumType.name` on AI strings directly.
 
@@ -235,6 +237,8 @@ class Recipe {
   int? suggestedForDateKey;
 
   String? sourceQuery;         // user's words (spontaneous)
+  String? sourceBook;          // cookbook recipes: the book's title
+  int? sourcePage;             // and the PDF page it starts on
 
   int defaultPortions = 1;
   int prepMinutes = 0;
@@ -535,6 +539,10 @@ class ShoppingListItem {
 ```
 Not to be confused with the embedded `ShoppingItem` on a recipe (the AI's "To buy" list for that recipe). Backups include it (`shoppingList`). Rules: docs/03 §3.18.
 
+## 4.10d Supporting collection · `CookbookImport` (a PDF cookbook being read)
+
+One row per imported PDF: `fileName`, `bookTitle`, `filePath` (the app's copy), `sizeBytes`, `pageCount`, the Files API upload (`remoteName`, `remoteUri`, `remoteExpiresAt`), the index's progress (`indexDone`, `nextIndexPage`, `indexCalls`), `entries` (embedded `CookbookEntry`: title, page, state, attempts), `drafts` (embedded `CookbookDraft`: the recipe as read, with `CookbookLine`s for the whole recipe and `recipeId` once saved), `status` and `lastError`. A discarded row and its PDF are deleted by the next import. Not in backups: the recipes it saved are. See docs/05 §5.12.
+
 ## 4.11 Supporting collection · `UserProfile` (singleton: goals & settings)
 
 ```dart
@@ -679,3 +687,5 @@ Isar adds new fields with their defaults automatically, and removed fields are i
 | 3 | Staples are removed. Former staples become regular items. The ones showing stock were never deducted, so `lastVerifiedAt` is cleared and Quick Check asks about them. Recipe rows stored with role `staple` load as `stock` and are written back that way. A backup import runs the same migrations. |
 | 4 | `lookUpPrices` is set to true. Isar reads a new bool as false on a stored profile, so without this the price lookup would start switched off after an upgrade. |
 | 5 | Lines learn `qtyBought` (from `qtyBase`) and `unit` (the item's base unit), so receipts filed before store prices count in the price book. Say it purchases are skipped: their price may be an estimate. |
+
+The cookbook import needed no data migration: `Recipe.sourceBook`/`sourcePage` are new nullable fields, `RecipeOrigin.cookbook` and `AiTask.cookbookImport` are new names, and `CookbookImport` is a new collection.

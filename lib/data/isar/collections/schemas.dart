@@ -1,6 +1,7 @@
 import 'package:isar_community/isar.dart';
 
 import 'ai_call_log.dart';
+import 'cookbook_import.dart';
 import 'cook_session.dart';
 import 'daily_log.dart';
 import 'food_use.dart';
@@ -13,6 +14,7 @@ import 'transaction.dart';
 import 'user_profile.dart';
 
 export 'ai_call_log.dart';
+export 'cookbook_import.dart';
 export 'cook_session.dart';
 export 'daily_log.dart';
 export 'food_use.dart';
@@ -37,4 +39,5 @@ const List<CollectionSchema<dynamic>> allSchemas = [
   MetricEventSchema,
   FoodUseSchema,
   ShoppingListItemSchema,
+  CookbookImportSchema,
 ];

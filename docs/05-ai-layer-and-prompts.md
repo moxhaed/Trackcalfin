@@ -11,6 +11,7 @@ The master prompts are **runtime assets**. The app loads them verbatim as the `s
 | **E** | [`assets/prompts/nutrition_label.v1.md`](../assets/prompts/nutrition_label.v1.md) | Photo of a nutrition facts panel → the printed values, unconverted |
 | **F** | [`assets/prompts/price_lookup.v1.md`](../assets/prompts/price_lookup.v1.md) | Products from a pantry photo → their shop price, searched with Google (one pack, its size, the store and the site) |
 | **G** | [`assets/prompts/quick_log.v2.md`](../assets/prompts/quick_log.v2.md) | What the user says they did ("bought a Coke Zero for 1.29 and drank it") or asks ("where is it cheaper?") + pantry, fridge and recipes → actions to log, price checks to answer |
+| **H** | [`assets/prompts/cookbook_index.v1.md`](../assets/prompts/cookbook_index.v1.md), [`cookbook_import.v1.md`](../assets/prompts/cookbook_import.v1.md) | A PDF cookbook → its recipes and pages (index), then a few recipes at a time: servings, every ingredient in g/ml/pc for the whole recipe with a pantry key or a new generic one, a shortened method |
 
 Those files are the single source of truth. This document covers how they're called, fed, and verified.
 
@@ -285,7 +286,22 @@ A price check is an answer, not something to log: its line has no tick box ("Chi
 
 **Confirm, then one transaction, then Undo.** Nothing is saved until **Log it**. Unticking a step plans again without it. `QuickLogService.apply` plans once more on the database inside one write transaction and saves the result. New ingredients and cook sessions carry negative stand-in ids until then, and are swapped for real ones in purchases, cook deltas and meals. It also keeps copies of everything it changed. **Undo** puts those copies back and deletes what was created, in one transaction. Deleting a pantry meal later from the day's log puts its stock back too.
 
-## 5.12 References
+## 5.12 Cookbook import (Prompt H)
+
+Cook tab → **Import cookbook (PDF)** picks one PDF (`file_picker`). `CookbookImportService.create` keeps a copy in the app's data folder, counts the pages when the file states them (`CookbookPdf.pageCount`: a linearized `/N` or the page tree's `/Count`; null for a compressed page tree, and the model's `page_count` fills it in), and refuses what Gemini can't read: not a PDF, over 50 MB or over 1000 pages. A `CookbookImport` row holds everything from then on, so nothing is lost when the app closes or a daily limit hits.
+
+**Sending the PDF.** Up to 2 MB it goes inline with each call (`inlineData`, `application/pdf`). Larger files are uploaded once with the Files API (`GeminiFiles`: a resumable `POST upload/v1beta/files` with `X-Goog-Upload-Protocol: resumable`, then `upload, finalize`; poll `files/{id}` while it is PROCESSING) and every call sends only `fileData.fileUri`. Uploads expire after about 48 h; within 30 min of `expirationTime` the next pass uploads again. Without the Files API (a local stand-in) files up to 14 MB fall back to inline. The PDF part comes before the text, as Google advises. No media resolution is set: PDFs then default to medium (about 560 tokens a page on Gemini 3). Every call bills the whole PDF, so fewer, larger passes are cheaper.
+
+**Passes, one call at a time** (`CookbookRunner` loops `step`; the user can stop it, and it goes on when the screen is closed):
+1. *Index* (`cookbook_index.v1`): titles and PDF pages, at most 150 per answer. `next_page` continues the list (at most 12 passes); titles are kept once (`CookbookPlanner.normalizeTitle`).
+2. *Recipes* (`cookbook_import.v1`): 8 index entries per call, by id, in page order, with the pantry's keys, names and units. `CookbookRecipesOutput.parse` wants every id once, `found: false` for one not in the book, servings 1–100, quantities above 0 in g/ml/pc and snake_case keys; a failure gets the usual repair round. `thinkingLevel: low`, 16 384 output tokens, 180 s timeout, default (user) priority.
+3. Each pass saves its result in one write, re-reading the import inside it so a save from the review screen is never overwritten. A transient failure (daily limit, network, no key) stops the run with the reason and keeps the entries pending: **Continue** goes on later. An answer that fails its checks twice marks the batch for a retry in halves (`nextBatch`), and after 3 tries an entry is *failed*; **Try again** reads those once more. Two failed passes in a row stop the run.
+
+**Dart disposes.** `CookbookValidator` keeps the lines (amounts for the whole recipe) and flags `qty_suspect` (over 1 kg per portion) and the user's allergens. `CookbookReview.toRecipe` divides by servings, matches every line to the pantry (`IngredientMatcher`: the key, then a close key or name), merges an item named twice, and leaves optional lines out (`omitted`). A line with no pantry match keeps the model's generic key, role `stock`, no `ingredientId`: it counts as missing (FeasibilityChecker, the shopping list) and starts counting once the pantry has it (`relink`, run when Cookbooks opens). Cost per portion is the pantry's prices only; the prompt asks for none. The review shows "You have 7 of 9 · missing tahini, sumac" (`CookbookFit`).
+
+**Review and save.** Nothing is saved before **Save N recipes**: filters (All, Cookable now, Missing 1–2), sort (book order, fewest missing, cheapest), select all/none, a sheet per recipe with each ingredient as printed. A title already among the recipes is flagged and starts unticked. `save` writes all chosen recipes in one transaction (`origin: cookbook`, `sourceBook`, `sourcePage`, status saved) with Undo. Cookbook recipes stay out of Cook again until cooked or starred; the Cook tab's **Cookbooks** card lists each book with how many are cookable now.
+
+## 5.13 References
 
 - Gemini 3.8 Flash announcement and model ID: [Introducing Gemini 3.8 Flash](https://blog.google/innovation-and-ai/models-and-research/gemini-models/3-8-flash-and-3-8-flash-cyber/), [Gemini API: What's new in Gemini 3.8 Flash](https://ai.google.dev/gemini-api/docs/latest-model)
 - Structured output (`responseMimeType`, `responseJsonSchema` / `responseSchema`): [Gemini API structured outputs](https://ai.google.dev/gemini-api/docs/generate-content/structured-output), [Improving structured outputs in the Gemini API](https://blog.google/technology/developers/gemini-api-structured-outputs/)
