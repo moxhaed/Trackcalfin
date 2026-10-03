@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -29,12 +28,7 @@ Future<void> main() async {
   await Migrations.run(isar);
   final secrets = SecureSecretStore(fallbackDir: await appSupportPath());
   final mobile = Platform.isAndroid || Platform.isIOS;
-  final images = ImageStore(
-    await scansPath(),
-    compressor: mobile
-        ? (path) => FlutterImageCompress.compressWithFile(path, minWidth: 1400, minHeight: 1400, quality: 85)
-        : null,
-  );
+  final images = ImageStore(await scansPath(), compressor: mobile ? ImageStore.compressScan : null);
 
   GoRouter? router;
   await Notifications.instance.init(

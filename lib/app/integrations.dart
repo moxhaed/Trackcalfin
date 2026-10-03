@@ -45,6 +45,8 @@ class AppIntegrations {
       _quickActions();
       _shareIntake();
     }
+    // Before anything else reads the queue: a photo from a camera Android closed us for.
+    if (Platform.isAndroid) await recoverLostScans(ref);
     if (_mobile) {
       try {
         _subs.add(

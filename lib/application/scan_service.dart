@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:isar_community/isar.dart';
 
@@ -37,7 +38,7 @@ class MissingExchangeRate implements Exception {
 }
 
 class ScanResult {
-  ScanResult(this.job, {this.autoCommitted = false, this.transactionId, this.clean = false});
+  ScanResult(this.job, {this.autoCommitted = false, this.transactionId, this.clean = false, this.waiting = false});
   final ScanJob job;
   final bool autoCommitted;
   final int? transactionId;
@@ -45,6 +46,19 @@ class ScanResult {
   /// The AI read the receipt without a flag. It may still wait for review because of what the
   /// app knows: an old date, a possible duplicate, or items already counted in the pantry.
   final bool clean;
+
+  /// Not read this time for a passing reason (offline, quota, a timeout): the job is back in
+  /// the queue with [ScanJob.lastError] saying why, and is tried again later.
+  final bool waiting;
+}
+
+/// What is being read right now in one database, shared by every [ScanService] on it.
+class _Flight {
+  bool running = false;
+
+  /// A run was asked for while one was going: it looks for newly queued jobs before it ends.
+  bool again = false;
+  final jobs = <int>{};
 }
 
 /// Capture → queue → Prompt A → validate → review/auto-commit → ledger + pantry.
@@ -67,7 +81,13 @@ class ScanService {
 
   /// A scan this young was just taken, so someone waits for it.
   static const freshScan = Duration(minutes: 10);
-  bool _busy = false;
+
+  /// Keyed by the database, not this object: the queue is started from app start, resume,
+  /// connectivity changes, the Inbox and new scans, and a job must never be read twice at once.
+  static final _flights = Expando<_Flight>('scan queue');
+  _Flight get _flight => _flights[isar] ??= _Flight();
+
+  static const closedWhileReading = 'The app closed while reading this photo.';
 
   Future<int> enqueue(List<String> sourcePaths, {String? hint}) async {
     final t = now();
@@ -84,48 +104,106 @@ class ScanService {
     return isar.writeTxn(() => isar.scanJobs.put(job));
   }
 
-  /// Processes queued jobs one at a time. Safe to call repeatedly.
+  /// Processes queued jobs one at a time, oldest first. Safe to call any time, from anywhere:
+  /// while a run is going, a second call returns nothing at once and the running one also
+  /// reads what was queued since (it reports them), so a new scan never waits for a restart.
   Future<List<ScanResult>> processQueue() async {
-    if (_busy) return const [];
-    _busy = true;
+    final f = _flight;
+    if (f.running) {
+      f.again = true;
+      return const [];
+    }
+    f.running = true;
     final results = <ScanResult>[];
     try {
-      // Jobs left in "processing" by a killed app go back to the queue.
-      final stuck = await isar.scanJobs.where().statusEqualTo(ScanStatus.processing).findAll();
-      if (stuck.isNotEmpty) {
-        await isar.writeTxn(() => isar.scanJobs.putAll([for (final j in stuck) j..status = ScanStatus.queued]));
-      }
-      final queued = await isar.scanJobs.where().statusEqualTo(ScanStatus.queued).sortByCapturedAt().findAll();
-      for (final j in queued) {
-        final r = await process(j.id);
-        if (r == null) break; // no key / offline: stop for now
-        results.add(r);
-      }
+      await _recoverStuck();
+      final tried = <int>{};
+      var stop = false;
+      do {
+        f.again = false;
+        final queued = await isar.scanJobs.where().statusEqualTo(ScanStatus.queued).sortByCapturedAt().findAll();
+        for (final j in queued) {
+          if (!tried.add(j.id)) continue;
+          final r = await process(j.id);
+          if (r == null) {
+            if (!await ai.hasKey) stop = true; // nothing can be read until there is a key
+            if (stop) break;
+            continue;
+          }
+          results.add(r);
+          // Offline or out of quota: the next ones would fail the same way.
+          if (r.waiting) {
+            stop = true;
+            break;
+          }
+        }
+      } while (f.again && !stop);
     } finally {
-      _busy = false;
+      f
+        ..running = false
+        ..again = false;
     }
     return results;
   }
 
-  /// Returns null when the job stays queued (no key or transient failure).
-  Future<ScanResult?> process(int jobId) async {
-    final job = await isar.scanJobs.get(jobId);
-    if (job == null) return null;
-    final runner = await ai.runner();
-    if (runner == null) {
-      await _save(
-        job
-          ..status = ScanStatus.queued
-          ..lastError = 'Add a Gemini API key in Settings to process scans.',
-      );
-      return null;
+  /// Jobs left in "processing" by an app that was closed or killed mid-read go back to the
+  /// queue. One that keeps taking the app down with it stops after [maxAttempts] and waits for
+  /// the user in the Inbox, instead of being tried on every start.
+  Future<void> _recoverStuck() async {
+    final busy = _flight.jobs;
+    final stuck = [
+      for (final j in await isar.scanJobs.where().statusEqualTo(ScanStatus.processing).findAll())
+        if (!busy.contains(j.id)) j,
+    ];
+    if (stuck.isEmpty) return;
+    for (final j in stuck) {
+      final again = j.attempts < maxAttempts;
+      j
+        ..status = again ? ScanStatus.queued : ScanStatus.failed
+        ..lastError = again ? closedWhileReading : '$closedWhileReading Try again, or retake it.';
     }
-    await _save(
-      job
-        ..status = ScanStatus.processing
-        ..attempts += 1,
-    );
+    await isar.writeTxn(() => isar.scanJobs.putAll(stuck));
+  }
 
+  /// Reads one queued job. Returns null when nothing was done: the job isn't queued, is already
+  /// being read, or there is no API key. A passing failure returns a [ScanResult.waiting] result.
+  Future<ScanResult?> process(int jobId) async {
+    final busy = _flight.jobs;
+    if (!busy.add(jobId)) return null;
+    try {
+      final job = await isar.scanJobs.get(jobId);
+      if (job == null || job.status != ScanStatus.queued) return null;
+      final runner = await ai.runner();
+      if (runner == null) {
+        await _save(job..lastError = 'Add a Gemini API key in Settings to process scans.');
+        return null;
+      }
+      final marked = await _saveUnlessDiscarded(
+        job
+          ..status = ScanStatus.processing
+          ..attempts += 1,
+      );
+      if (!marked) return null;
+      try {
+        return await _read(job, runner);
+      } catch (e) {
+        // Never leave a job "Reading…": a photo that is gone, a reply that isn't JSON (a Wi-Fi
+        // login page), a bug. It waits in the Inbox with the reason and Try again.
+        await _saveUnlessDiscarded(
+          job
+            ..status = ScanStatus.failed
+            ..lastError = e is FileSystemException
+                ? 'The photo is no longer on the phone. Retake it.'
+                : 'Something went wrong reading it: $e',
+        );
+        return ScanResult(job);
+      }
+    } finally {
+      busy.remove(jobId);
+    }
+  }
+
+  Future<ScanResult> _read(ScanJob job, AiRunner runner) async {
     final profile = (await isar.userProfiles.get(1))!;
     final ingredients = await isar.ingredients.where().findAll();
     final ctx = ContextBuilders.receipt(profile: profile, ingredients: ingredients, now: now(), userHint: job.userHint);
@@ -153,17 +231,17 @@ class ScanService {
 
     if (!outcome.ok) {
       final retry = outcome.transient && job.attempts < maxAttempts;
-      await _save(
+      await _saveUnlessDiscarded(
         job
           ..status = retry ? ScanStatus.queued : ScanStatus.failed
           ..lastError = outcome.errors.isEmpty ? 'Unknown error' : outcome.errors.first,
       );
-      return retry ? null : ScanResult(job);
+      return ScanResult(job, waiting: retry);
     }
 
     final x = outcome.value!;
     if (x.imageType == ScanKind.unreadable) {
-      await _save(
+      await _saveUnlessDiscarded(
         job
           ..kind = ScanKind.unreadable
           ..status = ScanStatus.failed
@@ -196,7 +274,7 @@ class ScanService {
       final q = await fx!.quote(job.currency!, profile.currency, job.purchasedAt ?? job.capturedAt);
       if (q != null) _setRate(job, q);
     }
-    await _save(job);
+    if (!await _saveUnlessDiscarded(job)) return ScanResult(job..status = ScanStatus.discarded);
 
     if (draft.autoCommitEligible && !job.maybeDuplicate && profile.autoCommitCleanScans) {
       final txId = await commit(job.id);
@@ -374,6 +452,13 @@ class ScanService {
 
   Future<void> _save(ScanJob job) => isar.writeTxn(() => isar.scanJobs.put(job));
 
+  /// Saves what a read found, unless the user discarded the scan while it was being read.
+  Future<bool> _saveUnlessDiscarded(ScanJob job) => isar.writeTxn(() async {
+    if ((await isar.scanJobs.get(job.id))?.status == ScanStatus.discarded) return false;
+    await isar.scanJobs.put(job);
+    return true;
+  });
+
   Future<void> updateJob(ScanJob job) => _save(job);
 
   static bool isForeign(ScanJob job, String homeCurrency) =>
@@ -410,6 +495,7 @@ class ScanService {
   }
 
   Future<void> retry(int jobId) async {
+    if (_flight.jobs.contains(jobId)) return; // being read right now
     final job = await isar.scanJobs.get(jobId);
     if (job == null) return;
     await _save(
