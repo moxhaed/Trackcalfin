@@ -284,12 +284,15 @@ class _PillTab extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 2),
-            Text(
-              tab.label,
-              maxLines: 1,
-              overflow: TextOverflow.fade,
-              softWrap: false,
-              style: context.text.labelSmall?.copyWith(color: color, fontWeight: glow > 0.5 ? FontWeight.w700 : null),
+            // A tab is a quarter of the pill: with large text a long label shrinks to fit, whole.
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                tab.label,
+                maxLines: 1,
+                softWrap: false,
+                style: context.text.labelSmall?.copyWith(color: color, fontWeight: glow > 0.5 ? FontWeight.w700 : null),
+              ),
             ),
           ],
         ),

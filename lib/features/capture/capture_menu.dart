@@ -86,6 +86,8 @@ class CaptureMenu extends StatelessWidget {
     return Stack(
       children: [
         Positioned(
+          // Bounded on the left too, so a long line wraps instead of running off the screen.
+          left: 16,
           right: 16 + (size - 56) / 2,
           bottom: bottom + size + 14,
           child: Column(
@@ -160,22 +162,28 @@ class _Row extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Material(
-                    color: scheme.surfaceContainerHigh,
-                    elevation: 2,
-                    borderRadius: BorderRadius.circular(14),
-                    child: InkWell(
+                  Flexible(
+                    child: Material(
+                      color: scheme.surfaceContainerHigh,
+                      elevation: 2,
                       borderRadius: BorderRadius.circular(14),
-                      onTap: onTap,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(o.title, style: context.text.labelLarge),
-                            Text(o.subtitle, style: context.text.labelSmall?.copyWith(color: scheme.onSurfaceVariant)),
-                          ],
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: onTap,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(o.title, style: context.text.labelLarge, textAlign: TextAlign.end),
+                              Text(
+                                o.subtitle,
+                                style: context.text.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
+                                textAlign: TextAlign.end,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),

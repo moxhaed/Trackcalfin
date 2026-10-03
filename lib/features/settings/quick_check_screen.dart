@@ -132,37 +132,43 @@ class _QuickCheckScreenState extends ConsumerState<QuickCheckScreen> {
         SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-            child: Row(
+            // The two answers side by side, as the swipe goes (gone left, yes right), with room
+            // for their labels on a narrow phone; fixing the amount is the way out between them.
+            child: Column(
               children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _answer(ing, false),
-                    icon: const Icon(Icons.close),
-                    label: const Text('Gone'),
-                  ),
+                TextButton.icon(
+                  onPressed: () async {
+                    await showIngredientSheet(context, ingredient: ing);
+                    if (!mounted) return;
+                    setState(() {
+                      _fixed++;
+                      _i++;
+                    });
+                  },
+                  icon: const Icon(Icons.tune),
+                  label: const Text('Adjust the amount'),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () async {
-                      await showIngredientSheet(context, ingredient: ing);
-                      if (!mounted) return;
-                      setState(() {
-                        _fixed++;
-                        _i++;
-                      });
-                    },
-                    icon: const Icon(Icons.tune),
-                    label: const Text('Adjust'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: () => _answer(ing, true),
-                    icon: const Icon(Icons.check),
-                    label: const Text('Yes'),
-                  ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                        onPressed: () => _answer(ing, false),
+                        icon: const Icon(Icons.close),
+                        label: const Text('Gone'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton.icon(
+                        style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                        onPressed: () => _answer(ing, true),
+                        icon: const Icon(Icons.check),
+                        label: const Text('Yes'),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

@@ -139,7 +139,7 @@ class _TxTile extends ConsumerWidget {
           backgroundColor: context.scheme.surfaceContainerHighest,
           child: Icon(categoryIcon(tx.primaryCategory), size: 20),
         ),
-        title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+        title: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis),
         subtitle: Text(
           [
             timeOf(tx.occurredAt),

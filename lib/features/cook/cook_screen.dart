@@ -199,23 +199,15 @@ class _TodayPickCardState extends ConsumerState<_TodayPickCard> {
                       ),
                     ],
                     const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        PortionStepper(
-                          value: portions,
-                          onChanged: (v) => setState(() => _portions = v),
-                          hint: f.maxPortionsNow < 99 ? 'max ${f.maxPortionsNow}' : null,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: FilledButton.icon(
-                            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
-                            onPressed: () => cookNow(context, ref, r, portions, timer: _timer),
-                            icon: Icon(cookedToday ? Icons.check : Icons.soup_kitchen_outlined),
-                            label: Text(cookedToday ? 'Cooked · again?' : 'I cooked this'),
-                          ),
-                        ),
-                      ],
+                    _StepperAndButton(
+                      stepper: PortionStepper(
+                        value: portions,
+                        onChanged: (v) => setState(() => _portions = v),
+                        hint: f.maxPortionsNow < 99 ? 'max ${f.maxPortionsNow}' : null,
+                      ),
+                      icon: cookedToday ? Icons.check : Icons.soup_kitchen_outlined,
+                      label: cookedToday ? 'Cooked · again?' : 'I cooked this',
+                      onPressed: () => cookNow(context, ref, r, portions, timer: _timer),
                     ),
                   ],
                 ),
@@ -224,6 +216,54 @@ class _TodayPickCardState extends ConsumerState<_TodayPickCard> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// The portion stepper with the button beside it while the button's label fits on one line;
+/// on a narrow phone or with large text the button goes full width under the stepper.
+class _StepperAndButton extends StatelessWidget {
+  const _StepperAndButton({required this.stepper, required this.icon, required this.label, required this.onPressed});
+  final Widget stepper;
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final scaler = MediaQuery.textScalerOf(context);
+    final text = TextPainter(
+      text: TextSpan(text: label, style: context.text.labelLarge),
+      textDirection: Directionality.of(context),
+      textScaler: scaler,
+      maxLines: 1,
+    )..layout();
+    // About 112 for the stepper, 12 between, and the button's icon and padding around its label.
+    final needed = scaler.scale(112) + 12 + 66 + text.width;
+    text.dispose();
+    final button = FilledButton.icon(
+      style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+      onPressed: onPressed,
+      icon: Icon(icon),
+      label: Text(label),
+    );
+    return LayoutBuilder(
+      builder: (context, c) => c.maxWidth >= needed
+          ? Row(
+              children: [
+                stepper,
+                const SizedBox(width: 12),
+                Expanded(child: button),
+              ],
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Align(alignment: Alignment.centerLeft, child: stepper),
+                const SizedBox(height: 10),
+                button,
+              ],
+            ),
     );
   }
 }

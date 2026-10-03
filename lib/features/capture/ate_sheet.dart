@@ -199,13 +199,14 @@ class _AteSheetState extends ConsumerState<AteSheet> {
                   decoration: const InputDecoration(labelText: 'What was it?', hintText: 'Kebab, protein bar…'),
                 ),
                 const SizedBox(height: 10),
+                // Two to a row, so each label is whole and its unit fits next to the number.
                 Row(
                   children: [
                     Expanded(
                       child: TextField(
                         controller: _kcal,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: const InputDecoration(labelText: 'kcal'),
+                        decoration: const InputDecoration(labelText: 'Calories', suffixText: 'kcal'),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -213,18 +214,19 @@ class _AteSheetState extends ConsumerState<AteSheet> {
                       child: TextField(
                         controller: _protein,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: const InputDecoration(labelText: 'Protein g'),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: TextField(
-                        controller: _cost,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: InputDecoration(labelText: 'Cost', prefixText: ref.watch(moneyProvider).symbol),
+                        decoration: const InputDecoration(labelText: 'Protein', suffixText: 'g'),
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _cost,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(
+                    labelText: 'Cost (optional)',
+                    prefixText: '${ref.watch(moneyProvider).symbol} ',
+                  ),
                 ),
                 const SizedBox(height: 14),
                 SizedBox(

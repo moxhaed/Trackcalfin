@@ -197,12 +197,30 @@ class _SayItSheetState extends ConsumerState<SayItSheet> {
     );
   }
 
+  /// [body] scrolls when the sheet is short (a keyboard up, large text); [actions] stay
+  /// below it, always in view.
+  Widget _scrolling({required List<Widget> body, required Widget actions, double? maxBodyHeight}) => Column(
+    mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Flexible(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxBodyHeight ?? double.infinity),
+          child: SingleChildScrollView(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: body),
+          ),
+        ),
+      ),
+      actions,
+    ],
+  );
+
   Widget _input(BuildContext context) {
     final muted = context.text.bodySmall?.copyWith(color: context.scheme.onSurfaceVariant);
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+    // With the keyboard up the examples make way for the field and the buttons.
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom > 0;
+    return _scrolling(
+      body: [
         Text('Say it', style: context.text.titleLarge),
         const SizedBox(height: 2),
         Text(
@@ -230,7 +248,7 @@ class _SayItSheetState extends ConsumerState<SayItSheet> {
             if (_error != null) setState(() => _error = null);
           },
         ),
-        if (_text.text.isEmpty && !_thinking) ...[
+        if (_text.text.isEmpty && !_thinking && !keyboard) ...[
           const SizedBox(height: 10),
           Wrap(
             spacing: 6,
@@ -244,20 +262,22 @@ class _SayItSheetState extends ConsumerState<SayItSheet> {
             ],
           ),
         ],
-        const SizedBox(height: 14),
-        Row(
+      ],
+      actions: Padding(
+        padding: const EdgeInsets.only(top: 14),
+        child: Row(
           children: [
             _MicButton(listening: _listening, onPressed: _thinking ? null : (_listening ? _stopListening : _listen)),
             const Spacer(),
             if (_thinking) ...[
               const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
               const SizedBox(width: 10),
-              Text('Working it out…', style: context.text.bodyMedium),
+              Flexible(child: Text('Working it out…', style: context.text.bodyMedium)),
             ] else
               FilledButton.icon(onPressed: _read, icon: const Icon(Icons.arrow_forward), label: const Text('Next')),
           ],
         ),
-      ],
+      ),
     );
   }
 
@@ -267,10 +287,10 @@ class _SayItSheetState extends ConsumerState<SayItSheet> {
     final included = _all.where((s) => !s.info && !_skip.contains(s.action)).length;
     // Only answers (where something is cheaper): nothing to log, the card just closes.
     final onlyAnswers = _all.isNotEmpty && _all.every((s) => s.info);
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+    return _scrolling(
+      // A long list leaves the screen behind the sheet in sight.
+      maxBodyHeight: MediaQuery.sizeOf(context).height * 0.7,
+      body: [
         Text(
           _all.isEmpty ? 'One question' : (onlyAnswers ? 'Here is what I found' : 'Here is what I got'),
           style: context.text.titleLarge,
@@ -296,27 +316,21 @@ class _SayItSheetState extends ConsumerState<SayItSheet> {
               ],
             ),
           ),
-        ConstrainedBox(
-          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.5),
-          child: ListView(
-            shrinkWrap: true,
-            children: [
-              for (final s in _all)
-                _StepTile(
-                  step: current[s.action] ?? s,
-                  included: !_skip.contains(s.action),
-                  onToggle: (on) {
-                    setState(() => on ? _skip.remove(s.action) : _skip.add(s.action));
-                    unawaited(_replan());
-                  },
-                  onPrice: () => _price(s),
-                ),
-            ],
+        for (final s in _all)
+          _StepTile(
+            step: current[s.action] ?? s,
+            included: !_skip.contains(s.action),
+            onToggle: (on) {
+              setState(() => on ? _skip.remove(s.action) : _skip.add(s.action));
+              unawaited(_replan());
+            },
+            onPrice: () => _price(s),
           ),
-        ),
         if (_error != null) Text(_error!, style: context.text.bodySmall?.copyWith(color: context.scheme.error)),
-        const SizedBox(height: 12),
-        Row(
+      ],
+      actions: Padding(
+        padding: const EdgeInsets.only(top: 12),
+        child: Row(
           children: [
             TextButton.icon(
               onPressed: _saving ? null : _edit,
@@ -338,7 +352,7 @@ class _SayItSheetState extends ConsumerState<SayItSheet> {
               ),
           ],
         ),
-      ],
+      ),
     );
   }
 }
