@@ -321,7 +321,7 @@ or light blue reaches any default component. `surfaceTint` = `Colors.transparent
 
 | State | Spec |
 |---|---|
-| Pressed (rows, cards, tiles) | overlay `AppColors.fillStrong` over the surface, instant on press, fades out 150 ms. **No ripple** (`splashFactory: NoSplash.splashFactory`, `highlightColor: AppColors.fill`) |
+| Pressed (rows, cards, tiles) | overlay `AppColors.fillStrong` over the surface, instant on press, fades out 150 ms. **No ripple** (`splashFactory: NoSplash.splashFactory`, `highlightColor: AppColors.fillStrong`; ruled in review 01) |
 | Pressed (filled button) | overlay `onPrimary` @ 12% |
 | Pressed (text button / icon button) | overlay `onSurface` @ 8% (accent @ 10% for accent text buttons) |
 | Pressed (⊕) | scale 0.94 over 120 ms + overlay `onPrimary` @ 12% |
@@ -405,7 +405,7 @@ shadow or border. Shadows exist only for things that float above scrolling conte
 | Segmented thumb (light only) | `BoxShadow(black @ 10%, blur 3, offset (0, 1))` + `BoxShadow(black @ 4%, blur 0, spread 0.5)` | none |
 | Bottom sheet, dialog | none (the barrier separates) | none |
 | Bottom action bar (recipe, review) | none | top hairline 0.5 px `separator` |
-| Page header on scroll | none | optional bottom hairline 0.5 px `separator` once content scrolls under (nice-to-have) |
+| Page header on scroll | none (or 0.5 elevation, see 7.5) | bottom hairline 0.5 px `separator` once content scrolls under (**required**, see 7.5) |
 
 **Hairlines** are 0.5 logical px in `AppColors.separator`, inset to the text start (x = 32 in a
 group). There's none above the first row or below the last one.
@@ -507,6 +507,15 @@ inner padding 8, so the content still aligns at x = 16.
 - **Header actions**: icon buttons, or one compact capsule button (36 tall, fill bg, icon 18 +
   `labelLarge` 14/18 w600). Example: `[☑ Quick check · 2]`, where the icon is in `primary` and
   the label in `onSurface`.
+- **Header edges** (ruled in review 01): an action with a *visible* shape (the capsule button)
+  ends at x = screen − 16, flush with the cards. Icon-only actions keep the 8 px edge inset, so
+  their glyph lands near x = screen − 16.
+- **Header → content**: the first content block starts exactly **8** below the header (tab
+  roots: status inset + 60 + 8) on every tab. A group header that comes first still uses 8, not 24.
+- **Scrolled under** (required, not optional): once content scrolls beneath the header, a 0.5 px
+  `separator` line appears at its bottom edge (or an equivalent 0.5 elevation shadow,
+  `shadowColor` black @ 30% light / 60% dark). At rest, there's no line. A card must never
+  look sliced by an invisible edge.
 
 ### 7.6 Segmented control: `AppSegmented<T>` (new)
 
@@ -863,7 +872,7 @@ TextStyle _inter(double size, double lh, FontWeight w, double tracking, Color co
 
 `ThemeData` must set: `fontFamily: 'Inter'`, the full `textTheme` (§2.2), explicit
 `colorScheme` (§4.4), `scaffoldBackgroundColor`, `splashFactory: NoSplash.splashFactory`,
-`highlightColor: AppColors.fill`, `hoverColor`, `focusColor`, `materialTapTargetSize: padded`,
+`highlightColor: AppColors.fillStrong`, `hoverColor`, `focusColor`, `materialTapTargetSize: padded`,
 `visualDensity: VisualDensity.standard`, `pageTransitionsTheme` (§9), and themes for
 `appBarTheme` (7.5), `cardTheme` (7.2), `listTileTheme` (7.3), `filledButtonTheme`,
 `textButtonTheme`, `iconButtonTheme` (7.1), `inputDecorationTheme` (7.7), `chipTheme` (7.8),
