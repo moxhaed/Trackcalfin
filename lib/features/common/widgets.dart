@@ -1184,7 +1184,7 @@ class WeekBars extends StatefulWidget {
   /// Today: its label is emphasized, and it's the default selection.
   final int? highlight;
 
-  /// Days still in progress, drawn at 35 %.
+  /// Days still in progress, drawn at 25 % unless selected.
   final Set<int> muted;
   final String Function(double v)? format;
   final double height;
@@ -1266,9 +1266,10 @@ class _WeekBarsState extends State<WeekBars> {
                                       ? 0
                                       : math.max(w.values[i] > 0 ? 4 : 0, w.height * w.values[i] / maxV),
                                   decoration: BoxDecoration(
-                                    color: w.muted.contains(i)
-                                        ? w.color.withValues(alpha: 0.35)
-                                        : (sel == i ? w.color : w.color.withValues(alpha: 0.85)),
+                                    // The selected day at full strength, the rest quiet (review 03).
+                                    color: sel == i
+                                        ? w.color
+                                        : w.color.withValues(alpha: w.muted.contains(i) ? 0.25 : 0.45),
                                     borderRadius: const BorderRadius.vertical(
                                       top: Radius.circular(6),
                                       bottom: Radius.circular(2),
