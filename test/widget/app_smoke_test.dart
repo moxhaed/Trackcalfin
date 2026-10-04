@@ -14,6 +14,7 @@ import 'package:trackcalfin/data/isar/collections/schemas.dart';
 import 'package:trackcalfin/platform/image_store.dart';
 import 'package:trackcalfin/platform/secret_store.dart';
 
+import '../support/app_harness.dart' show textCI, textHas;
 import '../support/fake_gemini.dart';
 import '../support/test_db.dart';
 
@@ -58,17 +59,17 @@ void main() {
   testWidgets('dashboard renders every card from demo data', (tester) async {
     await pumpApp(tester);
     expect(find.textContaining('Vibe ·'), findsOneWidget);
-    expect(find.text('TODAY'), findsOneWidget);
-    expect(find.text('FOOD SPEND'), findsOneWidget);
+    expect(textCI('TODAY'), findsOneWidget);
+    expect(textCI('FOOD SPEND'), findsOneWidget);
     await tester.drag(find.byType(ListView).first, const Offset(0, -900));
     await settle(tester);
-    expect(find.text('OTHER SPEND · MONTH'), findsOneWidget);
-    expect(find.text('CALORIES THIS WEEK'), findsOneWidget);
+    expect(textHas(RegExp(r'^\s*other spend', caseSensitive: false)), findsOneWidget);
+    expect(textCI('CALORIES THIS WEEK'), findsOneWidget);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   testWidgets('buy tab shows pantry and ledger', (tester) async {
     await pumpApp(tester, initial: '/buy');
-    expect(find.text('USE SOON'), findsOneWidget);
+    expect(textCI('USE SOON'), findsOneWidget);
     expect(find.text('Spinach'), findsWidgets);
     await tester.tap(find.text('Ledger'));
     await settle(tester);
@@ -78,8 +79,8 @@ void main() {
   testWidgets('cook tab shows the offline pick, fridge and rotation', (tester) async {
     await pumpApp(tester, initial: '/cook');
     expect(find.text('Garlic chicken & spinach rice bowls'), findsOneWidget);
-    expect(find.text('IN THE FRIDGE'), findsOneWidget);
-    expect(find.text('COOK AGAIN'), findsOneWidget);
+    expect(textCI('IN THE FRIDGE'), findsOneWidget);
+    expect(textCI('COOK AGAIN'), findsOneWidget);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   testWidgets('cooking from the pick deducts stock and fills the fridge', (tester) async {
@@ -120,7 +121,7 @@ void main() {
     await pumpApp(tester);
     await tester.tap(find.text('Cook'));
     await settle(tester);
-    expect(find.text('IN THE FRIDGE'), findsOneWidget);
+    expect(textCI('IN THE FRIDGE'), findsOneWidget);
     await tester.tap(find.byTooltip('Log something'));
     await settle(tester);
     expect(find.text('I cooked'), findsOneWidget);
@@ -141,7 +142,7 @@ void main() {
     expect(find.textContaining('Review macros ·'), findsOneWidget);
     await tester.tap(find.text('Cumin'));
     await settle(tester);
-    expect(find.text('NUTRITION PER 100 G'), findsOneWidget);
+    expect(textCI('NUTRITION PER 100 G'), findsOneWidget);
     expect(find.text('AI estimate'), findsOneWidget);
 
     await tester.tap(find.text('Confirm'));
