@@ -129,3 +129,22 @@ needed if the verification notes below hold.
   neutral sliding indicator, accent selection, selection haptic, and ⊕ with a 0.94 press scale
   and an accent-tinted shadow.
 - `PageBar` back-button logic, `Semantics(header: true)` on titles, and the tooltips preserved.
+
+## Re-check (round p1-fix)
+
+I measured on the PNGs at 2× (`build/rounds/p1-fix`, light and dark):
+
+| Must-fix | Result | Evidence |
+|---|---|---|
+| 1. Header capsule edge | **PASS** | The capsule's last pixel and the card's last pixel are both at px 747 in 01 (light and dark) |
+| 2. Header → content = 8 | **PASS** | The first content top is at px 230 in 01, 04, 06 and 07 in both themes (232 at x = 60 is the card's corner radius). Settings' "GOALS" cap height at 236 is accepted until the Phase 2 `GroupHeader` swap |
+| 3. Scrolled-under separator | **PASS** | A 1 px @2× (0.5 lp) line in `#E4E3DD` / `#30322E` sits at px 230 in 02 and 05 and at px 197 under the PageBar in 10. It's absent in 01, 04, 07, 11 and 14 |
+
+Semantics `onTap` on the nav tabs is noted and approved.
+
+**Updated nav + header scores** (light / dark): hierarchy 8.5 / 8.5, typography 9 / 9, spacing
+8.5 / 8.5, alignment 9 / 9, color 9 / 8.5, contrast 9 / 9, consistency 8.5 / 8.5, density
+8.5 / 8.5, usability 9 / 9, **polish 8.5 / 8.5**, **overall 8.8 / 8.7**.
+
+**Verdict: P0 + P1 meets its definition of done and can be committed** (after the Guardian
+verifies). The deferred items in (c) 4–15 carry over to Phase 2 and later.
