@@ -33,8 +33,9 @@ void main() {
 
   testWidgets('shell: four tabs, inbox badge and the global capture button', (tester) async {
     await app.pump(tester);
+    // Screen readers must be able to activate each tab (Semantics onTap in floating_nav.dart _PillTab).
     for (final tab in ['Dashboard', 'Buy', 'Cook', 'Settings']) {
-      expect(find.bySemanticsLabel(RegExp('^$tab', caseSensitive: false)), findsWidgets, reason: 'tab $tab');
+      expectTappable(tester, find.bySemanticsLabel(RegExp('^$tab', caseSensitive: false)), reason: 'tab $tab');
     }
     expectTappable(tester, find.byTooltip('Log something'));
     final inbox = (await app.isar.scanJobs.where().findAll()).where((j) => j.status == ScanStatus.needsReview).length;

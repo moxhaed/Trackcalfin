@@ -7,6 +7,7 @@ import '../../app/theme.dart';
 import '../../core/enums.dart';
 import '../capture/expense_sheet.dart';
 import '../capture/scan_flow.dart';
+import '../common/widgets.dart';
 import 'ingredient_sheet.dart';
 import 'ledger_view.dart';
 import 'pantry_view.dart';
@@ -29,21 +30,21 @@ class _BuyScreenState extends ConsumerState<BuyScreen> {
     final jobs = ref.watch(scanJobsProvider).value ?? const [];
     final working = jobs.where((j) => j.status == ScanStatus.processing || j.status == ScanStatus.queued).length;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Buy'),
+      appBar: TabHeader(
+        title: 'Buy',
         actions: [
           IconButton(
             tooltip: 'Inbox',
             onPressed: () => context.push('/inbox'),
             icon: Badge(isLabelVisible: inbox > 0, label: Text('$inbox'), child: const Icon(Icons.inbox_outlined)),
           ),
-          const SizedBox(width: 4),
         ],
       ),
       body: Column(
         children: [
+          // The 44 buttons sit 2 inside their 48 tap targets: the visible row starts 8 below the header.
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            padding: const EdgeInsets.fromLTRB(16, AppSpace.headerGap - 2, 16, 8),
             child: Row(
               children: [
                 Expanded(

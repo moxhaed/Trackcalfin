@@ -41,7 +41,7 @@ class StatsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final stats = ref.watch(_statsProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Stats')),
+      appBar: const PageBar(title: 'Stats'),
       body: stats.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('$e')),

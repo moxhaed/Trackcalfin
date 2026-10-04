@@ -33,7 +33,12 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final r = ref.watch(recipeProvider(widget.id)).value;
-    if (r == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (r == null) {
+      return const Scaffold(
+        appBar: PageBar(),
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
     final money = ref.watch(moneyProvider);
     final ingredients = ref.watch(ingredientsProvider).value ?? const <Ingredient>[];
     final stock = StockIndex(ingredients);
@@ -43,14 +48,15 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     final recipes = ref.read(recipeServiceProvider);
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: PageBar(
         actions: [
           IconButton(
             tooltip: r.favorite ? 'Remove favorite' : 'Favorite',
             onPressed: () => recipes.setFavorite(r.id, !r.favorite),
-            icon: Icon(r.favorite ? Icons.star : Icons.star_border, color: r.favorite ? c.warning : null),
+            icon: Icon(r.favorite ? Icons.star_rounded : Icons.star_outline_rounded),
           ),
           PopupMenuButton<String>(
+            icon: const Icon(Icons.more_horiz_rounded),
             onSelected: (v) async {
               if (v == 'edit') {
                 await context.push('/recipe/${r.id}/edit');

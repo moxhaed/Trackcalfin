@@ -31,7 +31,7 @@ class _QuickCheckScreenState extends ConsumerState<QuickCheckScreen> {
     final deck = _deck!;
     final done = _i >= deck.length;
     return Scaffold(
-      appBar: AppBar(title: Text(done ? 'Quick check' : 'Quick check · ${_i + 1} / ${deck.length}')),
+      appBar: PageBar(title: done ? 'Quick check' : 'Quick check · ${_i + 1} / ${deck.length}'),
       body: done ? _done(context, deck.length) : _card(context, deck[_i]),
     );
   }

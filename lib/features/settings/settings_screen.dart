@@ -13,6 +13,7 @@ import '../../app/theme.dart';
 import '../../application/habit_scheduler.dart';
 import '../../core/enums.dart';
 import '../../data/isar/collections/schemas.dart';
+import '../common/widgets.dart';
 
 const dietOptions = ['vegetarian', 'vegan', 'pescatarian', 'halal', 'gluten_free', 'high_protein', 'low_carb'];
 const equipmentOptions = [
@@ -33,7 +34,12 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final p = ref.watch(profileProvider).value;
     final money = ref.watch(moneyProvider);
-    if (p == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (p == null) {
+      return const Scaffold(
+        appBar: TabHeader(title: 'Settings'),
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
     final svc = ref.read(profileServiceProvider);
     Future<void> update(void Function(UserProfile p) f) async {
       await svc.update(f);
@@ -41,11 +47,11 @@ class SettingsScreen extends ConsumerWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: const TabHeader(title: 'Settings'),
       body: ListView(
         padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom + 24),
         children: [
-          const _Section('Goals'),
+          const _Section('Goals', top: AppSpace.headerGap),
           _MoneyTile(
             title: 'Monthly food budget',
             valueMinor: p.monthlyFoodBudgetMinor,
@@ -301,11 +307,12 @@ class SettingsScreen extends ConsumerWidget {
 }
 
 class _Section extends StatelessWidget {
-  const _Section(this.title);
+  const _Section(this.title, {this.top = 20});
   final String title;
+  final double top;
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
+    padding: EdgeInsets.fromLTRB(16, top, 16, 4),
     child: Text(
       title.toUpperCase(),
       style: context.text.labelMedium?.copyWith(letterSpacing: 0.8, color: context.scheme.primary),

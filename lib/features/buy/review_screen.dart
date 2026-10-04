@@ -149,7 +149,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
     }
     final sum = job.lines.where((l) => l.include).fold(0, (a, l) => a + l.totalMinor);
     return Scaffold(
-      appBar: AppBar(title: Text(pantry ? 'Pantry photo' : (job.merchant ?? 'Receipt'))),
+      appBar: PageBar(title: pantry ? 'Pantry photo' : (job.merchant ?? 'Receipt')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
         children: [

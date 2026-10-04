@@ -47,14 +47,40 @@ class Shot {
   final Future<void> Function(WidgetTester tester, Isar isar)? steps;
 }
 
+/// Drags the page's main list: the largest vertical, on-screen Scrollable. (`Scrollable.first`
+/// can be a text field's own horizontal Scrollable, e.g. the ask field on Cook.)
 Future<void> _scroll(WidgetTester tester, double dy) async {
-  await tester.drag(find.byType(Scrollable).first, Offset(0, -dy));
+  final candidates = find.byType(Scrollable).hitTestable().evaluate().where((e) {
+    final axis = (e.widget as Scrollable).axisDirection;
+    return axis == AxisDirection.down || axis == AxisDirection.up;
+  });
+  Element? main;
+  var best = 0.0;
+  for (final e in candidates) {
+    final size = tester.getSize(find.byElementPredicate((x) => x == e));
+    if (size.width * size.height > best) {
+      best = size.width * size.height;
+      main = e;
+    }
+  }
+  await tester.drag(
+    main == null ? find.byType(Scrollable).first : find.byElementPredicate((x) => x == main),
+    Offset(0, -dy),
+  );
   await settle(tester);
 }
 
 Future<void> _tap(WidgetTester tester, Finder f) async {
   await tester.tap(f.first);
   await settle(tester);
+}
+
+/// Taps the first match a user could actually tap, scrolling the page down until one shows.
+Future<void> _tapVisible(WidgetTester tester, Finder f) async {
+  for (var i = 0; i < 8 && f.hitTestable().evaluate().isEmpty; i++) {
+    await _scroll(tester, 250);
+  }
+  await _tap(tester, f.hitTestable());
 }
 
 final shots = <Shot>[
@@ -115,7 +141,7 @@ final shots = <Shot>[
       await _tap(t, find.text('I cooked'));
     },
   ),
-  Shot('24-ingredient-sheet', '/buy', steps: (t, _) => _tap(t, find.text('Chicken breast'))),
+  Shot('24-ingredient-sheet', '/buy', steps: (t, _) => _tapVisible(t, find.text('Chicken breast'))),
   const Shot('25-recipe-editor', '/recipe/new'),
   Shot('26-vibe-sheet', '/', steps: (t, _) => _tap(t, find.textContaining('Vibe'))),
   Shot(

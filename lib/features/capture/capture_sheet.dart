@@ -59,10 +59,10 @@ class CaptureSheet extends StatelessWidget {
           children: [
             for (final (icon, title, sub, onTap) in items)
               Material(
-                color: context.scheme.surfaceContainerHigh,
-                borderRadius: BorderRadius.circular(18),
+                color: context.colors.fill,
+                borderRadius: BorderRadius.circular(AppRadius.tile),
                 child: InkWell(
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(AppRadius.tile),
                   onTap: onTap,
                   child: Padding(
                     padding: const EdgeInsets.all(10),

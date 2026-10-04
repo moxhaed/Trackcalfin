@@ -5,6 +5,143 @@ import 'package:flutter/services.dart';
 
 import '../../app/theme.dart';
 
+/// Page header of a tab root (Dashboard, Buy, Cook, Settings): a 30/36 large title at
+/// x = 16 on the canvas, 60 tall, actions on the right with the last one 8 from the edge
+/// (DESIGN_SYSTEM §7.5). It stays put while the content scrolls beneath it, and shows a
+/// hairline at its bottom edge only while content is scrolled under it.
+class TabHeader extends StatefulWidget implements PreferredSizeWidget {
+  const TabHeader({super.key, required this.title, this.actions = const []});
+  final String title;
+  final List<Widget> actions;
+
+  static const height = 60.0;
+
+  @override
+  Size get preferredSize => const Size.fromHeight(height);
+
+  @override
+  State<TabHeader> createState() => _TabHeaderState();
+}
+
+class _TabHeaderState extends State<TabHeader> with _ScrolledUnder {
+  @override
+  Widget build(BuildContext context) {
+    return AppBar(
+      automaticallyImplyLeading: false,
+      toolbarHeight: TabHeader.height,
+      titleSpacing: AppSpace.screen,
+      titleTextStyle: context.text.headlineLarge,
+      shape: edge,
+      title: Semantics(header: true, child: Text(widget.title, maxLines: 1, overflow: TextOverflow.ellipsis)),
+      actions: widget.actions,
+    );
+  }
+}
+
+/// Compact bar of a pushed screen (inbox, review, recipe, editor, stats, quick check): 52
+/// tall, the platform back button (tooltip "Back") and a 17/22 w600 title right beside it
+/// (DESIGN_SYSTEM §7.5). Opened without a page below (a cold deep link) there's no back
+/// button, and the title keeps the 16 page margin instead. Same scrolled-under hairline.
+class PageBar extends StatefulWidget implements PreferredSizeWidget {
+  const PageBar({super.key, this.title, this.actions = const []});
+  final String? title;
+  final List<Widget> actions;
+
+  static const height = 52.0;
+
+  @override
+  Size get preferredSize => const Size.fromHeight(height);
+
+  @override
+  State<PageBar> createState() => _PageBarState();
+}
+
+class _PageBarState extends State<PageBar> with _ScrolledUnder {
+  @override
+  Widget build(BuildContext context) {
+    final route = ModalRoute.of(context);
+    final back = (route?.canPop ?? false) || (route?.impliesAppBarDismissal ?? false);
+    final title = widget.title;
+    return AppBar(
+      toolbarHeight: PageBar.height,
+      titleSpacing: back ? 0 : AppSpace.screen,
+      shape: edge,
+      title: title == null ? null : Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+      actions: widget.actions,
+    );
+  }
+}
+
+/// Follows the page's main vertical scroller the way [AppBar] does internally, so a header
+/// can draw a 0.5 separator at its bottom edge once content scrolls beneath it (§7.5, §6).
+mixin _ScrolledUnder<T extends StatefulWidget> on State<T> {
+  ScrollNotificationObserverState? _observer;
+  bool _under = false;
+
+  /// The header's shape: a bottom hairline while scrolled under, nothing at rest.
+  ShapeBorder? get edge => _under ? Border(bottom: BorderSide(color: context.colors.separator, width: 0.5)) : null;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _observer?.removeListener(_onScroll);
+    _observer = ScrollNotificationObserver.maybeOf(context);
+    _observer?.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _observer?.removeListener(_onScroll);
+    _observer = null;
+    super.dispose();
+  }
+
+  void _onScroll(ScrollNotification n) {
+    if (n is! ScrollUpdateNotification || n.depth != 0) return;
+    final m = n.metrics;
+    final under = switch (m.axisDirection) {
+      AxisDirection.down => m.extentBefore > 0,
+      AxisDirection.up => m.extentAfter > 0,
+      AxisDirection.left || AxisDirection.right => _under,
+    };
+    if (under != _under && mounted) setState(() => _under = under);
+  }
+}
+
+/// The one compact capsule a page header may carry: 36 tall on the neutral fill, an 18
+/// accent icon and a 14/18 w600 label in ink (DESIGN_SYSTEM §7.5), e.g. "Quick check · 2".
+/// It ends flush with the cards (x = screen − 16): 8 of its own on top of the bar's 8.
+class HeaderButton extends StatelessWidget {
+  const HeaderButton({super.key, required this.icon, required this.label, required this.onPressed});
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = context.scheme;
+    final button = FilledButton.icon(
+      onPressed: onPressed,
+      style: FilledButton.styleFrom(
+        backgroundColor: context.colors.fill,
+        foregroundColor: scheme.onSurface,
+        iconColor: scheme.primary,
+        iconSize: 18,
+        minimumSize: const Size(0, 36),
+        padding: const EdgeInsets.fromLTRB(12, 0, 14, 0),
+        textStyle: context.text.labelLarge?.copyWith(fontSize: 14, height: 18 / 14),
+        tapTargetSize: MaterialTapTargetSize.padded,
+      ),
+      icon: Icon(icon),
+      label: Text(label),
+    );
+    return Padding(
+      padding: const EdgeInsets.only(right: AppSpace.x2),
+      child: button,
+    );
+  }
+}
+
 /// Rounded card with an optional title row.
 class SectionCard extends StatelessWidget {
   const SectionCard({super.key, this.title, this.trailing, required this.child, this.padding, this.onTap});

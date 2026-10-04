@@ -7,6 +7,7 @@ import '../../app/providers.dart';
 import '../../app/theme.dart';
 import '../../core/enums.dart';
 import '../../data/isar/collections/schemas.dart';
+import '../common/widgets.dart';
 
 class _Row {
   _Row({this.ingredient, this.name = '', this.qty = '', this.unit = BaseUnit.g, this.role = IngredientRole.stock});
@@ -129,8 +130,8 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
   Widget build(BuildContext context) {
     final pantry = ref.watch(ingredientsProvider).value ?? const <Ingredient>[];
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.id == null ? 'New recipe' : 'Edit recipe'),
+      appBar: PageBar(
+        title: widget.id == null ? 'New recipe' : 'Edit recipe',
         actions: [TextButton(onPressed: _save, child: const Text('Save'))],
       ),
       body: !_loaded

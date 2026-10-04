@@ -22,7 +22,7 @@ class InboxScreen extends ConsumerWidget {
     final jobs = ref.watch(scanJobsProvider).value ?? const [];
     final hasKey = ref.watch(hasApiKeyProvider).value ?? false;
     return Scaffold(
-      appBar: AppBar(title: const Text('Inbox')),
+      appBar: const PageBar(title: 'Inbox'),
       body: jobs.isEmpty
           ? const EmptyState(
               icon: Icons.inbox_outlined,
@@ -34,7 +34,7 @@ class InboxScreen extends ConsumerWidget {
               children: [
                 if (!hasKey)
                   Card(
-                    color: context.scheme.tertiaryContainer,
+                    color: context.colors.fill,
                     child: ListTile(
                       leading: const Icon(Icons.key_outlined),
                       title: const Text('Add a Gemini API key'),

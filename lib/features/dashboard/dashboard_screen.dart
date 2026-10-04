@@ -24,17 +24,14 @@ class DashboardScreen extends ConsumerWidget {
     final view = ref.watch(dashboardProvider);
     final checks = ref.watch(quickCheckProvider).length;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(DateFormat('EEE d MMM').format(DateTime.now())),
+      appBar: TabHeader(
+        title: DateFormat('EEE d MMM').format(DateTime.now()),
         actions: [
           if (checks > 0)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: ActionChip(
-                avatar: const Icon(Icons.fact_check_outlined, size: 18),
-                label: Text('Quick check · $checks'),
-                onPressed: () => context.push('/quick-check'),
-              ),
+            HeaderButton(
+              icon: Icons.fact_check_outlined,
+              label: 'Quick check · $checks',
+              onPressed: () => context.push('/quick-check'),
             ),
         ],
       ),
@@ -56,7 +53,7 @@ class _DashboardBody extends ConsumerWidget {
     final money = ref.watch(moneyProvider);
     final s = view.state;
     return ListView(
-      padding: EdgeInsets.fromLTRB(16, 4, 16, MediaQuery.paddingOf(context).bottom + 24),
+      padding: EdgeInsets.fromLTRB(16, AppSpace.headerGap, 16, MediaQuery.paddingOf(context).bottom + 24),
       children: [
         _VibeCard(vibe: view.vibe),
         const SizedBox(height: 12),
@@ -97,7 +94,6 @@ class _VibeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = _color(context.colors);
     return Card(
-      color: context.scheme.primaryContainer.withValues(alpha: 0.55),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
         onTap: vibe.components.isEmpty ? null : () => _explain(context),
@@ -119,18 +115,15 @@ class _VibeCard extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Icon(_icon, size: 18, color: context.scheme.onPrimaryContainer),
+                        Icon(_icon, size: 18, color: context.scheme.onSurfaceVariant),
                         const SizedBox(width: 6),
-                        Text(
-                          'Vibe · ${vibe.label}',
-                          style: context.text.titleMedium?.copyWith(color: context.scheme.onPrimaryContainer),
-                        ),
+                        Text('Vibe · ${vibe.label}', style: context.text.titleMedium),
                       ],
                     ),
                     const SizedBox(height: 6),
                     Text(
                       vibe.insight,
-                      style: context.text.bodyMedium?.copyWith(color: context.scheme.onPrimaryContainer),
+                      style: context.text.bodyMedium?.copyWith(color: context.scheme.onSurfaceVariant),
                     ),
                   ],
                 ),

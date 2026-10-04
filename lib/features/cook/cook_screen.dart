@@ -22,8 +22,8 @@ class CookScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Cook'),
+      appBar: TabHeader(
+        title: 'Cook',
         actions: [
           IconButton(
             tooltip: 'Write a recipe',
@@ -449,7 +449,7 @@ class _AskBarState extends ConsumerState<_AskBar> {
         top: false,
         bottom: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 12, 10),
+          padding: const EdgeInsets.fromLTRB(16, AppSpace.headerGap, 12, 10),
           child: Row(
             children: [
               Expanded(

@@ -53,7 +53,7 @@ final bool _nativeGlass =
 
 /// Floating bottom navigation: a pill of tabs with a round capture button beside it.
 /// On iOS 26+ both are native Liquid Glass (`ios/Runner/GlassNav.swift`); elsewhere
-/// the pill is drawn in Flutter over a light backdrop blur.
+/// the pill is drawn in Flutter over a backdrop blur (DESIGN_SYSTEM §7.17).
 ///
 /// Use it with `Scaffold(extendBody: true)` so content scrolls behind it; the
 /// Scaffold then reports the bar's height as bottom `MediaQuery` padding.
@@ -77,7 +77,7 @@ class FloatingNav extends StatelessWidget {
   /// From a [PopupObserver] on the navigator that shows sheets and dialogs.
   final ValueListenable<bool> popupOpen;
 
-  static const height = 64.0;
+  static const height = 60.0;
 
   @override
   Widget build(BuildContext context) {
@@ -86,36 +86,42 @@ class FloatingNav extends StatelessWidget {
         Expanded(
           child: _BlurPill(tabs: tabs, index: index, onSelect: onSelect),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: AppSpace.x3),
         _CaptureButton(label: captureLabel, onPressed: onCapture),
       ],
     );
     // Sit a little into the home-indicator inset, like the system tab bar does.
     final bottom = math.max(12.0, MediaQuery.paddingOf(context).bottom - 8);
     return Padding(
-      padding: EdgeInsets.fromLTRB(16, 0, 16, bottom),
-      child: SizedBox(
-        height: height,
-        child: !_nativeGlass
-            ? pill
-            : ValueListenableBuilder(
-                valueListenable: popupOpen,
-                // The native view stays alive offstage while a popup covers the pill.
-                builder: (context, open, glass) => Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Offstage(offstage: open, child: glass),
-                    if (open) pill,
-                  ],
-                ),
-                child: _GlassNav(
-                  tabs: tabs,
-                  index: index,
-                  onSelect: onSelect,
-                  onCapture: onCapture,
-                  captureLabel: captureLabel,
-                ),
-              ),
+      padding: EdgeInsets.fromLTRB(AppSpace.screen, 0, AppSpace.screen, bottom),
+      child: Center(
+        heightFactor: 1,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: AppSpace.maxContentWidth),
+          child: SizedBox(
+            height: height,
+            child: !_nativeGlass
+                ? pill
+                : ValueListenableBuilder(
+                    valueListenable: popupOpen,
+                    // The native view stays alive offstage while a popup covers the pill.
+                    builder: (context, open, glass) => Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Offstage(offstage: open, child: glass),
+                        if (open) pill,
+                      ],
+                    ),
+                    child: _GlassNav(
+                      tabs: tabs,
+                      index: index,
+                      onSelect: onSelect,
+                      onCapture: onCapture,
+                      captureLabel: captureLabel,
+                    ),
+                  ),
+          ),
+        ),
       ),
     );
   }
@@ -130,36 +136,47 @@ class _BlurPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = context.scheme;
+    final colors = context.colors;
+    final dark = Theme.of(context).brightness == Brightness.dark;
     final n = tabs.length;
     return DecoratedBox(
       decoration: ShapeDecoration(
         shape: const StadiumBorder(),
-        shadows: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 20, offset: const Offset(0, 6))],
+        shadows: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: dark ? 0.40 : 0.08),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+          if (!dark) BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 2, offset: const Offset(0, 1)),
+        ],
       ),
       child: ClipPath(
         clipper: const ShapeBorderClipper(shape: StadiumBorder()),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
           child: DecoratedBox(
             decoration: ShapeDecoration(
-              color: scheme.surfaceContainer.withValues(alpha: 0.72),
-              shape: StadiumBorder(side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5), width: 0.5)),
+              color: scheme.surfaceContainer.withValues(alpha: 0.88),
+              shape: StadiumBorder(
+                side: BorderSide(color: dark ? Colors.white.withValues(alpha: 0.06) : colors.separator, width: 0.5),
+              ),
             ),
             child: Material(
               type: MaterialType.transparency,
               child: Padding(
-                padding: const EdgeInsets.all(4),
+                padding: const EdgeInsets.all(AppSpace.x1),
                 child: Stack(
                   children: [
                     AnimatedAlign(
                       alignment: Alignment(n > 1 ? -1 + 2 * index / (n - 1) : 0, 0),
-                      duration: const Duration(milliseconds: 280),
-                      curve: Curves.easeOutCubic,
+                      duration: AppMotion.medium,
+                      curve: AppMotion.standard,
                       child: FractionallySizedBox(
                         widthFactor: 1 / n,
                         heightFactor: 1,
                         child: DecoratedBox(
-                          decoration: ShapeDecoration(color: scheme.secondaryContainer, shape: const StadiumBorder()),
+                          decoration: ShapeDecoration(color: colors.fill, shape: const StadiumBorder()),
                         ),
                       ),
                     ),
@@ -167,7 +184,14 @@ class _BlurPill extends StatelessWidget {
                       children: [
                         for (var i = 0; i < n; i++)
                           Expanded(
-                            child: _PillTab(tab: tabs[i], selected: i == index, onTap: () => onSelect(i)),
+                            child: _PillTab(
+                              tab: tabs[i],
+                              selected: i == index,
+                              onTap: () {
+                                HapticFeedback.selectionClick();
+                                onSelect(i);
+                              },
+                            ),
                           ),
                       ],
                     ),
@@ -190,14 +214,18 @@ class _PillTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? context.scheme.onSecondaryContainer : context.scheme.onSurfaceVariant;
+    final color = selected ? context.scheme.primary : context.scheme.onSurfaceVariant;
     return Semantics(
       selected: selected,
       button: true,
       label: tab.label,
+      onTap: onTap,
       excludeSemantics: true,
+      // No ripple or highlight: the sliding indicator is the feedback.
       child: InkWell(
         customBorder: const StadiumBorder(),
+        highlightColor: Colors.transparent,
+        splashFactory: NoSplash.splashFactory,
         onTap: onTap,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -205,7 +233,7 @@ class _PillTab extends StatelessWidget {
             Badge(
               isLabelVisible: tab.badge > 0,
               label: Text('${tab.badge}'),
-              child: Icon(selected ? tab.activeIcon : tab.icon, color: color, size: 22),
+              child: Icon(selected ? tab.activeIcon : tab.icon, color: color, size: 24),
             ),
             const SizedBox(height: 2),
             Text(
@@ -213,7 +241,10 @@ class _PillTab extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.fade,
               softWrap: false,
-              style: context.text.labelSmall?.copyWith(color: color, fontWeight: selected ? FontWeight.w700 : null),
+              style: context.text.labelSmall?.copyWith(
+                color: color,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+              ),
             ),
           ],
         ),
@@ -222,26 +253,61 @@ class _PillTab extends StatelessWidget {
   }
 }
 
-class _CaptureButton extends StatelessWidget {
+/// The global ⊕: a 60 accent circle that scales to 0.94 while pressed.
+class _CaptureButton extends StatefulWidget {
   const _CaptureButton({required this.label, required this.onPressed});
   final String label;
   final VoidCallback onPressed;
 
   @override
+  State<_CaptureButton> createState() => _CaptureButtonState();
+}
+
+class _CaptureButtonState extends State<_CaptureButton> {
+  bool _down = false;
+
+  void _press(bool down) {
+    if (_down != down) setState(() => _down = down);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final scheme = context.scheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return Tooltip(
-      message: label,
-      child: Material(
-        color: context.scheme.primary,
-        shape: const CircleBorder(),
-        elevation: 3,
-        shadowColor: Colors.black.withValues(alpha: 0.4),
-        child: InkWell(
-          customBorder: const CircleBorder(),
-          onTap: onPressed,
-          child: SizedBox.square(
-            dimension: FloatingNav.height,
-            child: Icon(Icons.add, size: 30, color: context.scheme.onPrimary),
+      message: widget.label,
+      child: AnimatedScale(
+        scale: _down ? 0.94 : 1,
+        duration: AppMotion.quick,
+        curve: Curves.easeOut,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: dark ? Colors.black.withValues(alpha: 0.40) : scheme.primary.withValues(alpha: 0.28),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Material(
+            color: scheme.primary,
+            shape: const CircleBorder(),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              highlightColor: scheme.onPrimary.withValues(alpha: 0.12),
+              onHighlightChanged: _press,
+              onTap: () {
+                HapticFeedback.selectionClick();
+                widget.onPressed();
+              },
+              child: SizedBox.square(
+                dimension: FloatingNav.height,
+                child: Icon(Icons.add_rounded, size: 28, color: scheme.onPrimary),
+              ),
+            ),
           ),
         ),
       ),
