@@ -139,7 +139,7 @@ All of these use tabular figures and `leadingDistribution.even`.
 | `nums.small` | 13 / 18 | 500 | -0.04 | numbers inside meta lines that must align (ledger time, chart selection label) |
 
 **Number + unit pattern.** Use **one** `Text.rich`, never two `Text` widgets: the value span in
-the numeric style, then a no-break space (` `) and the unit span in the next smaller body
+the numeric style, then a no-break space (U+00A0, written `'\u00A0'` in Dart) and the unit span in the next smaller body
 style in `textSecondary`. Example: `982` (nums.large) + ` kcal` (bodyMedium, secondary). Tests
 and screen readers read the pair as one string.
 
@@ -465,7 +465,12 @@ and pressed overlays follow the rounded corners.
 | 16 | [leading 24/36] 12 | Title (bodyLarge w500, 2 lines max)        | 12 [trailing] | 16 |
 |    |                    | Subtitle (bodySmall, textSecondary, 2 max) |               |    |
 ```
-- Min height 52 (one line) / 64 (two lines); vertical padding 12.
+- Min height 52 (one line) / ≥ 64 (two lines; 66 in practice: 22 + 2 + 18 + 2 × 12); vertical
+  padding 12; title → subtitle gap **2** (review 02).
+- **Rows with an interactive trailing control** (switch, button, icon button): vertical padding
+  **8**, min height **56** (one line) / **64** (two lines), so the control's 48 hit target doesn't
+  inflate the row to 72 (review 02).
+- `AppGroup` hairline indents: `indentPlain` 16, `indentIcon` 52, `indentGlyph` 64 (inside the group).
 - Trailing options: value (`nums.body`, `onSurface`; settings values in `textSecondary` w400),
   chevron (`chevron_right_rounded` 20 `textTertiary`), switch, small tonal button (S 36), or
   icon button. A value and a chevron can combine (value 8 gap chevron).
@@ -883,7 +888,8 @@ TextStyle _inter(double size, double lh, FontWeight w, double tracking, Color co
 `bodySmall`).
 
 **Switch** (`SwitchThemeData`): track on = `primary`, track off = light `#D9D8D2` / dark
-`#3A3C38`, `trackOutlineColor: transparent`, thumb on = `onPrimary`, thumb off = `#FFFFFF`
+`#3A3C38`, `trackOutlineColor: transparent`, thumb on = `#FFFFFF` (light) / `#F1F1EE` (dark),
+per review 02 (a dark thumb on the mint track read as a hole), thumb off = `#FFFFFF`
 (dark `#C9CBC5`). To get the full-size off thumb (no M3 shrinking), set
 `thumbIcon: WidgetStatePropertyAll(Icon(Icons.circle, color: Colors.transparent))`.
 **Checkbox**: radius 6, fill `primary` when checked, border 1.5 `textTertiary` unchecked,
