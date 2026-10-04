@@ -51,7 +51,7 @@ class SettingsScreen extends ConsumerWidget {
       body: ListView(
         padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom + 24),
         children: [
-          const _Section('Goals', top: AppSpace.headerGap),
+          const GroupHeader('Goals', first: true),
           _MoneyTile(
             title: 'Monthly food budget',
             valueMinor: p.monthlyFoodBudgetMinor,
@@ -81,7 +81,7 @@ class SettingsScreen extends ConsumerWidget {
             valueMinor: p.targetCostPerPortionMinor,
             onSave: (v) => update((x) => x.targetCostPerPortionMinor = v),
           ),
-          const _Section('Monthly limits · other spending'),
+          const GroupHeader('Monthly limits · other spending'),
           for (final c in [
             SpendCategory.household,
             SpendCategory.clothes,
@@ -102,7 +102,7 @@ class SettingsScreen extends ConsumerWidget {
                 ];
               }),
             ),
-          const _Section('Cooking profile'),
+          const GroupHeader('Cooking profile'),
           _ChipsTile(
             title: 'Diet',
             options: dietOptions,
@@ -145,7 +145,7 @@ class SettingsScreen extends ConsumerWidget {
             value: p.autoLogFirstPortion,
             onChanged: (v) => update((x) => x.autoLogFirstPortion = v),
           ),
-          const _Section('Rhythm'),
+          const GroupHeader('Rhythm'),
           SwitchListTile(
             title: const Text('Notifications'),
             subtitle: const Text('Daily pick, meal-time "Ate it", weekly recap (max 3 a day)'),
@@ -169,14 +169,14 @@ class SettingsScreen extends ConsumerWidget {
             value: p.autoCommitCleanScans,
             onChanged: (v) => update((x) => x.autoCommitCleanScans = v),
           ),
-          const _Section('AI'),
+          const GroupHeader('AI'),
           const _ApiKeyTile(),
           ListTile(
             title: const Text('Model'),
             subtitle: const Text('gemini-3.5-flash-lite (fallback: gemini-3.8-flash)'),
             trailing: const Icon(Icons.lock_outline, size: 20),
           ),
-          const _Section('Appearance & region'),
+          const GroupHeader('Appearance & region'),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
             child: SegmentedButton<String>(
@@ -216,7 +216,7 @@ class SettingsScreen extends ConsumerWidget {
             value: p.weekStartsOn == DateTime.sunday,
             onChanged: (v) => update((x) => x.weekStartsOn = v ? DateTime.sunday : DateTime.monday),
           ),
-          const _Section('Data'),
+          const GroupHeader('Data'),
           ListTile(
             leading: const Icon(Icons.fact_check_outlined),
             title: const Text('Quick check'),
@@ -304,20 +304,6 @@ class SettingsScreen extends ConsumerWidget {
       messenger.showSnackBar(SnackBar(content: Text('Import failed: $e')));
     }
   }
-}
-
-class _Section extends StatelessWidget {
-  const _Section(this.title, {this.top = 20});
-  final String title;
-  final double top;
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: EdgeInsets.fromLTRB(16, top, 16, 4),
-    child: Text(
-      title.toUpperCase(),
-      style: context.text.labelMedium?.copyWith(letterSpacing: 0.8, color: context.scheme.primary),
-    ),
-  );
 }
 
 Future<String?> _prompt(

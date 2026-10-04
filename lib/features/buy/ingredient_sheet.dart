@@ -540,6 +540,7 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
               Text(_busy ? 'Asking the AI…' : 'Recipes count this as 0 kcal until it has numbers.', style: muted)
             else
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     child: Metric(value: '${n.kcal.round()}', label: 'kcal', dotColor: c.kcal),

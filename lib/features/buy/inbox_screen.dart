@@ -127,6 +127,7 @@ class _JobCard extends ConsumerWidget {
                       child: const Text('Retake'),
                     ),
                   FilledButton.tonal(
+                    style: AppTheme.tonalButton(context, small: true),
                     onPressed: () async {
                       await scans.retry(job.id);
                       await processScansInBackground(ref);

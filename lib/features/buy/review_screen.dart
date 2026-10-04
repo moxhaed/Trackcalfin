@@ -201,7 +201,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
               text: 'The printed date looked wrong, so the photo date is used.',
             ),
           if (attention.isNotEmpty) ...[
-            _Label('Check ${attention.length}'),
+            GroupHeader('Check ${attention.length}'),
             for (final i in attention)
               _LineEditor(
                 line: job.lines[i],
@@ -213,7 +213,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                 onChanged: () => setState(() {}),
               ),
           ],
-          _Label(pantry ? '${fine.length} items detected' : '${fine.length} look good'),
+          GroupHeader(pantry ? '${fine.length} items detected' : '${fine.length} look good'),
           if (!_showAll && fine.isNotEmpty)
             Card(
               child: ListTile(
@@ -274,19 +274,6 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
       ),
     );
   }
-}
-
-class _Label extends StatelessWidget {
-  const _Label(this.text);
-  final String text;
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(4, 16, 4, 8),
-    child: Text(
-      text.toUpperCase(),
-      style: context.text.labelMedium?.copyWith(letterSpacing: 0.8, color: context.scheme.onSurfaceVariant),
-    ),
-  );
 }
 
 class _Banner extends StatelessWidget {

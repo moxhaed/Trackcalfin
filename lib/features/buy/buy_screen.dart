@@ -94,16 +94,10 @@ class _BuyScreenState extends ConsumerState<BuyScreen> {
             ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: SizedBox(
-              width: double.infinity,
-              child: SegmentedButton<int>(
-                segments: const [
-                  ButtonSegment(value: 0, label: Text('Pantry'), icon: Icon(Icons.kitchen_outlined)),
-                  ButtonSegment(value: 1, label: Text('Ledger'), icon: Icon(Icons.receipt_outlined)),
-                ],
-                selected: {_tab},
-                onSelectionChanged: (s) => setState(() => _tab = s.first),
-              ),
+            child: AppSegmented<int>(
+              segments: const {0: 'Pantry', 1: 'Ledger'},
+              selected: _tab,
+              onChanged: (v) => setState(() => _tab = v),
             ),
           ),
           const SizedBox(height: 8),

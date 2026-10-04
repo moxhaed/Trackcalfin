@@ -98,9 +98,15 @@ class _TodayPickCardState extends ConsumerState<_TodayPickCard> {
             const SizedBox(height: 10),
             Row(
               children: [
-                if (!hasKey) FilledButton.tonal(onPressed: () => context.go('/settings'), child: const Text('Add key')),
+                if (!hasKey)
+                  FilledButton.tonal(
+                    style: AppTheme.tonalButton(context),
+                    onPressed: () => context.go('/settings'),
+                    child: const Text('Add key'),
+                  ),
                 if (hasKey)
                   FilledButton.tonal(
+                    style: AppTheme.tonalButton(context),
                     onPressed: () => ref.read(todayPickProvider.notifier).refresh(force: true),
                     child: const Text('Try again'),
                   ),
@@ -275,7 +281,11 @@ class _FridgeStrip extends ConsumerWidget {
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        FilledButton.tonal(onPressed: () => eatFromFridge(context, ref, s), child: const Text('Eat 1')),
+                        FilledButton.tonal(
+                          style: AppTheme.tonalButton(context, small: true),
+                          onPressed: () => eatFromFridge(context, ref, s),
+                          child: const Text('Eat 1'),
+                        ),
                         PopupMenuButton<String>(
                           onSelected: (v) async {
                             final cook = ref.read(cookServiceProvider);

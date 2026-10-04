@@ -417,6 +417,27 @@ class AppTheme {
     padding: const EdgeInsets.symmetric(horizontal: 24),
   );
 
+  /// The secondary (tonal) button (§7.1): neutral fill, accent w600 label, capsule, M 44 or
+  /// S 36. Pass it as `FilledButton.tonal(style: AppTheme.tonalButton(context))`: the filled
+  /// button theme can't tell the tonal variant apart, so it's set per button.
+  static ButtonStyle tonalButton(BuildContext context, {bool small = false}) {
+    final theme = Theme.of(context);
+    final s = theme.colorScheme;
+    final c = theme.extension<AppColors>()!;
+    return FilledButton.styleFrom(
+      backgroundColor: c.fill,
+      foregroundColor: s.primary,
+      iconColor: s.primary,
+      disabledBackgroundColor: c.fill.withValues(alpha: c.fill.a * 0.5),
+      disabledForegroundColor: s.onSurface.withValues(alpha: 0.38),
+      minimumSize: Size(small ? 48 : 64, small ? 36 : 44),
+      padding: EdgeInsets.symmetric(horizontal: small ? 16 : 20),
+      textStyle: theme.textTheme.labelLarge,
+      shape: const StadiumBorder(),
+      elevation: 0,
+    );
+  }
+
   static ThemeData build(Brightness b) {
     final dark = b == Brightness.dark;
     final s = scheme(b);
@@ -455,7 +476,7 @@ class AppTheme {
       canvasColor: s.surface,
       splashFactory: NoSplash.splashFactory,
       splashColor: Colors.transparent,
-      highlightColor: c.fill,
+      highlightColor: c.fillStrong,
       hoverColor: s.onSurface.withValues(alpha: dark ? 0.06 : 0.04),
       focusColor: s.primary.withValues(alpha: 0.12),
       materialTapTargetSize: MaterialTapTargetSize.padded,
@@ -703,8 +724,8 @@ class AppTheme {
       popupMenuTheme: PopupMenuThemeData(
         color: s.surfaceContainer,
         surfaceTintColor: Colors.transparent,
-        elevation: 8,
-        shadowColor: Colors.black.withValues(alpha: 0.5),
+        elevation: 3,
+        shadowColor: Colors.black.withValues(alpha: 0.25),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.menu),
           side: dark ? BorderSide(color: c.separator, width: 0.5) : BorderSide.none,

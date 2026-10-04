@@ -304,6 +304,7 @@ class _FoodSpendCard extends StatelessWidget {
           row('Week', s.weekFood, s.weeklyBudget, s.weekPace, s.weekElapsedFraction),
           row('Month', s.monthFood, s.monthlyBudget, s.monthPace, s.monthElapsedFraction, extra: projection),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Metric(value: money.compact(s.eatenWeek), label: 'eaten this week'),

@@ -26,8 +26,10 @@ import 'package:isar_community/isar.dart';
 import 'package:trackcalfin/app/app.dart';
 import 'package:trackcalfin/app/providers.dart';
 import 'package:trackcalfin/app/router.dart';
+import 'package:trackcalfin/app/theme.dart';
 import 'package:trackcalfin/application/demo_seed.dart';
 import 'package:trackcalfin/data/ai/prompt_repository.dart';
+import 'package:trackcalfin/features/common/widgets.dart';
 import 'package:trackcalfin/platform/image_store.dart';
 import 'package:trackcalfin/platform/secret_store.dart';
 
@@ -40,11 +42,14 @@ const _dpr = 2.0;
 
 /// One screenshot: where to start, then optional steps (taps, scrolls) before capture.
 class Shot {
-  const Shot(this.name, this.route, {this.demo = true, this.steps});
+  const Shot(this.name, this.route, {this.demo = true, this.steps, this.gallery});
   final String name;
   final String route;
   final bool demo;
   final Future<void> Function(WidgetTester tester, Isar isar)? steps;
+
+  /// Renders this page of shared components on the app theme instead of a route.
+  final Widget Function()? gallery;
 }
 
 /// Drags the page's main list: the largest vertical, on-screen Scrollable. (`Scrollable.first`
@@ -151,6 +156,9 @@ final shots = <Shot>[
       await _tap(t, find.text('I cooked this'));
     },
   ),
+  // Shared components that no screen uses yet (DESIGN_SYSTEM §7), for review.
+  Shot('90-components', '/', gallery: () => const _GalleryA()),
+  Shot('91-components', '/', gallery: () => const _GalleryB()),
 ];
 
 void main() {
@@ -183,15 +191,24 @@ void main() {
         await tester.pumpWidget(
           RepaintBoundary(
             key: boundary,
-            child: ProviderScope(
-              overrides: [
-                isarProvider.overrideWithValue(isar),
-                secretStoreProvider.overrideWithValue(MemorySecretStore()),
-                imageStoreProvider.overrideWithValue(ImageStore(tmp.path)),
-                promptRepositoryProvider.overrideWithValue(PromptRepository(loadPromptAsset)),
-              ],
-              child: TrackcalfinApp(router: router),
-            ),
+            child: shot.gallery != null
+                ? MaterialApp(
+                    debugShowCheckedModeBanner: false,
+                    theme: AppTheme.build(_theme == 'dark' ? Brightness.dark : Brightness.light),
+                    home: Scaffold(
+                      appBar: TabHeader(title: shot.name.substring(3)),
+                      body: shot.gallery!(),
+                    ),
+                  )
+                : ProviderScope(
+                    overrides: [
+                      isarProvider.overrideWithValue(isar),
+                      secretStoreProvider.overrideWithValue(MemorySecretStore()),
+                      imageStoreProvider.overrideWithValue(ImageStore(tmp.path)),
+                      promptRepositoryProvider.overrideWithValue(PromptRepository(loadPromptAsset)),
+                    ],
+                    child: TrackcalfinApp(router: router),
+                  ),
           ),
         );
         await settle(tester);
@@ -260,4 +277,192 @@ String _flutterRoot() {
     dir = dir.parent;
   }
   throw StateError('Set FLUTTER_ROOT to the Flutter SDK');
+}
+
+class _GalleryA extends StatelessWidget {
+  const _GalleryA();
+
+  @override
+  Widget build(BuildContext context) {
+    void none() {}
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
+      children: [
+        AppSegmented<int>(segments: const {0: 'Pantry', 1: 'Ledger'}, selected: 0, onChanged: (_) {}),
+        SectionTitle(
+          'In the fridge',
+          trailing: TextButton(onPressed: none, child: const Text('See all')),
+        ),
+        AppGroup(
+          separatorIndent: AppGroup.indentIcon,
+          children: [
+            AppRow(
+              leading: const Icon(Icons.kitchen_outlined),
+              title: 'Red lentil & chickpea dal',
+              subtitle: '2 left · 2 d · 26 g protein',
+              trailing: FilledButton.tonal(
+                style: AppTheme.tonalButton(context, small: true),
+                onPressed: none,
+                child: const Text('Eat 1'),
+              ),
+            ),
+            AppRow(
+              leading: const Icon(Icons.restaurant_outlined),
+              title: 'Salmon traybake',
+              subtitle: 'Missing Salmon fillet',
+              chevron: true,
+              onTap: none,
+            ),
+          ],
+        ),
+        const GroupHeader('Produce', icon: Icons.eco_outlined, value: '€7.80'),
+        AppGroup(
+          children: [
+            AppRow(title: 'Daily calories', value: '2,200 kcal', valueMuted: true, onTap: none),
+            AppRow(title: 'Bananas', subtitle: '€0.75 · 2 days left', value: '3 pc', onTap: none),
+            AppRow(
+              title: 'Notifications',
+              trailing: Switch(value: true, onChanged: (_) {}),
+            ),
+            AppRow(
+              leading: const GlyphCircle(Icons.restaurant_outlined),
+              title: 'Café',
+              subtitle: '12:12',
+              value: '€7.80',
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        const AppNotice(message: 'Scans wait here until the AI can read them.', title: 'Add a Gemini API key'),
+        const SizedBox(height: 12),
+        AppNotice(
+          kind: NoticeKind.warning,
+          message: 'Items add up to €8.36 but the receipt says €10.27.',
+          actions: [TextButton(onPressed: none, child: const Text('Mark as correct'))],
+        ),
+        const SizedBox(height: 12),
+        const AppNotice(kind: NoticeKind.critical, message: "Couldn't load this.", meta: 'TimeoutException after 20 s'),
+        const SizedBox(height: 12),
+        AppNotice(kind: NoticeKind.success, message: 'Ready with swaps', onTap: none),
+      ],
+    );
+  }
+}
+
+class _GalleryB extends StatelessWidget {
+  const _GalleryB();
+
+  @override
+  Widget build(BuildContext context) {
+    void none() {}
+    final c = context.colors;
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
+      children: [
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            AppChoiceChip(label: 'All', selected: true, onSelected: (_) {}),
+            AppChoiceChip(
+              label: 'Groceries',
+              icon: Icons.shopping_basket_outlined,
+              selected: false,
+              onSelected: (_) {},
+            ),
+            AppChoiceChip(label: 'Eating out', icon: Icons.restaurant_outlined, selected: true, onSelected: (_) {}),
+            AppToggleChip(label: 'oven', selected: true, onSelected: (_) {}),
+            AppToggleChip(label: 'grill', selected: false, onSelected: (_) {}),
+            AppActionChip(label: 'Add', icon: Icons.add_rounded, onPressed: none),
+            AppActionChip(label: 'Cumin', icon: Icons.help_outline_rounded, iconColor: c.warning, onPressed: none),
+            AppInputChip(label: 'peanut', onDeleted: none),
+            const Tag('high protein'),
+          ],
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 72,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: [
+              PantryTile(name: 'Spinach', quantity: '210 g', note: 'use today', urgent: true, onTap: none),
+              const SizedBox(width: 8),
+              PantryTile(name: 'Bananas', quantity: '3 pc', note: '2 days', onTap: none),
+              const SizedBox(width: 8),
+              PantryTile(name: 'Whole milk', quantity: '150 ml', runningLow: true, onTap: none),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        // The capture sheet's grid: 20 side padding, 10 gaps, about 110 per tile.
+        GridView.count(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          crossAxisCount: 3,
+          shrinkWrap: true,
+          mainAxisSpacing: 10,
+          crossAxisSpacing: 10,
+          childAspectRatio: 110 / 104,
+          physics: const NeverScrollableScrollPhysics(),
+          children: [
+            CaptureTile(
+              icon: Icons.receipt_long_outlined,
+              title: 'Scan receipt',
+              subtitle: 'Choose photo',
+              onTap: none,
+            ),
+            CaptureTile(icon: Icons.payments_outlined, title: 'Expense', subtitle: 'Non-food too', onTap: none),
+            CaptureTile(icon: Icons.restaurant_outlined, title: 'I ate', subtitle: 'Fridge or other', onTap: none),
+          ],
+        ),
+        const SizedBox(height: 16),
+        SectionCard(
+          title: 'Food spend',
+          trailing: StatusPill(label: 'On pace', color: c.good, icon: Icons.check_rounded, ink: c.goodInk),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text.rich(valueSpan(context, '982 kcal', context.nums.large)),
+              const SizedBox(height: 8),
+              PaceBar(fraction: 0.78, marker: 0.86, color: c.good),
+              const SizedBox(height: 8),
+              PaceBar(fraction: 0.4, marker: 0.3, color: c.warning, height: 4),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  RingGauge(
+                    fraction: 0.97,
+                    color: c.good,
+                    center: Text('97', style: context.nums.large.copyWith(fontSize: 24, height: 28 / 24)),
+                  ),
+                  const SizedBox(width: 16),
+                  StatusPill(label: '12% ahead', color: c.warning, icon: Icons.north_east_rounded, ink: c.warningInk),
+                  const SizedBox(width: 12),
+                  PortionStepper(value: 3, onChanged: (_) {}, hint: 'max 3'),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        AppSkeleton(
+          child: SectionCard(
+            title: 'Today',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SkeletonLine(width: 120, style: context.nums.large),
+                const SizedBox(height: 8),
+                const SkeletonBlock(height: 6, radius: 3),
+              ],
+            ),
+          ),
+        ),
+        const EmptyState(
+          icon: Icons.inbox_outlined,
+          title: 'All clear',
+          message: 'Scans that need a look land here. Clean receipts are filed automatically.',
+        ),
+      ],
+    );
+  }
 }

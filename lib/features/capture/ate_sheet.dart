@@ -92,6 +92,7 @@ class _AteSheetState extends ConsumerState<AteSheet> {
                       '${s.perPortion.proteinG.round()} g protein',
                     ),
                     trailing: FilledButton.tonal(
+                      style: AppTheme.tonalButton(context, small: true),
                       onPressed: () async {
                         final nav = Navigator.of(context);
                         final outer = nav.context;

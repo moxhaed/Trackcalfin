@@ -67,7 +67,11 @@ class _PantryViewState extends ConsumerState<PantryView> {
         icon: Icons.kitchen_outlined,
         title: 'Your pantry is empty',
         message: 'Scan a receipt or snap your fridge and cupboard: the AI fills this in.',
-        action: FilledButton.tonal(onPressed: () => showIngredientSheet(context), child: const Text('Add an item')),
+        action: FilledButton.tonal(
+          style: AppTheme.tonalButton(context),
+          onPressed: () => showIngredientSheet(context),
+          child: const Text('Add an item'),
+        ),
       );
     }
 
@@ -97,7 +101,7 @@ class _PantryViewState extends ConsumerState<PantryView> {
             ),
           ),
         if (soon.isNotEmpty && q.isEmpty) ...[
-          const _Header('Use soon'),
+          const GroupHeader('Use soon'),
           SizedBox(
             height: 76,
             child: ListView.separated(
@@ -126,7 +130,7 @@ class _PantryViewState extends ConsumerState<PantryView> {
           ),
         ],
         if (low.isNotEmpty && q.isEmpty) ...[
-          const _Header('Running low'),
+          const GroupHeader('Running low'),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Wrap(
@@ -143,7 +147,10 @@ class _PantryViewState extends ConsumerState<PantryView> {
             ),
           ),
         ],
-        for (final c in cats) ...[_Header(c.label), for (final ing in groups[c]!) _IngredientTile(ing: ing, now: now)],
+        for (final c in cats) ...[
+          GroupHeader(c.label),
+          for (final ing in groups[c]!) _IngredientTile(ing: ing, now: now),
+        ],
         if (empty.isNotEmpty) ...[
           ListTile(
             title: Text('Out of stock (${empty.length})', style: context.text.titleSmall),
@@ -154,7 +161,7 @@ class _PantryViewState extends ConsumerState<PantryView> {
             for (final ing in empty) _IngredientTile(ing: ing, now: now),
         ],
         if (staples.isNotEmpty) ...[
-          const _Header('Staples · always assumed'),
+          const GroupHeader('Staples · always assumed'),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Wrap(
@@ -186,20 +193,6 @@ class _PantryViewState extends ConsumerState<PantryView> {
       ],
     );
   }
-}
-
-class _Header extends StatelessWidget {
-  const _Header(this.text);
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
-    child: Text(
-      text.toUpperCase(),
-      style: context.text.labelMedium?.copyWith(letterSpacing: 0.8, color: context.scheme.onSurfaceVariant),
-    ),
-  );
 }
 
 class _IngredientTile extends ConsumerWidget {
