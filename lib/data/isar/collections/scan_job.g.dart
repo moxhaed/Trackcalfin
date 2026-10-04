@@ -4282,75 +4282,97 @@ const DraftLineSchema = Schema(
       name: r'packageQty',
       type: IsarType.double,
     ),
-    r'priceConfirmed': PropertySchema(
+    r'pieceName': PropertySchema(
       id: 11,
+      name: r'pieceName',
+      type: IsarType.string,
+    ),
+    r'pieceSize': PropertySchema(
+      id: 12,
+      name: r'pieceSize',
+      type: IsarType.double,
+    ),
+    r'pieceUnit': PropertySchema(
+      id: 13,
+      name: r'pieceUnit',
+      type: IsarType.string,
+      enumMap: _DraftLinepieceUnitEnumValueMap,
+    ),
+    r'priceConfirmed': PropertySchema(
+      id: 14,
       name: r'priceConfirmed',
       type: IsarType.bool,
     ),
     r'priceLinks': PropertySchema(
-      id: 12,
+      id: 15,
       name: r'priceLinks',
       type: IsarType.objectList,
 
       target: r'WebLink',
     ),
     r'priceNote': PropertySchema(
-      id: 13,
+      id: 16,
       name: r'priceNote',
       type: IsarType.string,
     ),
     r'priceSource': PropertySchema(
-      id: 14,
+      id: 17,
       name: r'priceSource',
       type: IsarType.string,
       enumMap: _DraftLinepriceSourceEnumValueMap,
     ),
     r'priceStore': PropertySchema(
-      id: 15,
+      id: 18,
       name: r'priceStore',
       type: IsarType.string,
     ),
-    r'product': PropertySchema(id: 16, name: r'product', type: IsarType.string),
+    r'product': PropertySchema(id: 19, name: r'product', type: IsarType.string),
     r'profile': PropertySchema(
-      id: 17,
+      id: 20,
       name: r'profile',
       type: IsarType.object,
 
       target: r'NewIngredientProfile',
     ),
-    r'qty': PropertySchema(id: 18, name: r'qty', type: IsarType.double),
-    r'qtyLeft': PropertySchema(id: 19, name: r'qtyLeft', type: IsarType.double),
+    r'qty': PropertySchema(id: 21, name: r'qty', type: IsarType.double),
+    r'qtyLeft': PropertySchema(id: 22, name: r'qtyLeft', type: IsarType.double),
     r'qtySource': PropertySchema(
-      id: 20,
+      id: 23,
       name: r'qtySource',
       type: IsarType.string,
       enumMap: _DraftLineqtySourceEnumValueMap,
     ),
-    r'rawText': PropertySchema(id: 21, name: r'rawText', type: IsarType.string),
+    r'rawText': PropertySchema(id: 24, name: r'rawText', type: IsarType.string),
     r'stock': PropertySchema(
-      id: 22,
+      id: 25,
       name: r'stock',
       type: IsarType.string,
       enumMap: _DraftLinestockEnumValueMap,
     ),
     r'stockCheck': PropertySchema(
-      id: 23,
+      id: 26,
       name: r'stockCheck',
       type: IsarType.string,
       enumMap: _DraftLinestockCheckEnumValueMap,
     ),
+    r'switchFrom': PropertySchema(
+      id: 27,
+      name: r'switchFrom',
+      type: IsarType.string,
+      enumMap: _DraftLineswitchFromEnumValueMap,
+    ),
     r'thrownAway': PropertySchema(
-      id: 24,
+      id: 28,
       name: r'thrownAway',
       type: IsarType.bool,
     ),
     r'totalMinor': PropertySchema(
-      id: 25,
+      id: 29,
       name: r'totalMinor',
       type: IsarType.long,
     ),
     r'unit': PropertySchema(
-      id: 26,
+      id: 30,
       name: r'unit',
       type: IsarType.string,
       enumMap: _DraftLineunitEnumValueMap,
@@ -4379,6 +4401,18 @@ int _draftLineEstimateSize(
   }
   bytesCount += 3 + object.lineType.name.length * 3;
   bytesCount += 3 + object.name.length * 3;
+  {
+    final value = object.pieceName;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final value = object.pieceUnit;
+    if (value != null) {
+      bytesCount += 3 + value.name.length * 3;
+    }
+  }
   bytesCount += 3 + object.priceLinks.length * 3;
   {
     final offsets = allOffsets[WebLink]!;
@@ -4437,6 +4471,12 @@ int _draftLineEstimateSize(
       bytesCount += 3 + value.name.length * 3;
     }
   }
+  {
+    final value = object.switchFrom;
+    if (value != null) {
+      bytesCount += 3 + value.name.length * 3;
+    }
+  }
   bytesCount += 3 + object.unit.name.length * 3;
   return bytesCount;
 }
@@ -4458,32 +4498,36 @@ void _draftLineSerialize(
   writer.writeString(offsets[8], object.name);
   writer.writeLong(offsets[9], object.packagePriceMinor);
   writer.writeDouble(offsets[10], object.packageQty);
-  writer.writeBool(offsets[11], object.priceConfirmed);
+  writer.writeString(offsets[11], object.pieceName);
+  writer.writeDouble(offsets[12], object.pieceSize);
+  writer.writeString(offsets[13], object.pieceUnit?.name);
+  writer.writeBool(offsets[14], object.priceConfirmed);
   writer.writeObjectList<WebLink>(
-    offsets[12],
+    offsets[15],
     allOffsets,
     WebLinkSchema.serialize,
     object.priceLinks,
   );
-  writer.writeString(offsets[13], object.priceNote);
-  writer.writeString(offsets[14], object.priceSource?.name);
-  writer.writeString(offsets[15], object.priceStore);
-  writer.writeString(offsets[16], object.product);
+  writer.writeString(offsets[16], object.priceNote);
+  writer.writeString(offsets[17], object.priceSource?.name);
+  writer.writeString(offsets[18], object.priceStore);
+  writer.writeString(offsets[19], object.product);
   writer.writeObject<NewIngredientProfile>(
-    offsets[17],
+    offsets[20],
     allOffsets,
     NewIngredientProfileSchema.serialize,
     object.profile,
   );
-  writer.writeDouble(offsets[18], object.qty);
-  writer.writeDouble(offsets[19], object.qtyLeft);
-  writer.writeString(offsets[20], object.qtySource.name);
-  writer.writeString(offsets[21], object.rawText);
-  writer.writeString(offsets[22], object.stock?.name);
-  writer.writeString(offsets[23], object.stockCheck?.name);
-  writer.writeBool(offsets[24], object.thrownAway);
-  writer.writeLong(offsets[25], object.totalMinor);
-  writer.writeString(offsets[26], object.unit.name);
+  writer.writeDouble(offsets[21], object.qty);
+  writer.writeDouble(offsets[22], object.qtyLeft);
+  writer.writeString(offsets[23], object.qtySource.name);
+  writer.writeString(offsets[24], object.rawText);
+  writer.writeString(offsets[25], object.stock?.name);
+  writer.writeString(offsets[26], object.stockCheck?.name);
+  writer.writeString(offsets[27], object.switchFrom?.name);
+  writer.writeBool(offsets[28], object.thrownAway);
+  writer.writeLong(offsets[29], object.totalMinor);
+  writer.writeString(offsets[30], object.unit.name);
 }
 
 DraftLine _draftLineDeserialize(
@@ -4510,39 +4554,45 @@ DraftLine _draftLineDeserialize(
   object.name = reader.readString(offsets[8]);
   object.packagePriceMinor = reader.readLongOrNull(offsets[9]);
   object.packageQty = reader.readDoubleOrNull(offsets[10]);
-  object.priceConfirmed = reader.readBool(offsets[11]);
+  object.pieceName = reader.readStringOrNull(offsets[11]);
+  object.pieceSize = reader.readDoubleOrNull(offsets[12]);
+  object.pieceUnit =
+      _DraftLinepieceUnitValueEnumMap[reader.readStringOrNull(offsets[13])];
+  object.priceConfirmed = reader.readBool(offsets[14]);
   object.priceLinks =
       reader.readObjectList<WebLink>(
-        offsets[12],
+        offsets[15],
         WebLinkSchema.deserialize,
         allOffsets,
         WebLink(),
       ) ??
       [];
-  object.priceNote = reader.readStringOrNull(offsets[13]);
+  object.priceNote = reader.readStringOrNull(offsets[16]);
   object.priceSource =
-      _DraftLinepriceSourceValueEnumMap[reader.readStringOrNull(offsets[14])];
-  object.priceStore = reader.readStringOrNull(offsets[15]);
-  object.product = reader.readStringOrNull(offsets[16]);
+      _DraftLinepriceSourceValueEnumMap[reader.readStringOrNull(offsets[17])];
+  object.priceStore = reader.readStringOrNull(offsets[18]);
+  object.product = reader.readStringOrNull(offsets[19]);
   object.profile = reader.readObjectOrNull<NewIngredientProfile>(
-    offsets[17],
+    offsets[20],
     NewIngredientProfileSchema.deserialize,
     allOffsets,
   );
-  object.qty = reader.readDoubleOrNull(offsets[18]);
-  object.qtyLeft = reader.readDoubleOrNull(offsets[19]);
+  object.qty = reader.readDoubleOrNull(offsets[21]);
+  object.qtyLeft = reader.readDoubleOrNull(offsets[22]);
   object.qtySource =
-      _DraftLineqtySourceValueEnumMap[reader.readStringOrNull(offsets[20])] ??
+      _DraftLineqtySourceValueEnumMap[reader.readStringOrNull(offsets[23])] ??
       QtySource.printed;
-  object.rawText = reader.readString(offsets[21]);
+  object.rawText = reader.readString(offsets[24]);
   object.stock =
-      _DraftLinestockValueEnumMap[reader.readStringOrNull(offsets[22])];
+      _DraftLinestockValueEnumMap[reader.readStringOrNull(offsets[25])];
   object.stockCheck =
-      _DraftLinestockCheckValueEnumMap[reader.readStringOrNull(offsets[23])];
-  object.thrownAway = reader.readBool(offsets[24]);
-  object.totalMinor = reader.readLong(offsets[25]);
+      _DraftLinestockCheckValueEnumMap[reader.readStringOrNull(offsets[26])];
+  object.switchFrom =
+      _DraftLineswitchFromValueEnumMap[reader.readStringOrNull(offsets[27])];
+  object.thrownAway = reader.readBool(offsets[28]);
+  object.totalMinor = reader.readLong(offsets[29]);
   object.unit =
-      _DraftLineunitValueEnumMap[reader.readStringOrNull(offsets[26])] ??
+      _DraftLineunitValueEnumMap[reader.readStringOrNull(offsets[30])] ??
       BaseUnit.g;
   return object;
 }
@@ -4585,8 +4635,15 @@ P _draftLineDeserializeProp<P>(
     case 10:
       return (reader.readDoubleOrNull(offset)) as P;
     case 11:
-      return (reader.readBool(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 12:
+      return (reader.readDoubleOrNull(offset)) as P;
+    case 13:
+      return (_DraftLinepieceUnitValueEnumMap[reader.readStringOrNull(offset)])
+          as P;
+    case 14:
+      return (reader.readBool(offset)) as P;
+    case 15:
       return (reader.readObjectList<WebLink>(
                 offset,
                 WebLinkSchema.deserialize,
@@ -4595,47 +4652,50 @@ P _draftLineDeserializeProp<P>(
               ) ??
               [])
           as P;
-    case 13:
+    case 16:
       return (reader.readStringOrNull(offset)) as P;
-    case 14:
+    case 17:
       return (_DraftLinepriceSourceValueEnumMap[reader.readStringOrNull(
             offset,
           )])
           as P;
-    case 15:
+    case 18:
       return (reader.readStringOrNull(offset)) as P;
-    case 16:
+    case 19:
       return (reader.readStringOrNull(offset)) as P;
-    case 17:
+    case 20:
       return (reader.readObjectOrNull<NewIngredientProfile>(
             offset,
             NewIngredientProfileSchema.deserialize,
             allOffsets,
           ))
           as P;
-    case 18:
+    case 21:
       return (reader.readDoubleOrNull(offset)) as P;
-    case 19:
+    case 22:
       return (reader.readDoubleOrNull(offset)) as P;
-    case 20:
+    case 23:
       return (_DraftLineqtySourceValueEnumMap[reader.readStringOrNull(
                 offset,
               )] ??
               QtySource.printed)
           as P;
-    case 21:
+    case 24:
       return (reader.readString(offset)) as P;
-    case 22:
+    case 25:
       return (_DraftLinestockValueEnumMap[reader.readStringOrNull(offset)])
           as P;
-    case 23:
+    case 26:
       return (_DraftLinestockCheckValueEnumMap[reader.readStringOrNull(offset)])
           as P;
-    case 24:
+    case 27:
+      return (_DraftLineswitchFromValueEnumMap[reader.readStringOrNull(offset)])
+          as P;
+    case 28:
       return (reader.readBool(offset)) as P;
-    case 25:
+    case 29:
       return (reader.readLong(offset)) as P;
-    case 26:
+    case 30:
       return (_DraftLineunitValueEnumMap[reader.readStringOrNull(offset)] ??
               BaseUnit.g)
           as P;
@@ -4682,6 +4742,16 @@ const _DraftLinelineTypeValueEnumMap = {
   r'deposit': LineType.deposit,
   r'fee': LineType.fee,
 };
+const _DraftLinepieceUnitEnumValueMap = {
+  r'g': r'g',
+  r'ml': r'ml',
+  r'pc': r'pc',
+};
+const _DraftLinepieceUnitValueEnumMap = {
+  r'g': BaseUnit.g,
+  r'ml': BaseUnit.ml,
+  r'pc': BaseUnit.pc,
+};
 const _DraftLinepriceSourceEnumValueMap = {
   r'estimate': r'estimate',
   r'web': r'web',
@@ -4723,6 +4793,16 @@ const _DraftLinestockCheckValueEnumMap = {
   r'counted': StockCheck.counted,
   r'usedUp': StockCheck.usedUp,
   r'whatsLeft': StockCheck.whatsLeft,
+};
+const _DraftLineswitchFromEnumValueMap = {
+  r'g': r'g',
+  r'ml': r'ml',
+  r'pc': r'pc',
+};
+const _DraftLineswitchFromValueEnumMap = {
+  r'g': BaseUnit.g,
+  r'ml': BaseUnit.ml,
+  r'pc': BaseUnit.pc,
 };
 const _DraftLineunitEnumValueMap = {r'g': r'g', r'ml': r'ml', r'pc': r'pc'};
 const _DraftLineunitValueEnumMap = {
@@ -5805,6 +5885,428 @@ extension DraftLineQueryFilter
 
           epsilon: epsilon,
         ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> pieceNameIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'pieceName'),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  pieceNameIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'pieceName'),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> pieceNameEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'pieceName',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  pieceNameGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'pieceName',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> pieceNameLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'pieceName',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> pieceNameBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'pieceName',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> pieceNameStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'pieceName',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> pieceNameEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'pieceName',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> pieceNameContains(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'pieceName',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> pieceNameMatches(
+    String pattern, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'pieceName',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> pieceNameIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'pieceName', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  pieceNameIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'pieceName', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> pieceSizeIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'pieceSize'),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  pieceSizeIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'pieceSize'),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> pieceSizeEqualTo(
+    double? value, {
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'pieceSize',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  pieceSizeGreaterThan(
+    double? value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'pieceSize',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> pieceSizeLessThan(
+    double? value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'pieceSize',
+          value: value,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> pieceSizeBetween(
+    double? lower,
+    double? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'pieceSize',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+
+          epsilon: epsilon,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> pieceUnitIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'pieceUnit'),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  pieceUnitIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'pieceUnit'),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> pieceUnitEqualTo(
+    BaseUnit? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'pieceUnit',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  pieceUnitGreaterThan(
+    BaseUnit? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'pieceUnit',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> pieceUnitLessThan(
+    BaseUnit? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'pieceUnit',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> pieceUnitBetween(
+    BaseUnit? lower,
+    BaseUnit? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'pieceUnit',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> pieceUnitStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'pieceUnit',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> pieceUnitEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'pieceUnit',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> pieceUnitContains(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'pieceUnit',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> pieceUnitMatches(
+    String pattern, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'pieceUnit',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> pieceUnitIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'pieceUnit', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  pieceUnitIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'pieceUnit', value: ''),
       );
     });
   }
@@ -7345,6 +7847,170 @@ extension DraftLineQueryFilter
     });
   }
 
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> switchFromIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'switchFrom'),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  switchFromIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'switchFrom'),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> switchFromEqualTo(
+    BaseUnit? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'switchFrom',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  switchFromGreaterThan(
+    BaseUnit? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'switchFrom',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> switchFromLessThan(
+    BaseUnit? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'switchFrom',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> switchFromBetween(
+    BaseUnit? lower,
+    BaseUnit? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'switchFrom',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  switchFromStartsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'switchFrom',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> switchFromEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'switchFrom',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> switchFromContains(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'switchFrom',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> switchFromMatches(
+    String pattern, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'switchFrom',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  switchFromIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'switchFrom', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition>
+  switchFromIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'switchFrom', value: ''),
+      );
+    });
+  }
+
   QueryBuilder<DraftLine, DraftLine, QAfterFilterCondition> thrownAwayEqualTo(
     bool value,
   ) {
@@ -7973,13 +8639,18 @@ const NewIngredientProfileSchema = Schema(
 
       target: r'Nutrition',
     ),
-    r'shelfLifeDays': PropertySchema(
+    r'pieceName': PropertySchema(
       id: 5,
+      name: r'pieceName',
+      type: IsarType.string,
+    ),
+    r'shelfLifeDays': PropertySchema(
+      id: 6,
       name: r'shelfLifeDays',
       type: IsarType.long,
     ),
     r'unit': PropertySchema(
-      id: 6,
+      id: 7,
       name: r'unit',
       type: IsarType.string,
       enumMap: _NewIngredientProfileunitEnumValueMap,
@@ -8007,6 +8678,12 @@ int _newIngredientProfileEstimateSize(
         allOffsets[Nutrition]!,
         allOffsets,
       );
+  {
+    final value = object.pieceName;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount += 3 + object.unit.name.length * 3;
   return bytesCount;
 }
@@ -8027,8 +8704,9 @@ void _newIngredientProfileSerialize(
     NutritionSchema.serialize,
     object.per100,
   );
-  writer.writeLong(offsets[5], object.shelfLifeDays);
-  writer.writeString(offsets[6], object.unit.name);
+  writer.writeString(offsets[5], object.pieceName);
+  writer.writeLong(offsets[6], object.shelfLifeDays);
+  writer.writeString(offsets[7], object.unit.name);
 }
 
 NewIngredientProfile _newIngredientProfileDeserialize(
@@ -8053,10 +8731,11 @@ NewIngredientProfile _newIngredientProfileDeserialize(
         allOffsets,
       ) ??
       Nutrition();
-  object.shelfLifeDays = reader.readLong(offsets[5]);
+  object.pieceName = reader.readStringOrNull(offsets[5]);
+  object.shelfLifeDays = reader.readLong(offsets[6]);
   object.unit =
       _NewIngredientProfileunitValueEnumMap[reader.readStringOrNull(
-        offsets[6],
+        offsets[7],
       )] ??
       BaseUnit.g;
   return object;
@@ -8090,8 +8769,10 @@ P _newIngredientProfileDeserializeProp<P>(
               Nutrition())
           as P;
     case 5:
-      return (reader.readLong(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 6:
+      return (reader.readLong(offset)) as P;
+    case 7:
       return (_NewIngredientProfileunitValueEnumMap[reader.readStringOrNull(
                 offset,
               )] ??
@@ -8742,6 +9423,213 @@ extension NewIngredientProfileQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.greaterThan(property: r'name', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<
+    NewIngredientProfile,
+    NewIngredientProfile,
+    QAfterFilterCondition
+  >
+  pieceNameIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'pieceName'),
+      );
+    });
+  }
+
+  QueryBuilder<
+    NewIngredientProfile,
+    NewIngredientProfile,
+    QAfterFilterCondition
+  >
+  pieceNameIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'pieceName'),
+      );
+    });
+  }
+
+  QueryBuilder<
+    NewIngredientProfile,
+    NewIngredientProfile,
+    QAfterFilterCondition
+  >
+  pieceNameEqualTo(String? value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'pieceName',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<
+    NewIngredientProfile,
+    NewIngredientProfile,
+    QAfterFilterCondition
+  >
+  pieceNameGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'pieceName',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<
+    NewIngredientProfile,
+    NewIngredientProfile,
+    QAfterFilterCondition
+  >
+  pieceNameLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'pieceName',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<
+    NewIngredientProfile,
+    NewIngredientProfile,
+    QAfterFilterCondition
+  >
+  pieceNameBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'pieceName',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<
+    NewIngredientProfile,
+    NewIngredientProfile,
+    QAfterFilterCondition
+  >
+  pieceNameStartsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'pieceName',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<
+    NewIngredientProfile,
+    NewIngredientProfile,
+    QAfterFilterCondition
+  >
+  pieceNameEndsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'pieceName',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<
+    NewIngredientProfile,
+    NewIngredientProfile,
+    QAfterFilterCondition
+  >
+  pieceNameContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'pieceName',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<
+    NewIngredientProfile,
+    NewIngredientProfile,
+    QAfterFilterCondition
+  >
+  pieceNameMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'pieceName',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<
+    NewIngredientProfile,
+    NewIngredientProfile,
+    QAfterFilterCondition
+  >
+  pieceNameIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'pieceName', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<
+    NewIngredientProfile,
+    NewIngredientProfile,
+    QAfterFilterCondition
+  >
+  pieceNameIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'pieceName', value: ''),
       );
     });
   }

@@ -283,4 +283,90 @@ void main() {
     );
     expect(left.single.warning, "It isn't in the app any more");
   });
+
+  group('amounts as said (Prompt G v3, docs/07)', () {
+    late Ingredient soy;
+    late Ingredient milk;
+
+    QuickLogWorld kitchen() => QuickLogWorld(
+      ingredients: [cola, soy, milk],
+      fridge: const [],
+      recipes: const [],
+      logs: const [],
+      profile: UserProfile(),
+    );
+
+    QuickLog said(List<Map<String, dynamic>> actions) {
+      final r = QuickLog.parse(
+        jsonDecode(jsonEncode(out(actions))) as Map<String, dynamic>,
+        ctx: QuickLogContext(
+          now: now,
+          pantry: const {'cola_zero': BaseUnit.pc, 'soy_sauce': BaseUnit.ml, 'whole_milk': BaseUnit.ml},
+          fridge: const {},
+          recipes: const {},
+        ),
+      );
+      expect(r.ok, isTrue, reason: r.errors.join('\n'));
+      return r.value!;
+    }
+
+    setUp(() {
+      soy = ingredient('soy_sauce', qty: 250, unit: BaseUnit.ml, cost: 1.2, kcal: 53, protein: 8)
+        ..category = IngredientCategory.spicesCondiments
+        ..densityGPerMl = 1.2
+        ..nutritionSource = DataSource.aiEstimate;
+      milk = ingredient('whole_milk', qty: 1000, unit: BaseUnit.ml, cost: 0.11, kcal: 64)
+        ..densityGPerMl = 1.03
+        ..nutritionSource = DataSource.aiEstimate;
+    });
+
+    test('"used a tablespoon of soy sauce, drank a glass of coke zero": Dart converts the measures', () {
+      final steps = plan(
+        said([
+          action('eat', {'source': 'pantry', 'key': 'soy_sauce', 'qty': 1, 'unit': 'tbsp'}),
+          action('eat', {'source': 'pantry', 'key': 'cola_zero', 'qty': 1, 'unit': 'glass'}),
+        ]),
+        kitchen(),
+      );
+      expect(soy.qtyOnHand, 235);
+      expect(steps[0].title, 'Ate soy sauce · 1 tbsp · 15 ml');
+      expect(steps[0].detail, startsWith('8 kcal'));
+      expect(cola.qtyOnHand, closeTo(5 - 250 / 340, 1e-9), reason: 'a glass from 340 g cans');
+    });
+
+    test('pieces of an item counted in pieces say their name', () {
+      cola.pieceName = 'can';
+      final steps = plan(
+        said([
+          action('eat', {'source': 'pantry', 'key': 'cola_zero', 'qty': 2, 'unit': 'pc'}),
+        ]),
+        kitchen(),
+      );
+      expect(steps.single.title, 'Drank cola zero · 2 cans');
+      expect(cola.qtyOnHand, 3);
+    });
+
+    test('"bought a six-pack of milk bottles" switches milk kept in ml to bottles, like a scan', () {
+      final w = kitchen();
+      final steps = plan(
+        said([
+          action('buy', {
+            'key': 'whole_milk',
+            'qty': 6,
+            'unit': 'pc',
+            'piece_name': 'bottle',
+            'piece_size': 500,
+            'piece_unit': 'ml',
+            'paid_minor': 594,
+          }),
+          action('eat', {'source': 'pantry', 'key': 'whole_milk', 'qty': 1, 'unit': 'glass'}),
+        ]),
+        w,
+      );
+      expect((milk.baseUnit, milk.pieceName), (BaseUnit.pc, 'bottle'));
+      expect(milk.gramsPerPiece, closeTo(515, 1e-9));
+      expect(milk.qtyOnHand, closeTo(2 + 6 - 0.5, 1e-9), reason: '1000 ml is 2 bottles; a glass is half of one');
+      expect(steps.first.title, 'Bought whole milk · 6 bottles');
+    });
+  });
 }

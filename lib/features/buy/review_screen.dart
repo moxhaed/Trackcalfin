@@ -305,6 +305,8 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
     ];
     final found = prices.where((l) => l.priceSource == PriceSource.web).length;
     final searched = pantry && job.lines.any((l) => l.include && l.priceSource == PriceSource.web);
+    // Not looked up yet, and nothing went wrong looking: offer the Google search.
+    final lookUp = pantry && !searched && job.priceLookupError == null && prices.isNotEmpty;
 
     Widget line(int i) => _LineEditor(
       key: ObjectKey(job.lines[i]),
@@ -451,15 +453,23 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                 ),
               ],
             ),
-          if (pantry && prices.length > 1)
+          if (pantry && (prices.length > 1 || (prices.isNotEmpty && lookUp)))
             _Banner(
               icon: Icons.sell_outlined,
               color: context.colors.warning,
               text: found == 0
-                  ? '${prices.length} prices are estimates. Are they about right?'
+                  ? (prices.length == 1
+                        ? 'This price is an estimate. Is it about right?'
+                        : '${prices.length} prices are estimates. Are they about right?')
                   : 'Google found what ${found == prices.length ? 'these' : '$found of these'} cost in the shops'
                         '${found < prices.length ? ', the rest are estimates' : ''}. Are the prices right?',
               actions: [
+                // One request, only when asked: the photo itself was the only one (docs/07 §7.5).
+                if (lookUp)
+                  TextButton(
+                    onPressed: _pricesBusy ? null : _retryPrices,
+                    child: Text(_pricesBusy ? 'Looking up…' : 'Look up on Google'),
+                  ),
                 TextButton(
                   onPressed: () => setState(() {
                     for (final l in prices) {
@@ -679,25 +689,24 @@ class _LineEditorState extends ConsumerState<_LineEditor> {
   /// "Same as …? Yes": the line becomes that item, in its unit, and asks the pantry question anew.
   void _merge(DraftLine l, Ingredient merge) {
     setState(() {
-      if (l.unit != merge.baseUnit) {
-        // Convert into the existing item's unit; unknown if impossible.
-        if (l.qty != null) {
-          final converted = UnitConverter.toBase(l.qty!, l.unit, merge);
-          l.qty = converted;
-          if (converted == null) l.qtySource = QtySource.unknown;
-          _qty.text = converted == null ? '' : _fmt(converted);
-        }
-        if (l.packageQty != null) {
-          l.packageQty = UnitConverter.toBase(l.packageQty!, l.unit, merge);
-          if (l.packageQty == null) l.packagePriceMinor = null;
-        }
+      // Pieces switch an item kept in g or ml to pieces; anything else converts into the
+      // existing item's unit (unknown if impossible).
+      final p = l.profile;
+      if (l.unit == BaseUnit.pc && l.pieceSize == null && p?.gramsPerPiece != null) {
+        l
+          ..pieceSize = p!.gramsPerPiece
+          ..pieceUnit = BaseUnit.g;
       }
+      l.pieceName ??= p?.pieceName;
+      final unit = l.unit;
+      ReceiptValidator.fitUnit(l, merge);
+      if (l.unit != unit && l.qty == null) l.qtySource = QtySource.unknown;
+      _qty.text = l.qty == null ? '' : _fmt(l.qty!);
       l.matchedIngredientId = merge.id;
       l.ingredientKey = merge.key;
       l.isNewIngredient = false;
       l.mergeCandidateId = null;
       l.profile = null;
-      l.unit = merge.baseUnit;
       ReceiptValidator.checkStock(
         l,
         kind: widget.job.kind,
@@ -774,15 +783,19 @@ class _LineEditorState extends ConsumerState<_LineEditor> {
                           ),
                         Text(
                           [
-                            if (l.qty != null) '${l.qtySource == QtySource.inferred ? '~' : ''}${qty(l.qty!, l.unit)}',
+                            if (l.qty != null)
+                              '${l.qtySource == QtySource.inferred ? '~' : ''}${qty(l.qty!, l.unit, piece: l.pieceName)}',
                             if (l.isNewIngredient && l.ingredientKey != null) 'new item',
+                            // The item was kept in g or ml: filing counts it in pieces from now on.
+                            if (l.switchFrom != null && !l.isNewIngredient)
+                              'counted in ${UnitConverter.plural(l.pieceName ?? 'piece')} from now on',
                             if (l.ingredientKey == null && l.category != SpendCategory.groceries) l.category.label,
                             if (l.confidence == Confidence.low) 'hard to read',
                             if (_pantry && current != null && l.stockCheck == null)
-                              'was ${qty(current.qtyOnHand, current.baseUnit)}',
+                              'was ${qtyOf(current.qtyOnHand, current)}',
                             if (priced && !l.priceToConfirm)
                               '${l.priceConfirmed ? '' : '~'}${widget.homeMoney.format(l.packagePriceMinor!)} '
-                                  'for ${qty(l.packageQty!, l.unit)}',
+                                  'for ${qty(l.packageQty!, l.unit, piece: l.pieceName)}',
                             if (outOfPantry) 'not added to the pantry',
                           ].join(' · '),
                           style: context.text.bodySmall,

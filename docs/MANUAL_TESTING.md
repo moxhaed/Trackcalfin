@@ -72,17 +72,21 @@ When something goes wrong, note the **test ID** (e.g. `R3`), what you expected, 
 - [ ] **P4 · Same one or extra?** Photograph something that's already in the pantry (⊕ → **Pantry**).
   *Expect:* "Already in your pantry: 500 g" with **Same one** and **Extra · 1 kg in all**. Pick **Extra** and tap **Update pantry**: the quantity adds up. With several such items, **All the same / All extra** sets them at once.
 - [ ] **P5 · Product and Google price.** Photograph two or three items you haven't bought with a receipt yet (⊕ → **Pantry**).
-  *Expect:* each shows the exact product with brand and pack size ("Barilla Spaghetti n.5, 500 g") and asks "Google found €1.99 for 500 g at REWE. Is that the price?", with a link to the shop's page. Google's search chips show above the items, and tapping one opens Google in the browser. Check one price against the shop: **Yes** keeps it; **Change** lets you type the price and pack size. With several, **All correct** confirms them at once. After **Update pantry**, a confirmed price shows without "~" in the pantry, and its sheet says "Avg cost …". An item you didn't answer shows with "~", and its sheet says "About €3.98 per kg (shop price estimate)" until a receipt for it replaces that.
-- [ ] **P5b · Lookup off or failing.** Turn off **Settings → AI → Look up prices on Google** and take another pantry photo.
+  *Expect:* each shows the exact product with brand and pack size ("Barilla Spaghetti n.5, 500 g"). The prices are the photo's estimates, with **Look up on Google** (nothing was searched yet: the photo was one request). Tap it: each asks "Google found €1.99 for 500 g at REWE. Is that the price?", with a link to the shop's page. Google's search chips show above the items, and tapping one opens Google in the browser. Check one price against the shop: **Yes** keeps it; **Change** lets you type the price and pack size. With several, **All correct** confirms them at once. After **Update pantry**, a confirmed price shows without "~" in the pantry, and its sheet says "Avg cost …". An item you didn't answer shows with "~", and its sheet says "About €3.98 per kg (shop price estimate)" until a receipt for it replaces that.
+- [ ] **P5b · Lookup off or failing.** Turn off **Settings → AI → Look up prices after every pantry photo** (off by default) and take another pantry photo.
   *Expect:* the prices are the photo's estimates ("Estimated at … Is that about what it costs?") and nothing is searched. Turn it back on, put the phone in airplane mode right after the photo is read (or use a key without Google Search): the review says "Couldn't look prices up on Google (…)" with **Try again**.
 - [ ] **P6 · Receipt after a photo.** Photograph a few groceries, then scan a receipt from before the photo that has one of them.
   *Expect:* "You counted it today, after this purchase… Is this already part of it?" with **Already counted** selected. Filing it adds the money but not the item a second time.
 - [ ] **P7 · Salt and oil count.** Open a recipe that uses salt or oil you haven't scanned.
   *Expect:* the row says it's not in the pantry (or "have 0 g"), and today's pick doesn't use it. After you scan it, the recipe's cost includes it. If a pantry item has no price yet, the recipe says so under the cost.
 - [ ] **P8 · Cans are pieces.** Scan a receipt with a six-pack of cans (or photograph the cans).
-  *Expect:* the line says "6 pc", not "1.98 l". A big 1.5 l bottle stays in ml, and so does a drink that was already in your pantry in ml.
+  *Expect:* the line says "6 cans", not "1.98 l", and the pantry says "6 cans". A big 1.5 l bottle on its own (or a 6×1.5 l pack of water) stays in ml.
+- [ ] **P8b · A drink stuck in litres fixes itself.** Take a drink the pantry still shows in ml or l (from before this version) and scan a receipt or a photo with cans of it.
+  *Expect:* the review line says "6 cans · counted in cans from now on". After filing, the pantry shows it in cans: what was there is converted (660 ml is 2 cans) and the 6 new ones are added. Its price per can is about the pack price divided by 6. **I ate** offers **Eat 1 can**.
+- [ ] **P8c · Tortillas and yogurt packs.** Scan a receipt with a pack of tortillas or wraps ("8 St." or "6ST 370G") and a multipack of yogurts ("4x125g").
+  *Expect:* "8 tortillas" and "4 cups", not grams. A single 500 g tub of yogurt stays in grams.
 - [ ] **P9 · Switch an item to pieces.** Open a drink that is in ml, tap the pencil, pick **pc** and tap **Save**.
-  *Expect:* "How much does one weigh?". Type 340: the quantity turns into cans (1.98 l → 6). After **Save** the price per can is about the pack price divided by 6, not a fraction of a cent.
+  *Expect:* "How much does one weigh?". Type 340 and "can" under **One piece is a…**: the quantity turns into cans (1.98 l → 6). After **Save** the pantry says "6 cans" and the price per can is about the pack price divided by 6, not a fraction of a cent.
 - [ ] **U1 · Upgrade from an install with staples.** Open the pantry on a phone that ran the previous version.
   *Expect:* your old staples (salt, oil, spices) are regular items. The ones you never bought are under **Out of stock**. The ones that showed stock appear in **Quick check**, because their amounts were never deducted.
 
@@ -99,6 +103,10 @@ When something goes wrong, note the **test ID** (e.g. `R3`), what you expected, 
 - [ ] **S5 · A question.** With two batches of the same meal in the fridge, say "Ate the [meal]".
   *Expect:* it asks which one. **Answer**, add "the one from Monday", **Next**.
 - [ ] **S6 · Shortcut.** Long-press the app icon. *Expect:* **Say it** opens the same sheet.
+- [ ] **S7 · Spoons.** With soy sauce (or oil) in the pantry in ml, say "used a tablespoon of soy sauce and a drizzle of oil".
+  *Expect:* "Ate Soy sauce · 1 tbsp · 15 ml" and "… Olive oil · 1 tbsp · 15 ml". **Log it**: 15 ml less of each. "A teaspoon of sugar" takes about 4 g off sugar kept in grams, and "a glass of coke" takes ¾ of a 330 ml can.
+- [ ] **S8 · A can of a drink still in ml.** Say "drank a can of [drink]" for a drink the pantry keeps in ml.
+  *Expect:* 330 ml comes off, with one request (no "trying again"). "Bought a six-pack of [drink]" switches it to cans, like a receipt does.
 
 ## 3 · Foreign-currency receipts (new)
 
@@ -136,7 +144,8 @@ When something goes wrong, note the **test ID** (e.g. `R3`), what you expected, 
 - [ ] **C8 · "I'm out".** On a recipe, long-press an ingredient → **I'm out of …**.
   *Expect:* "… marked as out" with **Undo**, and the pantry shows it as out. If it was in today's pick, the pick refreshes.
 - [ ] **C8b · Not out after all.** Mark a priced item out in its sheet (**I'm out**), let the message go, and come back later (the next day is best). Search for it in the pantry. *Expect:* it shows under **Out of stock**, newest first. Open it: "Marked out on … · 450 g counted as eaten, €…" with **Undo**. Tap it: the amount is back with the same days left as before, the Food card's Eaten no longer counts it, and the message offers **Undo**. If you set the amount back by hand first, the line offers **Not eaten** instead and leaves the amount as you set it.
-- [ ] **C9 · Eat from the pantry.** ⊕ → **I ate** → From the pantry → **Eat 1** on a piece (banana, can). *Expect:* "Ate … · 1 pc" with calories and Undo; the pantry has one less. For grams or ml it asks how much. The Undo bar goes away by itself after a few seconds.
+- [ ] **C9 · Eat from the pantry.** ⊕ → **I ate** → From the pantry → **Eat 1 can** (or **Eat 1 tortilla**) on a piece. *Expect:* "Drank … · 1 can" with calories and Undo; the pantry has one less. For grams or ml it asks how much. The Undo bar goes away by itself after a few seconds.
+- [ ] **C9b · Spoons in the Ate dialog.** **Eat…** on soy sauce, oil, honey or sugar. *Expect:* **1 tsp**, **1 tbsp**, **2 tbsp** (sugar and salt also **1 pinch**); milk and juice offer **1 glass**; nuts **1 handful**; rice **0.5 cup**; meat only grams. **1 tbsp** of soy sauce takes 15 ml off.
 
 ## 4b · Macros on pantry items (new)
 

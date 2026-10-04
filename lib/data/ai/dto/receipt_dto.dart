@@ -9,6 +9,7 @@ class NewIngredientDto {
     required this.category,
     required this.unit,
     this.gramsPerPiece,
+    this.pieceName,
     this.densityGPerMl,
     required this.per100,
     required this.shelfLifeDays,
@@ -17,16 +18,26 @@ class NewIngredientDto {
   final IngredientCategory category;
   final BaseUnit unit;
   final double? gramsPerPiece;
+  final String? pieceName;
   final double? densityGPerMl;
   final Nutrition per100;
   final int shelfLifeDays;
 
-  /// The `new_ingredient` object of Prompts A and G, at [path].
-  static NewIngredientDto parse(JsonReader j, Map<String, dynamic> p, String path) {
-    final per = j.object(p, 'per_100', path);
-    final unit = j.enumOf(p, 'unit', path, EnumCodec.unit);
-    final gpp = j.number(p, 'grams_per_piece', path, nullable: true);
-    if (unit == BaseUnit.pc && gpp == null) j.error('$path.grams_per_piece', 'is required when unit is "pc"');
+  /// The `new_ingredient` object of Prompts A and G, at [path]. Since A v5 and G v3 the unit and
+  /// the piece come from the line ([unit], [piece]); older answers carry `unit` and
+  /// `grams_per_piece` in the object itself, which count only where the line has none.
+  static NewIngredientDto parse(JsonReader j, Map<String, dynamic> p, String path, {BaseUnit? unit, PieceDto? piece}) {
+    // Missing details fall back (no macros: estimated later in a batch; a week's shelf life)
+    // instead of costing a second request. Wrong values are still errors.
+    final per = j.object(p, 'per_100', path, nullable: true);
+    final own = j.enumOf(p, 'unit', path, EnumCodec.unit, nullable: unit != null);
+    final u = unit ?? own ?? BaseUnit.g;
+    final density = j.number(p, 'density_g_per_ml', path, nullable: true);
+    if (density != null && (density < 0.1 || density > 3)) j.error('$path.density_g_per_ml', 'must be 0.1 to 3');
+    final gpp = piece?.grams(density) ?? j.number(p, 'grams_per_piece', path, nullable: true);
+    if (u == BaseUnit.pc && gpp == null) {
+      j.error(piece == null ? '$path.grams_per_piece' : '${piece.path}.piece_size', 'is required when unit is "pc"');
+    }
     final nutrition = per == null
         ? Nutrition()
         : Nutrition(
@@ -37,14 +48,51 @@ class NewIngredientDto {
             fiberG: j.number(per, 'fiber_g', '$path.per_100', nullable: true) ?? 0,
           );
     return NewIngredientDto(
-      name: j.str(p, 'name', path) ?? '',
-      category: j.enumOf(p, 'ingredient_category', path, EnumCodec.ingredientCategory) ?? IngredientCategory.other,
-      unit: unit ?? BaseUnit.g,
-      gramsPerPiece: gpp,
-      densityGPerMl: j.number(p, 'density_g_per_ml', path, nullable: true),
+      name: j.str(p, 'name', path, nullable: true) ?? '',
+      category:
+          j.enumOf(p, 'ingredient_category', path, EnumCodec.ingredientCategory, nullable: true) ??
+          IngredientCategory.other,
+      unit: u,
+      gramsPerPiece: u == BaseUnit.pc ? gpp : null,
+      pieceName: u == BaseUnit.pc ? piece?.name : null,
+      densityGPerMl: density,
       per100: nutrition,
-      shelfLifeDays: j.integer(p, 'shelf_life_days', path) ?? 7,
+      shelfLifeDays: j.integer(p, 'shelf_life_days', path, nullable: true) ?? 7,
     );
+  }
+}
+
+/// A line counted in pieces: what one is called and what one holds ([size] in [unit], g or ml).
+class PieceDto {
+  PieceDto({this.name, this.size, this.unit, required this.path});
+  final String? name;
+  final double? size;
+  final BaseUnit? unit;
+
+  /// Where the line is, for errors.
+  final String path;
+
+  /// What one weighs at [density] g per ml (1 if unknown).
+  double? grams(double? density) {
+    final s = size;
+    if (s == null) return null;
+    return unit == BaseUnit.ml ? s * (density ?? 1.0) : s;
+  }
+
+  static const _units = {'g': BaseUnit.g, 'ml': BaseUnit.ml};
+
+  /// `piece_name`, `piece_size` and `piece_unit` of a line at [path] (Prompts A v5, G v3).
+  /// Null when the line is not counted in pieces.
+  static PieceDto? parse(JsonReader j, Map m, String path, BaseUnit? unit) {
+    if (unit != BaseUnit.pc) return null;
+    final raw = j.str(m, 'piece_name', path, nullable: true)?.trim().toLowerCase();
+    final size = j.number(m, 'piece_size', path, nullable: true);
+    final u = j.enumOf(m, 'piece_unit', path, _units, nullable: size == null);
+    if (size != null && (size <= 0 || size > 5000)) {
+      j.error('$path.piece_size', 'must be the size of ONE piece, from 0 to 5000');
+      return PieceDto(name: raw, path: path);
+    }
+    return PieceDto(name: raw == null || raw.isEmpty ? null : raw, size: size, unit: u, path: path);
   }
 }
 
@@ -69,6 +117,7 @@ class ReceiptItemDto {
     this.unit,
     required this.qtySource,
     required this.confidence,
+    this.piece,
     this.product,
     this.shelfPrice,
     this.newIngredient,
@@ -84,6 +133,9 @@ class ReceiptItemDto {
   final BaseUnit? unit;
   final QtySource qtySource;
   final Confidence confidence;
+
+  /// For a line counted in pieces: what one is called and holds.
+  final PieceDto? piece;
 
   /// The exact product the model recognized: brand, name, variant and pack size.
   final String? product;
@@ -151,13 +203,23 @@ class ReceiptExtraction {
       if (key != null && !_key.hasMatch(key)) {
         j.error('$path.ingredient_key', "'$key' must match ^[a-z][a-z0-9_]{1,40}\$");
       }
+      final unit = j.enumOf(it, 'unit', path, EnumCodec.unit, nullable: true);
+      final piece = PieceDto.parse(j, it, path, unit);
+      // A new item without its profile is still filed: its macros are estimated later, in a batch
+      // with others (NutritionService), which costs less than reading the photo again.
       NewIngredientDto? profile;
       final rawProfile = it['new_ingredient'];
       if (isNew && key != null) {
-        if (rawProfile is! Map) {
-          j.error('$path.new_ingredient', 'is required when is_new_ingredient is true');
-        } else {
-          profile = NewIngredientDto.parse(j, rawProfile.cast<String, dynamic>(), '$path.new_ingredient');
+        if (rawProfile != null && rawProfile is! Map) {
+          j.error('$path.new_ingredient', 'must be an object or null');
+        } else if (rawProfile is Map) {
+          profile = NewIngredientDto.parse(
+            j,
+            rawProfile.cast<String, dynamic>(),
+            '$path.new_ingredient',
+            unit: unit,
+            piece: piece,
+          );
         }
       }
       final product = j.str(it, 'product', path, nullable: true);
@@ -181,7 +243,8 @@ class ReceiptExtraction {
           ingredientKey: key,
           isNewIngredient: isNew,
           qty: j.number(it, 'qty', path, nullable: true),
-          unit: j.enumOf(it, 'unit', path, EnumCodec.unit, nullable: true),
+          unit: unit,
+          piece: piece,
           qtySource: j.enumOf(it, 'qty_source', path, EnumCodec.qtySource, nullable: true) ?? QtySource.unknown,
           confidence: j.enumOf(it, 'confidence', path, EnumCodec.confidence, nullable: true) ?? Confidence.medium,
           product: product == null || product.trim().isEmpty ? null : product.trim(),

@@ -581,7 +581,7 @@ class UserProfile {
   int dailyPickMinuteOfDay = 450;      // 07:30
   List<int> mealReminderMinutes = [750, 1140]; // 12:30, 19:00
   bool autoCommitCleanScans = true;
-  bool lookUpPrices = true;            // pantry photos: shop prices from Google (Prompt F)
+  bool lookUpPrices = false;           // Google shop prices right after every pantry photo (Prompt F); off = on a tap in review
   FoodBasis foodBasis = FoodBasis.eaten; // food card: what was eaten or spent (missing reads as eaten)
   int eatingOutAvgMealMinor = 1500;    // unused: "saved vs eating out" needs the user's own meals out
 
@@ -686,6 +686,7 @@ Isar adds new fields with their defaults automatically, and removed fields are i
 | 2 | Ingredients with all-zero macros (onboarding staples, blank manual items) get `nutritionSource = none`, so the AI fills them in. Label-sourced zeros are kept. |
 | 3 | Staples are removed. Former staples become regular items. The ones showing stock were never deducted, so `lastVerifiedAt` is cleared and Quick Check asks about them. Recipe rows stored with role `staple` load as `stock` and are written back that way. A backup import runs the same migrations. |
 | 4 | `lookUpPrices` is set to true. Isar reads a new bool as false on a stored profile, so without this the price lookup would start switched off after an upgrade. |
+| 6 | `lookUpPrices` is set to false: a pantry photo is one request again, and review offers the Google lookup on a tap (docs/07 §7.5). Schema 4 had switched it on for everybody. |
 | 5 | Lines learn `qtyBought` (from `qtyBase`) and `unit` (the item's base unit), so receipts filed before store prices count in the price book. Say it purchases are skipped: their price may be an estimate. |
 
 The cookbook import needed no data migration: `Recipe.sourceBook`/`sourcePage` are new nullable fields, `RecipeOrigin.cookbook` and `AiTask.cookbookImport` are new names, and `CookbookImport` is a new collection.

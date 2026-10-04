@@ -5,13 +5,13 @@ class PromptRepository {
   final Future<String> Function(String assetPath) _loader;
   final _cache = <String, String>{};
 
-  static const receipt = 'receipt_extraction.v4';
+  static const receipt = 'receipt_extraction.v5';
   static const daily = 'daily_recipe.v2';
   static const spontaneous = 'spontaneous_recipe.v2';
   static const nutritionEstimate = 'nutrition_estimate.v1';
   static const nutritionLabel = 'nutrition_label.v1';
   static const priceLookup = 'price_lookup.v1';
-  static const quickLog = 'quick_log.v2';
+  static const quickLog = 'quick_log.v3';
   static const cookbookIndex = 'cookbook_index.v1';
   static const cookbookImport = 'cookbook_import.v1';
 

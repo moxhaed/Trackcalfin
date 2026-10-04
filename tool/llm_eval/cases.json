@@ -1,0 +1,1274 @@
+{
+  "now": "2026-10-03T18:30",
+  "kitchen": [
+    {
+      "key": "soy_sauce",
+      "name": "Soy sauce",
+      "unit": "ml",
+      "on_hand": 250,
+      "category": "spices_condiments",
+      "density": 1.2
+    },
+    {
+      "key": "olive_oil",
+      "name": "Olive oil",
+      "unit": "ml",
+      "on_hand": 750,
+      "category": "oils_fats",
+      "density": 0.92
+    },
+    {
+      "key": "salt",
+      "name": "Salt",
+      "unit": "g",
+      "on_hand": 500,
+      "category": "spices_condiments",
+      "density": 1.2
+    },
+    {
+      "key": "sugar",
+      "name": "Sugar",
+      "unit": "g",
+      "on_hand": 1000,
+      "category": "spices_condiments",
+      "density": 0.85
+    },
+    {
+      "key": "white_rice",
+      "name": "Basmati rice",
+      "unit": "g",
+      "on_hand": 1000,
+      "category": "grains_pasta",
+      "density": 0.85
+    },
+    {
+      "key": "peanut_butter",
+      "name": "Peanut butter",
+      "unit": "g",
+      "on_hand": 350,
+      "category": "legumes_nuts",
+      "density": 1.07
+    },
+    {
+      "key": "butter",
+      "name": "Butter",
+      "unit": "g",
+      "on_hand": 250,
+      "category": "dairy_eggs",
+      "density": 0.96
+    },
+    {
+      "key": "whole_milk",
+      "name": "Whole milk",
+      "unit": "ml",
+      "on_hand": 1000,
+      "category": "dairy_eggs",
+      "density": 1.03
+    },
+    {
+      "key": "cola_zero",
+      "name": "Cola Zero",
+      "unit": "pc",
+      "on_hand": 6,
+      "category": "beverages",
+      "gpp": 330,
+      "piece": "can"
+    },
+    {
+      "key": "wheat_tortilla",
+      "name": "Wheat tortilla",
+      "unit": "pc",
+      "on_hand": 8,
+      "category": "bakery",
+      "gpp": 40,
+      "piece": "tortilla"
+    },
+    {
+      "key": "strawberry_yogurt",
+      "name": "Strawberry yogurt",
+      "unit": "pc",
+      "on_hand": 4,
+      "category": "dairy_eggs",
+      "gpp": 125,
+      "piece": "cup"
+    },
+    {
+      "key": "egg",
+      "name": "Egg",
+      "unit": "pc",
+      "on_hand": 10,
+      "category": "dairy_eggs",
+      "gpp": 55,
+      "piece": "egg"
+    },
+    {
+      "key": "almonds",
+      "name": "Almonds",
+      "unit": "g",
+      "on_hand": 200,
+      "category": "legumes_nuts"
+    },
+    {
+      "key": "honey",
+      "name": "Honey",
+      "unit": "g",
+      "on_hand": 500,
+      "category": "spices_condiments",
+      "density": 1.42
+    },
+    {
+      "key": "orange_juice",
+      "name": "Orange juice",
+      "unit": "ml",
+      "on_hand": 1000,
+      "category": "beverages",
+      "density": 1.04
+    }
+  ],
+  "cases": [
+    {
+      "id": "scan_lidl_sixpack_tortillas_yogurt",
+      "kind": "scan",
+      "hint": "receipt",
+      "pantry": [],
+      "photo": "A photo of a printed supermarket receipt. It reads:\n\nLIDL Dienstleistung GmbH & Co. KG\nFiliale Berlin-Mitte, Rosenthaler Str. 12\n                                   EUR\nCoca-Cola 6x0,33l                 4,49 A\nPfand 6x0,25                      1,50 A\nWeizen Tortillas 8St.             1,79 A\nJoghurt mild 3,5% 4x125g          1,29 A\nBasmati Reis 1kg                  2,49 A\n----------------------------------------\nzu zahlen                        11,56\nKartenzahlung                    11,56\nUSt  A 19%  netto 9,71  USt 1,85\n02.10.2026 18:42   Bon 4711   Kasse 3",
+      "expect": [
+        {
+          "key": "cola",
+          "unit": "pc",
+          "on_hand": [
+            6,
+            6
+          ],
+          "piece": "can"
+        },
+        {
+          "key": "tortilla|wrap",
+          "unit": "pc",
+          "on_hand": [
+            8,
+            8
+          ],
+          "piece": "tortilla|wrap"
+        },
+        {
+          "key": "yog",
+          "unit": "pc",
+          "on_hand": [
+            4,
+            4
+          ],
+          "piece": "cup|pot|yog"
+        },
+        {
+          "key": "rice",
+          "unit": "g",
+          "on_hand": [
+            1000,
+            1000
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scan_known_ml_cola_switches",
+      "kind": "scan",
+      "hint": "receipt",
+      "pantry": [
+        {
+          "key": "cola",
+          "name": "Coca-Cola",
+          "unit": "ml",
+          "on_hand": 660,
+          "category": "beverages",
+          "cost": 0.227
+        }
+      ],
+      "photo": "A photo of a printed supermarket receipt. It reads:\n\nREWE Markt GmbH\nTorstr. 98, 10119 Berlin\n                                   EUR\nCOCA-COLA 6X0,33L                 4,99 B\nPFAND                             1,50 B\n----------------------------------------\nSUMME                     EUR     6,49\nGeg. Mastercard           EUR     6,49\n03.10.2026  09:12  Bon-Nr.: 2231",
+      "expect": [
+        {
+          "key": "^cola$",
+          "unit": "pc",
+          "on_hand": [
+            7.8,
+            8.2
+          ],
+          "piece": "can"
+        }
+      ]
+    },
+    {
+      "id": "scan_known_g_wraps_yogurt_switch",
+      "kind": "scan",
+      "hint": "receipt",
+      "pantry": [
+        {
+          "key": "wheat_tortilla",
+          "name": "Wheat tortilla",
+          "unit": "g",
+          "on_hand": 185,
+          "category": "bakery",
+          "cost": 0.54
+        },
+        {
+          "key": "plain_yogurt",
+          "name": "Plain yogurt",
+          "unit": "g",
+          "on_hand": 250,
+          "category": "dairy_eggs",
+          "cost": 0.24
+        }
+      ],
+      "photo": "A photo of a printed supermarket receipt. It reads:\n\nALDI SUED\nBerlin, Schoenhauser Allee 80\nMISSION WRAPS ORIGINAL 6ST 370G   1,99 1\nJOGHURT NATUR 3,5% 4X125G         1,19 1\n----------------------------------------\nSUMME                             3,18\nGEGEBEN KARTE                     3,18\n03.10.2026 10:05",
+      "expect": [
+        {
+          "key": "^wheat_tortilla$",
+          "unit": "pc",
+          "on_hand": [
+            8.6,
+            9.2
+          ],
+          "piece": "tortilla|wrap"
+        },
+        {
+          "key": "^plain_yogurt$",
+          "unit": "pc",
+          "on_hand": [
+            6,
+            6
+          ],
+          "piece": "cup|pot|yog"
+        }
+      ]
+    },
+    {
+      "id": "scan_measured_stays_measured",
+      "kind": "scan",
+      "hint": "receipt",
+      "pantry": [],
+      "photo": "A photo of a printed supermarket receipt. It reads:\n\nEDEKA Center\nHauptstr. 5, 10827 Berlin\nVOLLMILCH 3,5% 1L                 1,09 B\nKIKKOMAN SOJASAUCE 250ML          2,99 B\nOLIVENOEL EXTRA VERG. 750ML       6,99 B\nSPAGHETTI N.5 500G                0,89 B\nBIO EIER M 10ST                   3,29 B\nHAEHNCHENBRUSTFILET               6,11 B\n  0,612 kg x 9,99 EUR/kg\nBANANEN                           1,64 B\n  1,104 kg x 1,49 EUR/kg\n----------------------------------------\nSUMME                    EUR     23,00\nEC-Karte                 EUR     23,00\n02.10.2026 17:55",
+      "expect": [
+        {
+          "key": "milk",
+          "unit": "ml",
+          "on_hand": [
+            1000,
+            1000
+          ]
+        },
+        {
+          "key": "soy",
+          "unit": "ml",
+          "on_hand": [
+            250,
+            250
+          ]
+        },
+        {
+          "key": "oil",
+          "unit": "ml",
+          "on_hand": [
+            750,
+            750
+          ]
+        },
+        {
+          "key": "pasta|spaghetti",
+          "unit": "g",
+          "on_hand": [
+            500,
+            500
+          ]
+        },
+        {
+          "key": "egg",
+          "unit": "pc",
+          "on_hand": [
+            10,
+            10
+          ]
+        },
+        {
+          "key": "chicken",
+          "unit": "g",
+          "on_hand": [
+            612,
+            612
+          ]
+        },
+        {
+          "key": "banana",
+          "any": [
+            {
+              "unit": "pc",
+              "on_hand": [
+                7,
+                11
+              ]
+            },
+            {
+              "unit": "g",
+              "on_hand": [
+                1104,
+                1104
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scan_coop_ch_multipacks",
+      "kind": "scan",
+      "hint": "receipt",
+      "country": "CH",
+      "currency": "CHF",
+      "pantry": [],
+      "photo": "A photo of a printed supermarket receipt. It reads:\n\nCoop Zürich Bahnhofstrasse\n                                   CHF\nRivella Rot 6x50cl                 8.95\nNaturaplan Joghurt Erdbeer 180g\n   3 x 0.95                        2.85\nOld El Paso Tortillas 8 Stk 326g   3.95\nKikkoman Soja Sauce 150ml          3.20\nCoop Wienerli 4 Stk 200g           4.50\n----------------------------------------\nTotal CHF                         23.45\nTWINT                             23.45\n03.10.2026 11:40",
+      "expect": [
+        {
+          "key": "rivella|soft|soda|drink",
+          "unit": "pc",
+          "on_hand": [
+            6,
+            6
+          ],
+          "piece": "bottle"
+        },
+        {
+          "key": "yog",
+          "unit": "pc",
+          "on_hand": [
+            3,
+            3
+          ],
+          "piece": "cup|pot|yog"
+        },
+        {
+          "key": "tortilla|wrap",
+          "unit": "pc",
+          "on_hand": [
+            8,
+            8
+          ],
+          "piece": "tortilla|wrap"
+        },
+        {
+          "key": "soy",
+          "unit": "ml",
+          "on_hand": [
+            150,
+            150
+          ]
+        },
+        {
+          "key": "wien|sausage|frank",
+          "unit": "pc",
+          "on_hand": [
+            4,
+            4
+          ],
+          "piece": "sausage|wiener|frank"
+        }
+      ]
+    },
+    {
+      "id": "scan_known_cans_big_bottle",
+      "kind": "scan",
+      "hint": "receipt",
+      "pantry": [
+        {
+          "key": "cola",
+          "name": "Coca-Cola",
+          "unit": "pc",
+          "on_hand": 2,
+          "category": "beverages",
+          "gpp": 330,
+          "piece": "can",
+          "cost": 75
+        }
+      ],
+      "photo": "A photo of a printed supermarket receipt. It reads:\n\nNETTO Marken-Discount\nCOCA-COLA 1,5L                    1,79 A\nPFAND                             0,25 A\n----------------------------------------\nSUMME                             2,04\nBAR                               5,00\nRUECKGELD                         2,96\n03.10.2026 12:20",
+      "expect": [
+        {
+          "key": "^cola$",
+          "unit": "pc",
+          "on_hand": [
+            6.3,
+            6.8
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scan_fridge_photo_new",
+      "kind": "scan",
+      "hint": "pantry",
+      "pantry": [],
+      "photo": "A photo of an open fridge, door and shelves, plus the counter next to it:\n- Door: a 1 l carton of Weihenstephan whole milk 3.5%, opened; it looks about three-quarters full. A 250 ml glass bottle of Kikkoman soy sauce, about half full.\n- Top shelf: a cardboard six-pack holder of Coca-Cola Zero 330 ml cans with two slots empty, so 4 cans are left.\n- Middle shelf: a 4-pack of Danone Activia strawberry yogurt cups (4 x 115 g) with one cup missing, so 3 cups are left. An opened pack of Mission Wraps Original (the label says 6 tortillas, 370 g) with about 4 wraps left inside.\n- Counter: a sealed 1 kg bag of Uncle Ben's basmati rice.",
+      "expect": [
+        {
+          "key": "cola",
+          "unit": "pc",
+          "on_hand": [
+            4,
+            4
+          ],
+          "piece": "can"
+        },
+        {
+          "key": "yog",
+          "unit": "pc",
+          "on_hand": [
+            3,
+            3
+          ],
+          "piece": "cup|pot|yog"
+        },
+        {
+          "key": "tortilla|wrap",
+          "unit": "pc",
+          "on_hand": [
+            4,
+            4
+          ],
+          "piece": "tortilla|wrap"
+        },
+        {
+          "key": "soy",
+          "unit": "ml",
+          "on_hand": [
+            90,
+            160
+          ]
+        },
+        {
+          "key": "milk",
+          "unit": "ml",
+          "on_hand": [
+            600,
+            900
+          ]
+        },
+        {
+          "key": "rice",
+          "unit": "g",
+          "on_hand": [
+            1000,
+            1000
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scan_fridge_photo_known_ml_cola",
+      "kind": "scan",
+      "hint": "pantry",
+      "pantry": [
+        {
+          "key": "cola_zero",
+          "name": "Cola Zero",
+          "unit": "ml",
+          "on_hand": 990,
+          "category": "beverages",
+          "cost": 0.25
+        },
+        {
+          "key": "wheat_tortilla",
+          "name": "Wheat tortilla",
+          "unit": "g",
+          "on_hand": 370,
+          "category": "bakery",
+          "cost": 0.54
+        }
+      ],
+      "photo": "A photo of a kitchen counter: a Coca-Cola Zero six-pack of 330 ml cans with 5 cans still in the cardboard holder. Next to it an opened pack of Mission Wraps Original (the label says 6 tortillas, 370 g) with 3 wraps left inside.",
+      "expect": [
+        {
+          "key": "^cola_zero$",
+          "unit": "pc",
+          "on_hand": [
+            5,
+            5
+          ],
+          "piece": "can"
+        },
+        {
+          "key": "^wheat_tortilla$",
+          "unit": "pc",
+          "on_hand": [
+            3,
+            3
+          ],
+          "piece": "tortilla|wrap"
+        }
+      ]
+    },
+    {
+      "id": "scan_buns_sausages_croissants",
+      "kind": "scan",
+      "hint": "receipt",
+      "pantry": [],
+      "photo": "A photo of a printed supermarket receipt. It reads:\n\nPENNY Markt\nBURGER BROETCHEN 4ST               1,29 A\nWIENER WUERSTCHEN 6ST 400G         2,49 A\nBUTTERCROISSANT 6ST                1,99 A\nGOUDA JUNG 400G                    2,29 A\nSKYR NATUR 450G                    1,39 A\nPROTEIN RIEGEL SCHOKO 45G\n   2 x 0,99                        1,98 A\n----------------------------------------\nSUMME                             11,43\nKARTE                             11,43\n02.10.2026 19:03",
+      "expect": [
+        {
+          "key": "bun|roll|broetchen",
+          "unit": "pc",
+          "on_hand": [
+            4,
+            4
+          ]
+        },
+        {
+          "key": "wien|sausage|frank",
+          "unit": "pc",
+          "on_hand": [
+            6,
+            6
+          ]
+        },
+        {
+          "key": "croissant",
+          "unit": "pc",
+          "on_hand": [
+            6,
+            6
+          ]
+        },
+        {
+          "key": "gouda|cheese",
+          "unit": "g",
+          "on_hand": [
+            400,
+            400
+          ]
+        },
+        {
+          "key": "skyr",
+          "unit": "g",
+          "on_hand": [
+            450,
+            450
+          ]
+        },
+        {
+          "key": "bar|riegel",
+          "unit": "pc",
+          "on_hand": [
+            2,
+            2
+          ],
+          "piece": "bar"
+        }
+      ]
+    },
+    {
+      "id": "scan_multiplier_lines",
+      "kind": "scan",
+      "hint": "receipt",
+      "pantry": [],
+      "photo": "A photo of a printed supermarket receipt. It reads:\n\nKaufland Berlin-Neukoelln\nJOGHURT ERDBEER 150G\n   2 x 0,49                        0,98 B\nRED BULL ENERGY 0,25L\n   4 x 1,19                        4,76 B\nPFAND\n   4 x 0,25                        1,00 B\nEIER FREILAND M 6ST                1,79 B\n----------------------------------------\nSUMME                              8,53\nKARTE                              8,53\n03.10.2026 08:15",
+      "expect": [
+        {
+          "key": "yog",
+          "unit": "pc",
+          "on_hand": [
+            2,
+            2
+          ]
+        },
+        {
+          "key": "energy|red_bull|bull",
+          "unit": "pc",
+          "on_hand": [
+            4,
+            4
+          ],
+          "piece": "can"
+        },
+        {
+          "key": "egg",
+          "unit": "pc",
+          "on_hand": [
+            6,
+            6
+          ]
+        }
+      ]
+    },
+    {
+      "id": "say_tbsp_soy",
+      "kind": "say",
+      "said": "used a tablespoon of soy sauce",
+      "expect": [
+        {
+          "key": "^soy_sauce$",
+          "on_hand": [
+            234,
+            236
+          ]
+        }
+      ]
+    },
+    {
+      "id": "say_tsp_salt",
+      "kind": "say",
+      "said": "put a teaspoon of salt in the pasta water",
+      "expect": [
+        {
+          "key": "^salt$",
+          "on_hand": [
+            492,
+            496
+          ]
+        }
+      ]
+    },
+    {
+      "id": "say_can_of_coke",
+      "kind": "say",
+      "said": "drank a can of coke zero",
+      "expect": [
+        {
+          "key": "^cola_zero$",
+          "on_hand": [
+            5,
+            5
+          ]
+        }
+      ]
+    },
+    {
+      "id": "say_two_tortillas",
+      "kind": "say",
+      "said": "ate two tortillas",
+      "expect": [
+        {
+          "key": "^wheat_tortilla$",
+          "on_hand": [
+            6,
+            6
+          ]
+        }
+      ]
+    },
+    {
+      "id": "say_a_yogurt",
+      "kind": "say",
+      "said": "had a yogurt",
+      "expect": [
+        {
+          "key": "^strawberry_yogurt$",
+          "on_hand": [
+            3,
+            3
+          ]
+        }
+      ]
+    },
+    {
+      "id": "say_splash_oil",
+      "kind": "say",
+      "said": "a splash of olive oil in the pan",
+      "expect": [
+        {
+          "key": "^olive_oil$",
+          "on_hand": [
+            728,
+            745
+          ]
+        }
+      ]
+    },
+    {
+      "id": "say_tbsp_peanut_butter",
+      "kind": "say",
+      "said": "2 tbsp peanut butter on my toast",
+      "expect": [
+        {
+          "key": "^peanut_butter$",
+          "on_hand": [
+            312,
+            324
+          ]
+        }
+      ]
+    },
+    {
+      "id": "say_glass_of_milk",
+      "kind": "say",
+      "said": "drank a glass of milk",
+      "expect": [
+        {
+          "key": "^whole_milk$",
+          "on_hand": [
+            745,
+            805
+          ]
+        }
+      ]
+    },
+    {
+      "id": "say_half_cup_rice",
+      "kind": "say",
+      "said": "used half a cup of rice for dinner",
+      "expect": [
+        {
+          "key": "^white_rice$",
+          "on_hand": [
+            880,
+            912
+          ]
+        }
+      ]
+    },
+    {
+      "id": "say_handful_almonds",
+      "kind": "say",
+      "said": "ate a handful of almonds",
+      "expect": [
+        {
+          "key": "^almonds$",
+          "on_hand": [
+            165,
+            177
+          ]
+        }
+      ]
+    },
+    {
+      "id": "say_eggs_and_butter",
+      "kind": "say",
+      "said": "made scrambled eggs with 3 eggs and a tablespoon of butter",
+      "expect": [
+        {
+          "key": "^egg$",
+          "on_hand": [
+            7,
+            7
+          ]
+        },
+        {
+          "key": "^butter$",
+          "on_hand": [
+            232,
+            240
+          ]
+        }
+      ]
+    },
+    {
+      "id": "say_glass_of_coke",
+      "kind": "say",
+      "said": "drank a glass of coke zero",
+      "expect": [
+        {
+          "key": "^cola_zero$",
+          "on_hand": [
+            4.9,
+            5.3
+          ]
+        }
+      ]
+    },
+    {
+      "id": "say_can_of_coke_legacy_ml",
+      "kind": "say",
+      "said": "drank a can of coke",
+      "pantry_override": [
+        {
+          "key": "cola_zero",
+          "name": "Cola Zero",
+          "unit": "ml",
+          "on_hand": 1980,
+          "category": "beverages"
+        }
+      ],
+      "expect": [
+        {
+          "key": "^cola_zero$",
+          "on_hand": [
+            1640,
+            1660
+          ]
+        }
+      ]
+    },
+    {
+      "id": "say_buy_tortillas_new",
+      "kind": "say",
+      "said": "bought a pack of 8 tortillas for 1.99 and ate one",
+      "pantry_remove": [
+        "wheat_tortilla"
+      ],
+      "expect": [
+        {
+          "key": "tortilla|wrap",
+          "unit": "pc",
+          "on_hand": [
+            7,
+            7
+          ],
+          "piece": "tortilla|wrap"
+        }
+      ]
+    },
+    {
+      "id": "say_tsp_honey",
+      "kind": "say",
+      "said": "a teaspoon of honey in my tea",
+      "expect": [
+        {
+          "key": "^honey$",
+          "on_hand": [
+            490,
+            496
+          ]
+        }
+      ]
+    },
+    {
+      "id": "say_juice_and_eggs",
+      "kind": "say",
+      "said": "had a glass of orange juice and 2 boiled eggs",
+      "expect": [
+        {
+          "key": "^orange_juice$",
+          "on_hand": [
+            745,
+            805
+          ]
+        },
+        {
+          "key": "^egg$",
+          "on_hand": [
+            8,
+            8
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scan_rewe_drinks_crate",
+      "kind": "scan",
+      "hint": "receipt",
+      "pantry": [],
+      "photo": "A photo of a printed supermarket receipt. It reads:\n\nREWE Markt\nKastanienallee 40, Berlin\nBECK'S PILS 24X0,33L              15,99 A\nPFAND                              3,42 A\nGEROLSTEINER NATURELL 6X1,5L       4,49 A\nPFAND                              1,50 A\nWEIHENSTEPHAN H-MILCH 3,5% 6X1L    7,14 B\nGOLDEN TOAST BUTTERTOAST 500G      1,29 B\n----------------------------------------\nSUMME                     EUR     33,83\nKARTE                     EUR     33,83\n03.10.2026 13:02",
+      "expect": [
+        {
+          "key": "beer|pils",
+          "unit": "pc",
+          "on_hand": [
+            24,
+            24
+          ],
+          "piece": "bottle|can"
+        },
+        {
+          "key": "water",
+          "unit": "ml",
+          "on_hand": [
+            9000,
+            9000
+          ]
+        },
+        {
+          "key": "milk",
+          "unit": "ml",
+          "on_hand": [
+            6000,
+            6000
+          ]
+        },
+        {
+          "key": "toast|bread",
+          "any": [
+            {
+              "unit": "pc",
+              "on_hand": [
+                16,
+                24
+              ]
+            },
+            {
+              "unit": "g",
+              "on_hand": [
+                500,
+                500
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scan_cupboard_photo",
+      "kind": "scan",
+      "hint": "pantry",
+      "pantry": [],
+      "photo": "A photo of an open kitchen cupboard:\n- Top shelf: a 1 kg paper bag of Aurora wheat flour type 405, opened and rolled down, about half full. A 450 g glass jar of Nutella, about one third full.\n- Middle shelf: three unopened 400 g cans of Bonduelle chickpeas. A cardboard carton of 10 eggs, lid open, 7 eggs inside.\n- Bottom shelf: an opened box of 8 Kinder Country bars with 5 bars left in it. A 1 l plastic bottle of Thomy sunflower oil, about a quarter full.",
+      "expect": [
+        {
+          "key": "flour",
+          "unit": "g",
+          "on_hand": [
+            400,
+            600
+          ]
+        },
+        {
+          "key": "nutella|spread|hazelnut",
+          "unit": "g",
+          "on_hand": [
+            100,
+            200
+          ]
+        },
+        {
+          "key": "chickpea",
+          "any": [
+            {
+              "unit": "pc",
+              "on_hand": [
+                3,
+                3
+              ]
+            },
+            {
+              "unit": "g",
+              "on_hand": [
+                1100,
+                1300
+              ]
+            }
+          ]
+        },
+        {
+          "key": "egg",
+          "unit": "pc",
+          "on_hand": [
+            7,
+            7
+          ]
+        },
+        {
+          "key": "bar|kinder|country",
+          "unit": "pc",
+          "on_hand": [
+            5,
+            5
+          ],
+          "piece": "bar"
+        },
+        {
+          "key": "oil",
+          "unit": "ml",
+          "on_hand": [
+            200,
+            300
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scan_known_cups_tub",
+      "kind": "scan",
+      "hint": "receipt",
+      "pantry": [
+        {
+          "key": "strawberry_yogurt",
+          "name": "Strawberry yogurt",
+          "unit": "pc",
+          "on_hand": 2,
+          "category": "dairy_eggs",
+          "gpp": 125,
+          "piece": "cup",
+          "cost": 40
+        }
+      ],
+      "photo": "A photo of a printed supermarket receipt. It reads:\n\nNETTO\nERDBEER JOGHURT 500G               0,99 B\n----------------------------------------\nSUMME                              0,99\nBAR                                1,00\nRUECKGELD                          0,01\n03.10.2026 16:44",
+      "expect": [
+        {
+          "key": "^strawberry_yogurt$",
+          "unit": "pc",
+          "on_hand": [
+            6,
+            6
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scan_lidl_slices_fishfingers",
+      "kind": "scan",
+      "hint": "receipt",
+      "pantry": [],
+      "photo": "A photo of a printed supermarket receipt. It reads:\n\nLIDL\nSKYR NATUR 4X150G                  2,49 B\nGOUDA SCHEIBEN 10ST 200G           1,99 B\nHAFERFLOCKEN ZART 500G             0,79 B\nBIO BANANEN 5ST                    1,89 B\nFISCHSTAEBCHEN 15ST 450G           2,29 B\n----------------------------------------\nzu zahlen                          9,45\nKarte                              9,45\n02.10.2026 20:10",
+      "expect": [
+        {
+          "key": "skyr",
+          "unit": "pc",
+          "on_hand": [
+            4,
+            4
+          ],
+          "piece": "cup|pot"
+        },
+        {
+          "key": "gouda|cheese",
+          "any": [
+            {
+              "unit": "pc",
+              "on_hand": [
+                10,
+                10
+              ]
+            },
+            {
+              "unit": "g",
+              "on_hand": [
+                200,
+                200
+              ]
+            }
+          ]
+        },
+        {
+          "key": "oat",
+          "unit": "g",
+          "on_hand": [
+            500,
+            500
+          ]
+        },
+        {
+          "key": "banana",
+          "unit": "pc",
+          "on_hand": [
+            5,
+            5
+          ]
+        },
+        {
+          "key": "fish",
+          "unit": "pc",
+          "on_hand": [
+            15,
+            15
+          ]
+        }
+      ]
+    },
+    {
+      "id": "say_toast_with_butter",
+      "kind": "say",
+      "said": "had 2 slices of toast with butter",
+      "pantry_add": [
+        {
+          "key": "toast_bread",
+          "name": "Toast bread",
+          "unit": "pc",
+          "on_hand": 20,
+          "category": "bakery",
+          "gpp": 25,
+          "piece": "slice"
+        }
+      ],
+      "expect": [
+        {
+          "key": "^toast_bread$",
+          "on_hand": [
+            18,
+            18
+          ]
+        },
+        {
+          "key": "^butter$",
+          "on_hand": [
+            232,
+            246
+          ]
+        }
+      ]
+    },
+    {
+      "id": "say_half_bottle_wine",
+      "kind": "say",
+      "said": "drank half a bottle of red wine",
+      "pantry_add": [
+        {
+          "key": "red_wine",
+          "name": "Red wine",
+          "unit": "ml",
+          "on_hand": 750,
+          "category": "beverages",
+          "density": 0.99
+        }
+      ],
+      "expect": [
+        {
+          "key": "^red_wine$",
+          "on_hand": [
+            350,
+            400
+          ]
+        }
+      ]
+    },
+    {
+      "id": "say_protein_scoops",
+      "kind": "say",
+      "said": "2 scoops of protein powder in my shake",
+      "pantry_add": [
+        {
+          "key": "protein_powder",
+          "name": "Whey protein powder",
+          "unit": "g",
+          "on_hand": 1000,
+          "category": "other",
+          "density": 0.4
+        }
+      ],
+      "expect": [
+        {
+          "key": "^protein_powder$",
+          "on_hand": [
+            920,
+            965
+          ]
+        }
+      ]
+    },
+    {
+      "id": "say_buy_sixpack_legacy_ml",
+      "kind": "say",
+      "said": "bought a six pack of coke zero for 4.49",
+      "pantry_override": [
+        {
+          "key": "cola_zero",
+          "name": "Cola Zero",
+          "unit": "ml",
+          "on_hand": 990,
+          "category": "beverages",
+          "cost": 0.25
+        }
+      ],
+      "expect": [
+        {
+          "key": "^cola_zero$",
+          "unit": "pc",
+          "on_hand": [
+            9,
+            9
+          ],
+          "piece": "can"
+        }
+      ]
+    },
+    {
+      "id": "say_pinch_salt_tsp_sugar",
+      "kind": "say",
+      "said": "a pinch of salt and 2 teaspoons of sugar in the tomato sauce",
+      "expect": [
+        {
+          "key": "^salt$",
+          "on_hand": [
+            499,
+            500
+          ]
+        },
+        {
+          "key": "^sugar$",
+          "on_hand": [
+            988,
+            995
+          ]
+        }
+      ]
+    },
+    {
+      "id": "say_stir_fry_soy_oil",
+      "kind": "say",
+      "said": "made a stir fry, used 3 tablespoons of soy sauce and a drizzle of oil",
+      "expect": [
+        {
+          "key": "^soy_sauce$",
+          "on_hand": [
+            203,
+            207
+          ]
+        },
+        {
+          "key": "^olive_oil$",
+          "on_hand": [
+            728,
+            745
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scan_tesco_uk",
+      "kind": "scan",
+      "hint": "receipt",
+      "country": "GB",
+      "currency": "GBP",
+      "pantry": [],
+      "photo": "A photo of a printed supermarket receipt. It reads:\n\nTESCO\nCamden Town Metro\n                                     £\nTESCO COLA ZERO 8X330ML           3.75\nOLD EL PASO 8 TORTILLAS           2.50\nMULLER CORNER 6PK                 4.00\nTESCO SEMI SKIMMED MILK 4 PINTS   1.45\nHEINZ BAKED BEANS 4X415G          3.00\n----------------------------------------\nTOTAL                            14.70\nCONTACTLESS                      14.70\n03/10/26 17:21",
+      "expect": [
+        {
+          "key": "cola",
+          "unit": "pc",
+          "on_hand": [
+            8,
+            8
+          ],
+          "piece": "can"
+        },
+        {
+          "key": "tortilla|wrap",
+          "unit": "pc",
+          "on_hand": [
+            8,
+            8
+          ]
+        },
+        {
+          "key": "yog|corner",
+          "unit": "pc",
+          "on_hand": [
+            6,
+            6
+          ]
+        },
+        {
+          "key": "milk",
+          "unit": "ml",
+          "on_hand": [
+            2200,
+            2300
+          ]
+        },
+        {
+          "key": "bean",
+          "any": [
+            {
+              "unit": "pc",
+              "on_hand": [
+                4,
+                4
+              ]
+            },
+            {
+              "unit": "g",
+              "on_hand": [
+                1600,
+                1700
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -7,7 +7,7 @@ import '../data/isar/collections/schemas.dart';
 class Migrations {
   const Migrations._();
 
-  static const current = 5;
+  static const current = 6;
 
   static Future<void> run(Isar isar) async {
     final p = await isar.userProfiles.get(1);
@@ -63,6 +63,9 @@ class Migrations {
         }
         await isar.transactions.putAll(changed);
       }
+      // v6: one request per photo (docs/07 §7.5). The Google price search after every pantry
+      // photo was a second one; v4 switched it on for everybody. Review offers it on a tap.
+      if (p.schemaVersion < 6) p.lookUpPrices = false;
       p.schemaVersion = current;
       await isar.userProfiles.put(p);
     });

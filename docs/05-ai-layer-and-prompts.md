@@ -4,13 +4,13 @@ The master prompts are **runtime assets**. The app loads them verbatim as the `s
 
 | Prompt | File | Task |
 |---|---|---|
-| **A** | [`assets/prompts/receipt_extraction.v4.md`](../assets/prompts/receipt_extraction.v4.md) | Receipt or pantry image → structured JSON (expenses, categories, stock quantities, the exact product, a shop price for pantry items, new-ingredient profiles) |
+| **A** | [`assets/prompts/receipt_extraction.v5.md`](../assets/prompts/receipt_extraction.v5.md) | Receipt or pantry image → structured JSON (expenses, categories, stock quantities counted the way they are used, the exact product, a shop price for pantry items, new-ingredient profiles) |
 | **B** | [`assets/prompts/daily_recipe.v2.md`](../assets/prompts/daily_recipe.v2.md) | Inventory JSON → one stock-only recipe JSON (quantities per portion, estimates, hook line). Salt and oil only when they are in the inventory. |
 | **C** | [`assets/prompts/spontaneous_recipe.v2.md`](../assets/prompts/spontaneous_recipe.v2.md) | User text/voice + inventory JSON → feasibility verdict + adapted recipe + shopping list JSON |
 | **D** | [`assets/prompts/nutrition_estimate.v1.md`](../assets/prompts/nutrition_estimate.v1.md) | Ingredients with unknown macros → typical values per 100 g, density, piece weight |
 | **E** | [`assets/prompts/nutrition_label.v1.md`](../assets/prompts/nutrition_label.v1.md) | Photo of a nutrition facts panel → the printed values, unconverted |
 | **F** | [`assets/prompts/price_lookup.v1.md`](../assets/prompts/price_lookup.v1.md) | Products from a pantry photo → their shop price, searched with Google (one pack, its size, the store and the site) |
-| **G** | [`assets/prompts/quick_log.v2.md`](../assets/prompts/quick_log.v2.md) | What the user says they did ("bought a Coke Zero for 1.29 and drank it") or asks ("where is it cheaper?") + pantry, fridge and recipes → actions to log, price checks to answer |
+| **G** | [`assets/prompts/quick_log.v3.md`](../assets/prompts/quick_log.v3.md) | What the user says they did ("bought a Coke Zero for 1.29 and drank it") or asks ("where is it cheaper?") + pantry, fridge and recipes → actions to log, price checks to answer |
 | **H** | [`assets/prompts/cookbook_index.v1.md`](../assets/prompts/cookbook_index.v1.md), [`cookbook_import.v1.md`](../assets/prompts/cookbook_import.v1.md) | A PDF cookbook → its recipes and pages (index), then a few recipes at a time: servings, every ingredient in g/ml/pc for the whole recipe with a pantry key or a new generic one, a shortened method |
 
 Those files are the single source of truth. This document covers how they're called, fed, and verified.
@@ -69,7 +69,7 @@ Content-Type: application/json
 ```
 ```json
 {
-  "systemInstruction": { "parts": [{ "text": "<contents of receipt_extraction.v4.md>" }] },
+  "systemInstruction": { "parts": [{ "text": "<contents of receipt_extraction.v5.md>" }] },
   "contents": [{
     "role": "user",
     "parts": [
@@ -218,23 +218,32 @@ Every number in a recipe comes from `Ingredient.per100`, so an ingredient with n
 
 `Ingredient.nutritionConfirmedAt` is set by a saved label (`nutritionSource: label`) or typed numbers (`user`). There is no confirm step for an AI estimate: the sheet says "AI estimate", and **Edit** or **Scan label** fix it when it looks wrong. Changing an ingredient's macros, unit or piece weight refreshes the stored numbers of every non-archived recipe that uses it (`RecipeService.refreshUsing`). Cook sessions keep their snapshot.
 
-## 5.9b Units: pieces or grams (Prompt A v4)
+## 5.9b Units: pieces, grams or ml (Prompt A v5, Prompt G v3)
 
-A quantity is stored in the unit the item gets used up in, because that is how the user talks about it later ("I drank a cola", "200 g of rice"). v4 of Prompt A spells it out:
+The design is in [07 · Counting food the way it is used](07-counting-and-measures.md). In short: a quantity is stored in the unit the item gets used up in, because that is how the user talks about it later ("I drank a can", "two tortillas", "a tablespoon of soy sauce").
 
 | Unit | For | Example |
 |---|---|---|
-| `pc` | what is eaten or drunk whole, one at a time: cans and bottles up to 0.5 l, yogurt and dessert cups, bars, ready meals, eggs, fruit and bread sold by the piece | "6x0,33l Cola" → 6 pc, `grams_per_piece` 340 |
-| `g` | what is measured out in cooking or shared over servings: flour, rice, pasta, meat, cheese, a 500 g tub of yogurt | "Joghurt 500g" → 500 g |
-| `ml` | what is poured over several servings: milk, oil, juice cartons, drink bottles over 0.5 l | "1,5l Cola" → 1500 ml |
+| `pc` | separate things eaten, drunk or used one at a time: cans and bottles up to 0.5 l, yogurt and dessert cups, tortillas and wraps, buns, rolls, slices of sliced bread, eggs, sausages, bars, ready meals, fruit by the piece | "6x0,33l Cola" → 6 pc, `piece_name` "can", `piece_size` 330 ml |
+| `g` | what is measured out or shared over servings: flour, rice, pasta, meat, a block of cheese, a 500 g tub of yogurt | "Joghurt 500g" → 500 g |
+| `ml` | what is poured: milk, oil, sauces in bottles, juice cartons, drink bottles over 0.5 l (also in multipacks) | "1,5l Cola" → 1500 ml |
 
-v3 turned a six-pack of cans into 1980 ml. An item already in the pantry keeps its unit (`known_ingredients`), and `ReceiptValidator.alignUnit` converts ml and pieces by the piece weight, counting g and ml alike. To move an existing item to another unit, edit it in its sheet: the amount on hand, the cost per unit, the low-stock threshold and the last purchase are converted with the piece weight (`UnitConverter.factor`), and switching to pieces asks for that weight. Nothing is recounted.
+**The model reads; Dart counts.** v5 decides the unit for every line by that rule, **also for known items**. `known_ingredients` no longer carries the unit: given it, v4 copied it, so a cola first saved in ml stayed in ml ("6 cans" became 1980 ml). A line in pieces gives `piece_name`, `piece_size` and `piece_unit` (one piece), and `new_ingredient` no longer repeats the unit or the piece weight. Then Dart decides (`ReceiptValidator.fitUnit`):
+- same unit: as is;
+- a line in pieces, with a size, of an item kept in g or ml: `DraftLine.switchFrom`; filing switches the item to pieces first (`UnitConverter.switchToPieces`: amount on hand, cost per unit, low-stock line and last purchase are converted, per-100 ml macros become per 100 g), and review says "counted in cans from now on". Only towards pieces: a bad reading never flips an item back;
+- anything else converts into the item's unit by its piece weight and density (`alignUnit`; a count within 3% of a whole number is that number, so 1500 ml of cola is 4.5 cans and 1980 ml of a 340 g can is 6).
+
+The item sheet still switches units by hand, and asks for the piece weight and what one piece is called.
+
+**Kitchen measures** (`lib/domain/measures.dart`): tsp 5 ml, tbsp 15 ml, cup 240 ml, glass 250 ml, pinch 0.4 g, handful 30 g. They convert into the item's unit through its density (`Ingredient.densityGPerMl`, now also for gram items that are spooned: sugar 0.85, flour 0.53) or its piece size. Say it (Prompt G v3) passes amounts on as the user said them ("1 tbsp", "0.5 cup", "a glass"), and the planner converts them: a unit other than the item's is no longer an error, so it no longer costs a repair request. Only pieces of an item kept in g or ml are refused (it has no piece size), unless a purchase gives the piece's size, which switches the item like a scan. The Ate dialog offers the measures that fit the item (`Measures.presetsFor`).
+
+**Missing details don't cost a request.** A new item without `new_ingredient`, or with fields missing, is still filed: no macros means `DataSource.none`, and `NutritionService` estimates them later in a batch of up to 40; a missing shelf life is a week. Wrong values are still errors.
 
 ## 5.10 Exact products and shop prices (Prompts A v4 and F)
 
 Every grocery line names the exact product the model recognized (`product`: brand, name, variant and pack size, such as "Barilla Spaghetti n.5, 500 g"), read from the packaging or decoded from the receipt line. On a receipt this helps the quantity, because the identified product's pack size replaces a guessed one. A pantry photo has no prices, so Prompt A also gives each item a `shelf_price`: the usual price of one pack at a typical supermarket in `country`, in the home currency, plus the pack size, from the model's own knowledge.
 
-**Prompt F looks those prices up on Google.** Right after a pantry photo is read, `ScanService` sends the items that still need a price (none paid yet: `ReceiptValidator.needsPrice`) to [`price_lookup.v1`](../assets/prompts/price_lookup.v1.md) with Grounding with Google Search on. The model searches the shops of `country` and returns, per item, the regular price of one pack, the pack's size in the item's unit, the store and the site (`found: false` when no result shows a price). Up to 20 items per call, `thinkingLevel: low`, a 90 s timeout. *Settings → AI → Look up prices on Google* (`UserProfile.lookUpPrices`) turns it off.
+**Prompt F looks those prices up on Google.** When the user taps **Look up on Google** in review (or right after every pantry photo, with *Settings → AI → Look up prices after every pantry photo*, off by default since schema 6), `ScanService` sends the items that still need a price (none paid yet: `ReceiptValidator.needsPrice`) to [`price_lookup.v1`](../assets/prompts/price_lookup.v1.md) with Grounding with Google Search on. The model searches the shops of `country` and returns, per item, the regular price of one pack, the pack's size in the item's unit, the store and the site (`found: false` when no result shows a price). Up to 20 items per call, `thinkingLevel: low`, a 90 s timeout. A pantry photo is one request by default; the search is the second only when asked for (docs/07 §7.5).
 
 The request differs from the others:
 ```json
@@ -262,7 +271,7 @@ Cost: one lookup is one model call plus the searches the model runs, usually one
 
 The ⊕ menu's **Say it** (also a home-screen shortcut) takes one sentence, spoken (on-device speech to text, the same as Ask) or typed, and logs everything in it: "bought a Coke Zero for 1.29 and drank it", "two portions of the chili and a döner for 7.50 at lunch", "cooked the bean pasta for three, ate one", "we're out of milk". It also answers "where is Coke Zero cheapest?" from the user's own receipts.
 
-**Call.** `QuickLogService.interpret` sends [`quick_log.v2`](../assets/prompts/quick_log.v2.md) the sentence (`said`), `now` and the weekday, the currency, and what it may refer to: every pantry item (key, name, unit, on hand), the fridge (batch id, title, portions left, day cooked) and the saved recipes (id, title). JSON mode with `AiSchemas.quickLog`, `thinkingLevel: low`, 4 096 output tokens, 30 s timeout, one call per use. The input is about 20 tokens per pantry item, so ~2–4k tokens with a full pantry.
+**Call.** `QuickLogService.interpret` sends [`quick_log.v3`](../assets/prompts/quick_log.v3.md) the sentence (`said`), `now` and the weekday, the currency, and what it may refer to: every pantry item (key, name, unit, piece name for items in pieces, on hand), the fridge (batch id, title, portions left, day cooked) and the saved recipes (id, title). JSON mode with `AiSchemas.quickLog`, `thinkingLevel: low`, 4 096 output tokens, 30 s timeout, one call per use. The input is about 20 tokens per pantry item, so ~2–4k tokens with a full pantry.
 
 **Output.** A list of actions, each with a `type`, plus `total_paid_minor` (one amount for several items) and `question` (one short question when a detail is missing; then that action is left out). Every action has the same fields, null where they don't apply:
 

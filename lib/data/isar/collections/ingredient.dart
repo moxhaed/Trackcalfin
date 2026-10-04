@@ -44,7 +44,12 @@ class Ingredient {
   /// Required when [baseUnit] is [BaseUnit.pc].
   double? gramsPerPiece;
 
-  /// For ml items; null means 1.0.
+  /// What one piece is called, singular ("can", "tortilla", "cup"), for [BaseUnit.pc] items:
+  /// the app says "6 cans" instead of "6 pc". Null says "pc".
+  String? pieceName;
+
+  /// Grams in one ml: for ml items, and for gram items measured with spoons or cups (sugar 0.85,
+  /// flour 0.53). Null means 1.0.
   double? densityGPerMl;
 
   /// Per 100 g (g and pc items) or per 100 ml (ml items).

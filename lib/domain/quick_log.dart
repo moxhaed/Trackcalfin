@@ -14,6 +14,7 @@ import '../data/isar/collections/transaction.dart';
 import '../data/isar/collections/user_profile.dart';
 import 'costing.dart';
 import 'depletion.dart';
+import 'measures.dart';
 import 'nutrition.dart';
 import 'price_book.dart';
 import 'stock_index.dart';
@@ -131,7 +132,13 @@ class QuickLogPlanner {
       switch (a.type) {
         case QuickActionType.buy:
           final ing = w.stock.byKey[a.key] ?? _create(a, w, at);
-          final qty = UnitConverter.toBase(a.qty!, a.unit!, ing) ?? a.qty!;
+          // Pieces of an item kept in g or ml: counted in pieces from now on, like a scan.
+          final gpp = a.piece?.grams(ing.densityGPerMl);
+          if (a.unit == BaseUnit.pc && ing.baseUnit != BaseUnit.pc && gpp != null) {
+            UnitConverter.switchToPieces(ing, gramsPerPiece: gpp, pieceName: a.piece?.name);
+          }
+          if (ing.baseUnit == BaseUnit.pc && ing.pieceName == null) ing.pieceName = a.piece?.name;
+          final qty = _base(a, ing);
           final (price, estimated) = prices[i]!;
           CostingEngine.applyPurchase(ing, qtyAdded: qty, lineTotalMinor: price, at: at);
           w.changedIngredients.add(ing);
@@ -156,7 +163,7 @@ class QuickLogPlanner {
             QuickStep(
               i,
               a.type,
-              'Bought ${ing.name} · ${UnitConverter.format(qty, ing.baseUnit)}',
+              'Bought ${ing.name} · ${_qty(qty, ing)}',
               detail: ['${estimated ? '~' : ''}${money.format(price)}', 'Groceries', ?a.merchant].join(' · '),
               warning: estimated ? 'The usual price, not what you paid' : null,
               estimatedPrice: estimated,
@@ -198,7 +205,7 @@ class QuickLogPlanner {
             continue;
           }
           final had = ing.qtyOnHand;
-          final qty = UnitConverter.toBase(a.qty!, a.unit!, ing) ?? a.qty!;
+          final qty = _base(a, ing);
           // Less than the pantry had: the rest went since the last count, so it counts as eaten.
           final use = UsedUp.fromCount(ing, before: had, after: qty, at: at);
           if (use != null) w.uses.add(use);
@@ -208,8 +215,8 @@ class QuickLogPlanner {
             QuickStep(
               i,
               a.type,
-              qty == 0 ? '${ing.name}: none left' : '${ing.name}: ${UnitConverter.format(qty, ing.baseUnit)} left',
-              detail: 'Was ${UnitConverter.format(had, ing.baseUnit)}',
+              qty == 0 ? '${ing.name}: none left' : '${ing.name}: ${_qty(qty, ing)} left',
+              detail: 'Was ${_qty(had, ing)}',
             ),
           );
         case QuickActionType.priceCheck:
@@ -306,10 +313,12 @@ class QuickLogPlanner {
       ..name = p == null || p.name.isEmpty ? (a.name ?? a.key!) : p.name
       ..category = p?.category ?? IngredientCategory.other
       ..baseUnit = unit
-      ..gramsPerPiece = p?.gramsPerPiece ?? (unit == BaseUnit.pc ? 50 : null)
+      ..gramsPerPiece = unit == BaseUnit.pc ? (p?.gramsPerPiece ?? a.piece?.grams(p?.densityGPerMl) ?? 50) : null
+      ..pieceName = unit == BaseUnit.pc ? (p?.pieceName ?? a.piece?.name) : null
       ..densityGPerMl = p?.densityGPerMl
       ..per100 = p?.per100 ?? Nutrition()
-      ..nutritionSource = p == null ? DataSource.none : DataSource.aiEstimate
+      // No macros in the answer: NutritionService estimates them later, in a batch.
+      ..nutritionSource = p == null || p.per100.isZero ? DataSource.none : DataSource.aiEstimate
       ..shelfLifeDays = p?.shelfLifeDays ?? 7
       ..lastVerifiedAt = at
       ..updatedAt = at;
@@ -382,7 +391,7 @@ class QuickLogPlanner {
   static QuickStep _eatPantry(int i, QuickAction a, QuickLogWorld w, DateTime at, int day, MoneyFormat money) {
     final ing = w.stock.byKey[a.key];
     if (ing == null) return _gone(i, a);
-    final qty = UnitConverter.toBase(a.qty!, a.unit!, ing) ?? a.qty!;
+    final qty = _base(a, ing);
     final had = ing.qtyOnHand;
     final taken = math.min(qty, had);
     ing.qtyOnHand = had - taken;
@@ -404,12 +413,12 @@ class QuickLogPlanner {
     return QuickStep(
       i,
       a.type,
-      '${drink ? 'Drank' : 'Ate'} ${ing.name} · ${UnitConverter.format(qty, ing.baseUnit)}',
+      '${drink ? 'Drank' : 'Ate'} ${ing.name} · ${_said(a, qty, ing)}',
       detail: [if (n != null) _macros(n), money.format(cost)].join(' · '),
       warning: n == null
           ? "Its macros aren't known yet, so it's logged without them"
           : qty > had + 1e-9
-          ? 'The pantry had ${UnitConverter.format(had, ing.baseUnit)}'
+          ? 'The pantry had ${_qty(had, ing)}'
           : null,
     );
   }
@@ -494,7 +503,7 @@ class QuickLogPlanner {
   static QuickStep _throwPantry(int i, QuickAction a, QuickLogWorld w, DateTime at) {
     final ing = w.stock.byKey[a.key];
     if (ing == null) return _gone(i, a);
-    final qty = a.qty == null ? ing.qtyOnHand : (UnitConverter.toBase(a.qty!, a.unit!, ing) ?? a.qty!);
+    final qty = a.qty == null ? ing.qtyOnHand : _base(a, ing);
     final taken = math.min(qty, ing.qtyOnHand);
     // Recorded as thrown away: it went, but isn't food eaten.
     final use = UsedUp.fromCount(
@@ -510,7 +519,24 @@ class QuickLogPlanner {
       ..updatedAt = at;
     ExpiryEstimator.onDeplete(ing);
     w.changedIngredients.add(ing);
-    return QuickStep(i, a.type, 'Threw away ${ing.name} · ${UnitConverter.format(taken, ing.baseUnit)}');
+    return QuickStep(i, a.type, 'Threw away ${ing.name} · ${_qty(taken, ing)}');
+  }
+
+  /// [a]'s amount in [ing]'s unit. A kitchen measure ("1 tbsp") converts through the item's
+  /// density or piece size; the parser lets through only what converts.
+  static double _base(QuickAction a, Ingredient ing) {
+    final m = a.measure;
+    final q = m != null ? Measures.toBase(a.qty!, m, ing) : UnitConverter.toBase(a.qty!, a.unit!, ing);
+    return q ?? a.qty!;
+  }
+
+  static String _qty(double q, Ingredient ing) => UnitConverter.format(q, ing.baseUnit, piece: ing.pieceName);
+
+  /// The amount as the user said it, then in the item's unit: "1 tbsp · 15 ml", "1 can".
+  static String _said(QuickAction a, double qty, Ingredient ing) {
+    final m = a.measure;
+    if (m == null) return _qty(qty, ing);
+    return '${UnitConverter.formatNumber(a.qty!)} ${m.label} · ${_qty(qty, ing)}';
   }
 
   /// What an action pointed at is gone since it was read (eaten up, deleted): left out.

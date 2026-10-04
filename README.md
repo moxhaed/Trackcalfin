@@ -102,13 +102,13 @@ test/             domain, application (Isar), data (AI layer), widget
 
 | Prompt | File |
 |---|---|
-| A · Receipt & expense extraction (image → JSON) | [`assets/prompts/receipt_extraction.v4.md`](assets/prompts/receipt_extraction.v4.md) |
+| A · Receipt & expense extraction (image → JSON) | [`assets/prompts/receipt_extraction.v5.md`](assets/prompts/receipt_extraction.v5.md) |
 | B · Daily stock-based recipe (inventory → recipe JSON) | [`assets/prompts/daily_recipe.v2.md`](assets/prompts/daily_recipe.v2.md) |
 | C · Spontaneous recipe calculator (request + inventory → feasibility JSON) | [`assets/prompts/spontaneous_recipe.v2.md`](assets/prompts/spontaneous_recipe.v2.md) |
 | D · Ingredient macros estimate (keys → per-100 g values) | [`assets/prompts/nutrition_estimate.v1.md`](assets/prompts/nutrition_estimate.v1.md) |
 | E · Nutrition label reading (photo → printed values) | [`assets/prompts/nutrition_label.v1.md`](assets/prompts/nutrition_label.v1.md) |
 | F · Shop price lookup with Google Search (products → price per pack) | [`assets/prompts/price_lookup.v1.md`](assets/prompts/price_lookup.v1.md) |
-| G · Say it: what the user did or asks about prices (sentence + pantry → actions) | [`assets/prompts/quick_log.v2.md`](assets/prompts/quick_log.v2.md) |
+| G · Say it: what the user did or asks about prices (sentence + pantry → actions) | [`assets/prompts/quick_log.v3.md`](assets/prompts/quick_log.v3.md) |
 
 ## Known limitations
 

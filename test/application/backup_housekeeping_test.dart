@@ -43,33 +43,36 @@ void main() {
     expect((await isar.userProfiles.get(1))!.onboardingDone, isTrue);
   });
 
-  test('the price lookup is on after an upgrade to schema 4, and stays off once turned off', () async {
-    await isar.writeTxn(() => isar.userProfiles.put(UserProfile()));
-    final data = jsonDecode(await BackupService(isar).exportJson()) as Map<String, dynamic>;
-    final old = (data['userProfiles'] as List)[0] as Map;
-    old
-      ..remove('lookUpPrices')
-      ..['schemaVersion'] = 3;
-    await BackupService(isar).importJson(jsonEncode(data));
-    expect((await isar.userProfiles.get(1))!.lookUpPrices, isTrue);
+  test(
+    'the price lookup after every pantry photo is off after an upgrade to schema 6, and stays on once turned on',
+    () async {
+      await isar.writeTxn(() => isar.userProfiles.put(UserProfile()));
+      final data = jsonDecode(await BackupService(isar).exportJson()) as Map<String, dynamic>;
+      final old = (data['userProfiles'] as List)[0] as Map;
+      old
+        ..['lookUpPrices'] = true
+        ..['schemaVersion'] = 5;
+      await BackupService(isar).importJson(jsonEncode(data));
+      expect((await isar.userProfiles.get(1))!.lookUpPrices, isFalse);
 
-    // A stored profile reads the new switch as false; the migration turns it on once.
-    final p = (await isar.userProfiles.get(1))!
-      ..lookUpPrices = false
-      ..schemaVersion = 3;
-    await isar.writeTxn(() => isar.userProfiles.put(p));
-    await Migrations.run(isar);
-    expect((await isar.userProfiles.get(1))!.lookUpPrices, isTrue);
-    await isar.writeTxn(
-      () => isar.userProfiles.put(
-        p
-          ..lookUpPrices = false
-          ..schemaVersion = Migrations.current,
-      ),
-    );
-    await Migrations.run(isar);
-    expect((await isar.userProfiles.get(1))!.lookUpPrices, isFalse, reason: "the user's choice");
-  });
+      // Schema 4 switched it on for everybody; schema 6 makes a photo one request again.
+      final p = (await isar.userProfiles.get(1))!
+        ..lookUpPrices = true
+        ..schemaVersion = 3;
+      await isar.writeTxn(() => isar.userProfiles.put(p));
+      await Migrations.run(isar);
+      expect((await isar.userProfiles.get(1))!.lookUpPrices, isFalse);
+      await isar.writeTxn(
+        () => isar.userProfiles.put(
+          p
+            ..lookUpPrices = true
+            ..schemaVersion = Migrations.current,
+        ),
+      );
+      await Migrations.run(isar);
+      expect((await isar.userProfiles.get(1))!.lookUpPrices, isTrue, reason: "the user's choice");
+    },
+  );
 
   test('schema 5: receipt lines learn how much was bought; Say it buys are left out', () async {
     LineItem stocked(int minor) => LineItem()

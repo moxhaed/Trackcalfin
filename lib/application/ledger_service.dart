@@ -6,6 +6,7 @@ import '../core/enums.dart';
 import '../data/isar/collections/schemas.dart';
 import '../domain/costing.dart';
 import '../domain/quick_text_parser.dart';
+import '../domain/units.dart';
 import 'clock.dart';
 import 'recipe_service.dart';
 import 'shopping_service.dart';
@@ -123,14 +124,19 @@ class LedgerService {
         if (l.ingredientId == null || l.qtyBase == null) continue;
         final ing = await isar.ingredients.get(l.ingredientId!);
         if (ing == null) continue;
+        // Filed before the item switched units (a cola in ml, now in cans): taken back in
+        // today's unit. Left alone when it can't be converted.
+        final unit = l.unit;
+        final bought = unit == null || unit == ing.baseUnit ? l.qtyBase! : UnitConverter.toBase(l.qtyBase!, unit, ing);
+        if (bought == null) continue;
         before[ing.id] ??= (avgCost: ing.avgCostPerUnitMinor, estimate: ing.costIsEstimate, expiresAt: ing.expiresAt);
         final had = ing.qtyOnHand;
-        final out = math.min(had, l.qtyBase!);
+        final out = math.min(had, bought);
         final left = had - out;
         // What is left no longer carries this purchase's price (§3.3 in reverse). Down to
         // nothing, the average stays as the last known price.
-        if (l.totalMinor > 0 && l.qtyBase! > 0 && left > 1e-9 && !ing.costIsEstimate) {
-          final avg = (had * ing.avgCostPerUnitMinor - out * l.totalMinor / l.qtyBase!) / left;
+        if (l.totalMinor > 0 && bought > 0 && left > 1e-9 && !ing.costIsEstimate) {
+          final avg = (had * ing.avgCostPerUnitMinor - out * l.totalMinor / bought) / left;
           if (avg > 0) ing.avgCostPerUnitMinor = avg;
         }
         ing.qtyOnHand = left < 0 ? 0 : left;

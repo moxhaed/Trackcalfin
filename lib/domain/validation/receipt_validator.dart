@@ -5,6 +5,7 @@ import '../../data/isar/collections/ingredient.dart';
 import '../../data/isar/collections/scan_job.dart';
 import '../ingredient_matcher.dart';
 import '../nutrition.dart';
+import '../units.dart';
 
 class ScanDraft {
   ScanDraft({
@@ -94,6 +95,15 @@ class ReceiptValidator {
         ..qtySource = item.qtySource
         ..qty = item.qty
         ..unit = item.unit ?? BaseUnit.g;
+      final piece = item.piece;
+      if (piece != null && piece.size != null && piece.unit != null) {
+        line
+          ..pieceName = piece.name
+          ..pieceSize = piece.size
+          ..pieceUnit = piece.unit;
+      } else if (piece != null) {
+        line.pieceName = piece.name;
+      }
 
       // R3: money bounds
       if (item.totalMinor > maxLineMinor || item.totalMinor < minLineMinor) {
@@ -127,7 +137,7 @@ class ReceiptValidator {
               ..ingredientKey = match.ingredient!.key
               ..matchedIngredientId = match.ingredient!.id
               ..isNewIngredient = false;
-            alignUnit(line, match.ingredient!.baseUnit, match.ingredient!.gramsPerPiece);
+            fitUnit(line, match.ingredient!);
             existing = match.ingredient;
           case MatchKind.fuzzy:
             line
@@ -264,42 +274,85 @@ class ReceiptValidator {
     return s.isEmpty ? null : s;
   }
 
-  /// Moves a line's quantities into [target] (a matched item's unit). Simple conversions
-  /// only; a quantity that can't be converted becomes unknown.
-  static void alignUnit(DraftLine line, BaseUnit target, double? gramsPerPiece) {
+  /// The model counts every line the way it is used up (docs/07 §7.3); Dart fits it to the
+  /// pantry item [ing]. A line in pieces with a piece size switches an item measured in g or ml
+  /// to pieces when it is filed ([DraftLine.switchFrom]). Any other difference converts the
+  /// line into the item's unit.
+  static void fitUnit(DraftLine line, Ingredient ing) {
+    line.switchFrom = null;
+    if (line.unit == ing.baseUnit) return;
+    if (line.unit == BaseUnit.pc && line.pieceGrams(ing.densityGPerMl) != null) {
+      line.switchFrom = ing.baseUnit;
+      return;
+    }
+    alignUnit(
+      line,
+      ing.baseUnit,
+      ing.gramsPerPiece,
+      density: ing.densityGPerMl,
+      lineGramsPerPiece: line.pieceGrams(ing.densityGPerMl),
+    );
+  }
+
+  /// Moves a line's quantities into [target] (a matched item's unit). [gramsPerPiece] weighs the
+  /// pieces on either side, unless the line says what its own pieces weigh
+  /// ([lineGramsPerPiece]); ml and g convert at [density] (1 if unknown). A quantity that can't
+  /// be converted becomes unknown.
+  static void alignUnit(
+    DraftLine line,
+    BaseUnit target,
+    double? gramsPerPiece, {
+    double? density,
+    double? lineGramsPerPiece,
+  }) {
+    line.switchFrom = null;
     if (line.unit == target) return;
+    final f = UnitConverter.factor(
+      line.unit,
+      target,
+      fromGramsPerPiece: lineGramsPerPiece ?? gramsPerPiece,
+      toGramsPerPiece: gramsPerPiece,
+      density: density,
+    );
+    double? convert(double q) {
+      if (f == null) return null;
+      final v = q * f;
+      return target == BaseUnit.pc ? UnitConverter.snapPieces(v) : v;
+    }
+
     if (line.qty != null) {
-      line.qty = _convert(line.qty!, line.unit, target, gramsPerPiece);
+      line.qty = convert(line.qty!);
       if (line.qty == null) line.qtySource = QtySource.unknown;
     }
     if (line.packageQty != null) {
-      line.packageQty = _convert(line.packageQty!, line.unit, target, gramsPerPiece);
+      line.packageQty = convert(line.packageQty!);
       if (line.packageQty == null) line.packagePriceMinor = null;
     }
     line.unit = target;
-  }
-
-  /// g and ml count as the same here (a receipt doesn't say how dense a drink is), so
-  /// 6 cans of a 340 g cola are 2040 ml, and 1980 ml of a cola counted in cans is 6 pc.
-  static double? _convert(double q, BaseUnit from, BaseUnit to, double? gramsPerPiece) {
-    if (from == to) return q;
-    if (from != BaseUnit.pc && to != BaseUnit.pc) return q;
-    if (gramsPerPiece == null || gramsPerPiece <= 0) return null;
-    return from == BaseUnit.pc ? q * gramsPerPiece : (q / gramsPerPiece).roundToDouble();
+    if (target != BaseUnit.pc) {
+      line
+        ..pieceName = null
+        ..pieceSize = null
+        ..pieceUnit = null;
+    }
   }
 
   static NewIngredientProfile _profile(ReceiptItemDto item) {
     final p = item.newIngredient;
+    final unit = item.unit ?? p?.unit ?? BaseUnit.g;
     if (p == null) {
       return NewIngredientProfile()
         ..name = item.name
-        ..unit = item.unit ?? BaseUnit.g;
+        ..unit = unit
+        ..pieceName = unit == BaseUnit.pc ? item.piece?.name : null
+        ..gramsPerPiece = unit == BaseUnit.pc ? item.piece?.grams(null) : null;
     }
     return NewIngredientProfile()
       ..name = p.name.isEmpty ? item.name : p.name
       ..category = p.category
-      ..unit = p.unit
-      ..gramsPerPiece = p.gramsPerPiece ?? (p.unit == BaseUnit.pc ? 50 : null)
+      ..unit = unit
+      ..gramsPerPiece = unit == BaseUnit.pc ? (p.gramsPerPiece ?? 50) : null
+      ..pieceName = unit == BaseUnit.pc ? p.pieceName ?? item.piece?.name : null
       ..densityGPerMl = p.densityGPerMl
       ..per100 = p.per100
       ..shelfLifeDays = p.shelfLifeDays.clamp(1, 3650);

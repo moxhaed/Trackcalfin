@@ -162,6 +162,71 @@ void main() {
       expect(cans.qty, 2040);
     });
 
+    group('units (Prompt A v5, docs/07)', () {
+      ReceiptExtraction v5([void Function(Map<String, dynamic>)? edit, int index = 0]) {
+        final json = jsonDecode(promptExamples('receipt_extraction.v5.md')[index]) as Map<String, dynamic>;
+        edit?.call(json);
+        final r = ReceiptExtraction.parse(json);
+        expect(r.ok, isTrue, reason: r.errors.join('\n'));
+        return r.value!;
+      }
+
+      Map<String, dynamic> soda(Map<String, dynamic> json) => (json['items'] as List)[1] as Map<String, dynamic>;
+
+      test('cans of a soda the pantry keeps in ml switch it to cans when filed', () {
+        final kept = ingredient('orange_soda', unit: BaseUnit.ml, qty: 660);
+        final l = validate(v5(), [ingredient('chicken_breast'), kept]).lines[1];
+        expect(
+          (l.unit, l.qty, l.pieceName, l.pieceSize, l.pieceUnit, l.switchFrom),
+          (BaseUnit.pc, 6.0, 'can', 330.0, BaseUnit.ml, BaseUnit.ml),
+        );
+        expect(l.pieceGrams(1.04), closeTo(343.2, 1e-9));
+      });
+
+      test('the same soda already in cans takes cans as they are, and a 1.5 l bottle as 4.5 cans', () {
+        final cans = ingredient('orange_soda', unit: BaseUnit.pc, gpp: 330, qty: 2);
+        final l = validate(v5(), [ingredient('chicken_breast'), cans]).lines[1];
+        expect((l.unit, l.qty, l.switchFrom), (BaseUnit.pc, 6.0, null));
+        final bottle = v5(
+          (j) => soda(j)
+            ..['qty'] = 1500
+            ..['unit'] = 'ml'
+            ..['piece_name'] = null
+            ..['piece_size'] = null
+            ..['piece_unit'] = null,
+        );
+        final b = validate(bottle, [ingredient('chicken_breast'), cans]).lines[1];
+        expect((b.unit, b.switchFrom), (BaseUnit.pc, null));
+        expect(b.qty, closeTo(1500 / 330, 1e-9), reason: 'not rounded to 5');
+      });
+
+      test('pieces without a size can only be converted by the pantry item\'s own piece weight', () {
+        final noSize = v5((j) => soda(j)..['piece_size'] = null);
+        final ml = validate(noSize, [ingredient('chicken_breast'), ingredient('orange_soda', unit: BaseUnit.ml)]);
+        expect((ml.lines[1].unit, ml.lines[1].qty, ml.lines[1].qtySource), (BaseUnit.ml, null, QtySource.unknown));
+      });
+
+      test('a new item in pieces carries its name and weight; one without a profile still files', () {
+        final d = validate(v5(), [
+          ingredient('chicken_breast'),
+          ingredient('orange_soda', unit: BaseUnit.pc, gpp: 330),
+        ]);
+        final p = d.lines[2].profile!;
+        expect((p.unit, p.gramsPerPiece, p.pieceName, p.shelfLifeDays), (BaseUnit.pc, 75.0, 'pita', 7));
+        final bare = validate(v5((j) => ((j['items'] as List)[2] as Map)['new_ingredient'] = null), [
+          ingredient('chicken_breast'),
+        ]).lines[2].profile!;
+        expect((bare.unit, bare.gramsPerPiece, bare.pieceName, bare.per100.isZero), (BaseUnit.pc, 75.0, 'pita', true));
+      });
+
+      test('a pantry photo of cups of a pudding kept in grams switches it too', () {
+        final pudding = ingredient('vanilla_pudding', qty: 400);
+        final d = validate(v5(null, 1), [ingredient('dry_pasta'), pudding]);
+        final l = d.lines[1];
+        expect((l.unit, l.qty, l.pieceName, l.switchFrom), (BaseUnit.pc, 3.0, 'cup', BaseUnit.g));
+      });
+    });
+
     test('sameReceipt: same day, total and store; store names may differ in detail', () {
       final day = DateTime(2026, 9, 26, 18, 42);
       bool same(String? merchant, DateTime other, int total) => ReceiptValidator.sameReceipt(

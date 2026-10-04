@@ -95,6 +95,19 @@ class DraftLine {
   @Enumerated(EnumType.name)
   BaseUnit unit = BaseUnit.g;
 
+  /// Pieces: what one is called ("can") and what one holds ([pieceSize] in [pieceUnit], g or ml:
+  /// 330 ml for a can of cola, 40 g for a tortilla).
+  String? pieceName;
+  double? pieceSize;
+
+  @Enumerated(EnumType.name)
+  BaseUnit? pieceUnit;
+
+  /// The matched pantry item is counted in this unit (g or ml), and the line in pieces: filing
+  /// switches the item to pieces of [pieceSize] (docs/07 §7.3).
+  @Enumerated(EnumType.name)
+  BaseUnit? switchFrom;
+
   @Enumerated(EnumType.name)
   QtySource qtySource = QtySource.unknown;
 
@@ -145,6 +158,13 @@ class DraftLine {
   String? priceNote;
   List<WebLink> priceLinks = [];
 
+  /// What one piece weighs: [pieceSize] in grams, or in ml at [density] g per ml (1 if unknown).
+  double? pieceGrams(double? density) {
+    final s = pieceSize;
+    if (s == null || s <= 0) return null;
+    return pieceUnit == BaseUnit.ml ? s * (density ?? 1.0) : s;
+  }
+
   /// [stock], or the default: a receipt adds, a pantry photo counts what is there.
   StockEffect effectFor(ScanKind kind) => stock ?? (kind == ScanKind.pantry ? StockEffect.replace : StockEffect.add);
 
@@ -188,6 +208,7 @@ class NewIngredientProfile {
   BaseUnit unit = BaseUnit.g;
 
   double? gramsPerPiece;
+  String? pieceName;
   double? densityGPerMl;
   Nutrition per100 = Nutrition();
   int shelfLifeDays = 7;

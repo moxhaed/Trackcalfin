@@ -1,9 +1,13 @@
 import 'package:intl/intl.dart';
 
 import '../../core/enums.dart';
+import '../../data/isar/collections/ingredient.dart';
 import '../../domain/units.dart';
 
-String qty(double v, BaseUnit u) => UnitConverter.format(v, u);
+String qty(double v, BaseUnit u, {String? piece}) => UnitConverter.format(v, u, piece: piece);
+
+/// [v] of [i] in its unit, pieces by name: "6 cans", "250 ml".
+String qtyOf(double v, Ingredient i) => UnitConverter.format(v, i.baseUnit, piece: i.pieceName);
 
 String dayLabel(DateTime d, DateTime now) {
   final a = DateTime(d.year, d.month, d.day);

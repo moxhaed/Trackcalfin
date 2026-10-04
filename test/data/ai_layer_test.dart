@@ -16,6 +16,7 @@ import 'package:trackcalfin/data/ai/json_reader.dart';
 import 'package:trackcalfin/data/ai/schemas.dart';
 import 'package:trackcalfin/data/isar/collections/scan_job.dart';
 import 'package:trackcalfin/data/isar/collections/user_profile.dart';
+import 'package:trackcalfin/domain/measures.dart';
 
 import '../domain/fixtures.dart';
 import '../support/fake_gemini.dart';
@@ -24,7 +25,26 @@ void main() {
   setUp(() => GeminiClient.compatLevel = 0);
 
   group('Prompt examples parse with the app DTOs', () {
-    test('Prompt A examples: a receipt and a pantry photo', () {
+    test('Prompt A v5 examples: lines counted the way they are used, pieces with their size', () {
+      final examples = promptExamples('receipt_extraction.v5.md');
+      expect(examples.length, 2);
+      final r = ReceiptExtraction.parse(jsonDecode(examples[0]));
+      expect(r.ok, isTrue, reason: r.errors.join('\n'));
+      final soda = r.value!.items[1];
+      expect(
+        (soda.unit, soda.qty, soda.piece!.name, soda.piece!.size, soda.piece!.unit, soda.isNewIngredient),
+        (BaseUnit.pc, 6.0, 'can', 330.0, BaseUnit.ml, false),
+      );
+      final pita = r.value!.items[2].newIngredient!;
+      expect((pita.unit, pita.gramsPerPiece, pita.pieceName), (BaseUnit.pc, 75.0, 'pita'));
+      expect(r.value!.items[0].piece, isNull, reason: 'grams have no piece');
+      final pantry = ReceiptExtraction.parse(jsonDecode(examples[1]));
+      expect(pantry.ok, isTrue, reason: pantry.errors.join('\n'));
+      expect(pantry.value!.items[1].shelfPrice!.packageQty, 4, reason: 'a 4-pack is priced per 4 cups');
+      expect(pantry.value!.items[2].newIngredient!.unit, BaseUnit.ml);
+      expect(pantry.value!.items[2].newIngredient!.densityGPerMl, 0.92);
+    });
+    test('Prompt A v4 examples still parse: answers in flight when the app updates', () {
       final examples = promptExamples('receipt_extraction.v4.md');
       expect(examples.length, 2);
       final r = ReceiptExtraction.parse(jsonDecode(examples[0]));
@@ -67,31 +87,56 @@ void main() {
       expect(r.value!.basis, LabelBasis.per100g);
       expect(r.value!.energyKcal, 348);
     });
-    test('Prompt G examples: buy and drink, fridge and eating out, a split total, prices, a question', () {
+    test('Prompt G v3 examples: amounts as said, measures and pieces', () {
       final ctx = QuickLogContext(
         now: DateTime(2026, 10, 2, 18, 40),
         pantry: const {'cola_zero': BaseUnit.pc, 'whole_milk': BaseUnit.ml},
         fridge: const {12: 3},
         recipes: const {4},
       );
-      final examples = promptExamples('quick_log.v2.md');
-      expect(examples, hasLength(5));
+      final examples = promptExamples('quick_log.v3.md');
+      expect(examples, hasLength(6));
       final parsed = [for (final e in examples) QuickLog.parse(jsonDecode(e), ctx: ctx)];
       for (final r in parsed) {
         expect(r.ok, isTrue, reason: r.errors.join('\n'));
       }
-      expect(parsed[0].value!.actions.map((a) => a.type), [QuickActionType.buy, QuickActionType.eat]);
-      expect(parsed[1].value!.actions[1].category, SpendCategory.eatingOut);
-      expect(parsed[1].value!.actions[2].nutrition!.kcal, 700);
-      expect(parsed[2].value!.totalPaidMinor, 950);
-      expect(parsed[2].value!.actions[0].newIngredient!.gramsPerPiece, 260);
       expect(
-        [for (final a in parsed[3].value!.actions) (a.type, a.key, a.name)],
-        [(QuickActionType.priceCheck, 'cola_zero', 'Coke Zero'), (QuickActionType.priceCheck, null, 'Oat milk')],
+        [for (final a in parsed[1].value!.actions) (a.qty, a.measure)],
+        [(2.0, Measure.tbsp), (1.0, Measure.glass)],
       );
-      expect(parsed[4].value!.actions, isEmpty);
-      expect(parsed[4].value!.question, startsWith('Which chili'));
+      final redBull = parsed[3].value!.actions[0];
+      expect((redBull.unit, redBull.piece!.name, redBull.newIngredient!.gramsPerPiece), (BaseUnit.pc, 'can', 260.0));
+      expect(parsed[3].value!.totalPaidMinor, 950);
+      expect(parsed[5].value!.question, startsWith('Which chili'));
     });
+    test(
+      'Prompt G v2 examples still parse: buy and drink, fridge and eating out, a split total, prices, a question',
+      () {
+        final ctx = QuickLogContext(
+          now: DateTime(2026, 10, 2, 18, 40),
+          pantry: const {'cola_zero': BaseUnit.pc, 'whole_milk': BaseUnit.ml},
+          fridge: const {12: 3},
+          recipes: const {4},
+        );
+        final examples = promptExamples('quick_log.v2.md');
+        expect(examples, hasLength(5));
+        final parsed = [for (final e in examples) QuickLog.parse(jsonDecode(e), ctx: ctx)];
+        for (final r in parsed) {
+          expect(r.ok, isTrue, reason: r.errors.join('\n'));
+        }
+        expect(parsed[0].value!.actions.map((a) => a.type), [QuickActionType.buy, QuickActionType.eat]);
+        expect(parsed[1].value!.actions[1].category, SpendCategory.eatingOut);
+        expect(parsed[1].value!.actions[2].nutrition!.kcal, 700);
+        expect(parsed[2].value!.totalPaidMinor, 950);
+        expect(parsed[2].value!.actions[0].newIngredient!.gramsPerPiece, 260);
+        expect(
+          [for (final a in parsed[3].value!.actions) (a.type, a.key, a.name)],
+          [(QuickActionType.priceCheck, 'cola_zero', 'Coke Zero'), (QuickActionType.priceCheck, null, 'Oat milk')],
+        );
+        expect(parsed[4].value!.actions, isEmpty);
+        expect(parsed[4].value!.question, startsWith('Which chili'));
+      },
+    );
     test('Prompt F example', () {
       final r = PriceLookup.parse(
         jsonDecode(promptExample('price_lookup.v1.md')),
@@ -179,13 +224,13 @@ void main() {
       final items = json['items'] as List;
       (items[0] as Map)['total_minor'] = 4.99;
       (items[2] as Map)['spend_category'] = 'toiletries';
-      (items[1] as Map)['new_ingredient'] = null;
+      (items[1] as Map)['new_ingredient'] = 'Greek yogurt';
       (items[3] as Map)['shelf_price'] = {'package_qty': 500, 'price_minor': 0};
       final r = ReceiptExtraction.parse(json);
       expect(r.ok, isFalse);
       expect(r.errors, contains(r'$.items[0].total_minor must be an integer'));
       expect(r.errors.any((e) => e.contains(r"$.items[2].spend_category 'toiletries'")), isTrue);
-      expect(r.errors, contains(r'$.items[1].new_ingredient is required when is_new_ingredient is true'));
+      expect(r.errors, contains(r'$.items[1].new_ingredient must be an object or null'));
       expect(r.errors, contains(r'$.items[3].shelf_price.price_minor must be > 0'));
     });
     test('a recipe ingredient is stock or missing: "staple" no longer exists', () {
@@ -299,7 +344,7 @@ void main() {
     test('a quick log may only point at what exists, in its unit, with money and dates that make sense', () {
       final ctx = QuickLogContext(
         now: DateTime(2026, 10, 2, 18, 40),
-        pantry: const {'cola_zero': BaseUnit.pc},
+        pantry: const {'cola_zero': BaseUnit.pc, 'whole_milk': BaseUnit.ml},
         fridge: const {12: 3},
         recipes: const {4},
       );
@@ -342,11 +387,60 @@ void main() {
         ]),
         [r"$.actions[0].key 'cola' is not in the pantry; copy pantry keys exactly"],
       );
+      // Amounts come as said; Dart converts what it can (docs/07 §7.4).
       expect(
         errors([
           a('eat', {'source': 'pantry', 'key': 'cola_zero', 'qty': 330, 'unit': 'ml'}),
+          a('eat', {'source': 'pantry', 'key': 'whole_milk', 'qty': 2, 'unit': 'tbsp'}),
+          a('eat', {'source': 'pantry', 'key': 'cola_zero', 'qty': 1, 'unit': 'glass'}),
         ]),
-        [r"$.actions[0].unit 'cola_zero' is counted in pc; give qty in pc"],
+        isEmpty,
+        reason: 'ml and measures convert by the piece size or the density',
+      );
+      expect(
+        errors([
+          a('eat', {'source': 'pantry', 'key': 'whole_milk', 'qty': 1, 'unit': 'pc'}),
+        ]),
+        [
+          r"$.actions[0].unit 'whole_milk' is counted in ml: give one piece as its volume "
+              '(a can of cola is 330 ml, a tortilla 40 g)',
+        ],
+        reason: 'an item measured in ml has no piece size',
+      );
+      expect(
+        errors([
+          a('eat', {'source': 'pantry', 'key': 'whole_milk', 'qty': 1, 'unit': 'spoon'}),
+        ]).single,
+        contains("'spoon' is not one of g, ml, pc, tsp, tbsp, cup, glass, pinch, handful"),
+      );
+      expect(
+        errors([
+          a('buy', {'key': 'whole_milk', 'qty': 1, 'unit': 'cup', 'paid_minor': 99}),
+        ]).single,
+        contains("'cup' is not one of g, ml, pc"),
+        reason: 'a purchase is counted, not measured with a spoon',
+      );
+      expect(
+        errors([
+          a('buy', {'key': 'whole_milk', 'qty': 6, 'unit': 'pc', 'paid_minor': 594}),
+        ]).single,
+        contains(r"$.actions[0].piece_size is required to count 'whole_milk' in pieces"),
+      );
+      expect(
+        errors([
+          a('buy', {
+            'key': 'whole_milk',
+            'qty': 6,
+            'unit': 'pc',
+            'piece_name': 'bottle',
+            'piece_size': 500,
+            'piece_unit': 'ml',
+            'paid_minor': 594,
+          }),
+          a('eat', {'source': 'pantry', 'key': 'whole_milk', 'qty': 1, 'unit': 'pc'}),
+        ]),
+        isEmpty,
+        reason: 'a purchase in pieces switches the item to pieces, so a piece can be eaten after it',
       );
       expect(
         errors([
@@ -358,8 +452,9 @@ void main() {
       expect(
         errors([
           a('buy', {'key': 'oat_milk', 'qty': 1000, 'unit': 'ml', 'paid_minor': 199}),
-        ]).first,
-        r'$.actions[0].new_ingredient is required (object)',
+        ]),
+        isEmpty,
+        reason: 'a new item without its profile is logged; its macros are estimated later, in a batch',
       );
       expect(
         errors([

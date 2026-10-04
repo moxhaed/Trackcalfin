@@ -41,7 +41,9 @@ class ContextBuilders {
       'output_language': profile.outputLanguage,
       'user_hint': userHint,
       'known_ingredients': [
-        for (final i in known.take(400)) {'key': i.key, 'name': i.name, 'unit': i.baseUnit.label},
+        // No unit: the model counts every line the way it is used up, and Dart fits it to the
+        // pantry's unit (docs/07). Given the unit, models copied it ("cola in ml").
+        for (final i in known.take(400)) {'key': i.key, 'name': i.name},
       ],
     };
   }
@@ -185,7 +187,13 @@ class ContextBuilders {
       'output_language': profile.outputLanguage,
       'pantry': [
         for (final i in pantry)
-          {'key': i.key, 'name': i.name, 'unit': i.baseUnit.label, 'on_hand': _round(i.qtyOnHand, 1)},
+          {
+            'key': i.key,
+            'name': i.name,
+            'unit': i.baseUnit.label,
+            if (i.baseUnit == BaseUnit.pc && i.pieceName != null) 'piece': i.pieceName,
+            'on_hand': _round(i.qtyOnHand, 1),
+          },
       ],
       'fridge': [
         for (final s in fridge)

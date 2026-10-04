@@ -47,8 +47,9 @@ class UserProfile {
   bool weeklyRecapEnabled = true;
   bool autoCommitCleanScans = true;
 
-  /// Pantry photos: look shop prices up with Google Search. The user confirms each one.
-  bool lookUpPrices = true;
+  /// Pantry photos: look shop prices up with Google Search right after every photo, a second
+  /// request each time. Off, review offers the lookup on a tap. The user confirms each price.
+  bool lookUpPrices = false;
 
   /// The dashboard's food card: what was eaten, or what was spent. A stored profile without
   /// it reads [FoodBasis.eaten], the first value.

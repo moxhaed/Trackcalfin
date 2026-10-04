@@ -8,6 +8,7 @@ import '../../app/theme.dart';
 import '../../core/enums.dart';
 import '../../data/isar/collections/schemas.dart';
 import '../../domain/costing.dart';
+import '../../domain/measures.dart';
 import '../../domain/nutrition.dart';
 import '../common/format.dart';
 import '../common/widgets.dart';
@@ -79,7 +80,7 @@ class _AteSheetState extends ConsumerState<AteSheet> {
     final verb = ing.category == IngredientCategory.beverages ? 'Drank' : 'Ate';
     showUndoOn(
       messenger,
-      '$verb ${ing.name} · ${qty(amount, ing.baseUnit)}',
+      '$verb ${ing.name} · ${qtyOf(amount, ing)}',
       detail: n == null ? 'Its macros aren\'t known yet' : '${n.kcal.round()} kcal · ${n.proteinG.round()} g protein',
       onUndo: () => cook.deleteMeal(key, id),
     );
@@ -173,10 +174,14 @@ class _AteSheetState extends ConsumerState<AteSheet> {
                     ListTile(
                       contentPadding: EdgeInsets.zero,
                       title: Text(ing.name),
-                      subtitle: Text('${qty(ing.qtyOnHand, ing.baseUnit)} on hand', style: muted),
+                      subtitle: Text('${qtyOf(ing.qtyOnHand, ing)} on hand', style: muted),
                       trailing: FilledButton.tonal(
                         onPressed: () => _eatPantry(ing),
-                        child: Text(ing.baseUnit == BaseUnit.pc ? 'Eat 1' : 'Eat…'),
+                        child: Text(switch (ing.baseUnit) {
+                          BaseUnit.pc when ing.pieceName != null => 'Eat 1 ${ing.pieceName}',
+                          BaseUnit.pc => 'Eat 1',
+                          _ => 'Eat…',
+                        }),
                       ),
                     ),
                   if (pantry.isEmpty)
@@ -268,9 +273,8 @@ class _AmountDialogState extends State<_AmountDialog> {
   @override
   Widget build(BuildContext context) {
     final ing = widget.ing;
-    final presets = ing.baseUnit == BaseUnit.ml
-        ? const <double>[100, 200, 250, 330, 500]
-        : const <double>[30, 50, 100, 150, 200];
+    // Spoons for sauces and oils, a glass for drinks, a handful for nuts: Dart converts them.
+    final presets = Measures.presetsFor(ing);
     return AlertDialog(
       title: Text('How much ${ing.name}?'),
       content: Column(
@@ -282,7 +286,11 @@ class _AmountDialogState extends State<_AmountDialog> {
             runSpacing: 6,
             children: [
               for (final p in presets)
-                ActionChip(label: Text(qty(p, ing.baseUnit)), onPressed: () => Navigator.of(context).pop(p)),
+                ActionChip(
+                  label: Text(p.label),
+                  tooltip: qtyOf(p.qty, ing),
+                  onPressed: () => Navigator.of(context).pop(p.qty),
+                ),
             ],
           ),
           const SizedBox(height: 12),

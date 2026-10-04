@@ -1,4 +1,5 @@
 import '../../../core/enums.dart';
+import '../../../domain/measures.dart';
 import '../../isar/collections/nutrition.dart';
 import '../json_reader.dart';
 import 'enum_codec.dart';
@@ -30,6 +31,8 @@ class QuickAction {
     this.name,
     this.qty,
     this.unit,
+    this.measure,
+    this.piece,
     this.batchId,
     this.recipeId,
     this.portions,
@@ -49,7 +52,13 @@ class QuickAction {
   final String? key;
   final String? name;
   final double? qty;
+
+  /// [qty] is in [unit], or in [measure] ("1 tbsp"): Dart converts it to the item's unit.
   final BaseUnit? unit;
+  final Measure? measure;
+
+  /// A new item bought in pieces: what one is called and holds.
+  final PieceDto? piece;
   final int? batchId;
   final int? recipeId;
   final double? portions;
@@ -108,6 +117,7 @@ class QuickLog {
       if (e.value != SpendCategory.groceries) e.key: e.value,
   };
   static final _keyPattern = RegExp(r'^[a-z][a-z0-9_]{1,40}$');
+  static final _spokenUnits = ['g', 'ml', 'pc', for (final m in Measure.values) m.label].join(', ');
 
   static ParseResult<QuickLog> parse(Map<String, dynamic> m, {required QuickLogContext ctx}) {
     final j = JsonReader();
@@ -143,18 +153,37 @@ class QuickLog {
         return k;
       }
 
-      /// qty in the unit [k] is counted in.
-      (double?, BaseUnit?) amount(String? k, {required bool required}) {
+      /// qty as the user said it: in g, ml or pc, or in a kitchen measure ("1 tbsp"), which Dart
+      /// converts to the item's unit. Only what can't be converted is an error: pieces of an item
+      /// counted in g or ml (it has no piece size).
+      (double?, BaseUnit?, Measure?) amount(
+        String? k, {
+        required bool required,
+        bool measures = true,
+        bool pieces = false,
+      }) {
         final qty = j.number(a, 'qty', path, nullable: !required);
-        final unit = j.enumOf(a, 'unit', path, EnumCodec.unit, nullable: qty == null);
-        if (qty != null && (qty < 0 || qty > (unit == BaseUnit.pc ? 60 : 25000))) {
-          j.error('$path.qty', 'must be between 0 and ${unit == BaseUnit.pc ? 60 : 25000}');
+        final raw = j.str(a, 'unit', path, nullable: qty == null);
+        BaseUnit? unit;
+        Measure? measure;
+        if (raw != null) {
+          unit = EnumCodec.unit[raw];
+          measure = unit == null && measures ? Measures.parse(raw) : null;
+          if (unit == null && measure == null) {
+            j.error('$path.unit', "'$raw' is not one of ${measures ? _spokenUnits : 'g, ml, pc'}");
+          }
         }
+        final max = unit == BaseUnit.pc ? 60 : (measure != null ? 100 : 25000);
+        if (qty != null && (qty < 0 || qty > max)) j.error('$path.qty', 'must be between 0 and $max');
         final counted = k == null ? null : units[k];
-        if (counted != null && unit != null && unit != counted) {
-          j.error('$path.unit', "'$k' is counted in ${counted.label}; give qty in ${counted.label}");
+        if (!pieces && counted != null && counted != BaseUnit.pc && unit == BaseUnit.pc) {
+          j.error(
+            '$path.unit',
+            "'$k' is counted in ${counted.label}: give one piece as its ${counted == BaseUnit.ml ? 'volume' : 'weight'} "
+                '(a can of cola is 330 ml, a tortilla 40 g)',
+          );
         }
-        return (qty, unit);
+        return (qty, unit, measure);
       }
 
       int? batch() {
@@ -166,13 +195,26 @@ class QuickLog {
       switch (type) {
         case QuickActionType.buy:
           final k = key(known: false);
-          NewIngredientDto? profile;
-          if (k != null && !units.containsKey(k)) {
-            final p = j.object(a, 'new_ingredient', path);
-            if (p != null) profile = NewIngredientDto.parse(j, p, '$path.new_ingredient');
+          // Pieces of an item kept in g or ml switch it to pieces, like a scan (docs/07 §7.3):
+          // they need the piece's size.
+          final (qty, unit, _) = amount(k, required: true, measures: false, pieces: true);
+          final piece = PieceDto.parse(j, a, path, unit);
+          final counted = k == null ? null : units[k];
+          if (counted != null && counted != BaseUnit.pc && unit == BaseUnit.pc && piece?.size == null) {
+            j.error('$path.piece_size', "is required to count '$k' in pieces; or give qty in ${counted.label}");
           }
-          if (k != null) units[k] ??= profile?.unit ?? BaseUnit.g;
-          final (qty, unit) = amount(k, required: true);
+          // A new item without its profile is still logged: its macros are estimated later, in a
+          // batch with others (NutritionService), which costs less than asking this again.
+          NewIngredientDto? profile;
+          if (k != null && counted == null) {
+            final p = j.object(a, 'new_ingredient', path, nullable: true);
+            if (p != null) {
+              profile = NewIngredientDto.parse(j, p, '$path.new_ingredient', unit: unit, piece: piece);
+            }
+          }
+          if (k != null) {
+            units[k] = unit == BaseUnit.pc ? BaseUnit.pc : (counted ?? profile?.unit ?? unit ?? BaseUnit.g);
+          }
           if (qty != null && qty <= 0) j.error('$path.qty', 'must be more than 0');
           final paid = money('paid_minor', required: false);
           final est = money('est_price_minor', required: false);
@@ -185,6 +227,7 @@ class QuickLog {
               name: _text(j, a, 'name', path),
               qty: qty,
               unit: unit,
+              piece: piece,
               paidMinor: paid,
               estPriceMinor: est,
               merchant: _text(j, a, 'merchant', path),
@@ -214,9 +257,11 @@ class QuickLog {
               out.add(QuickAction(type: type, when: when, source: source, batchId: b, portions: portions));
             case FoodSource.pantry:
               final k = key();
-              final (qty, unit) = amount(k, required: true);
+              final (qty, unit, measure) = amount(k, required: true);
               if (qty != null && qty <= 0) j.error('$path.qty', 'must be more than 0');
-              out.add(QuickAction(type: type, when: when, source: source, key: k, qty: qty, unit: unit));
+              out.add(
+                QuickAction(type: type, when: when, source: source, key: k, qty: qty, unit: unit, measure: measure),
+              );
             case FoodSource.out:
               final name = _text(j, a, 'name', path);
               if (name == null) j.error('$path.name', 'is required for food eaten out');
@@ -249,14 +294,16 @@ class QuickLog {
             out.add(QuickAction(type: type, when: when, source: source, batchId: b, portions: portions));
           } else if (source == FoodSource.pantry) {
             final k = key();
-            final (qty, unit) = amount(k, required: false);
+            final (qty, unit, measure) = amount(k, required: false);
             if (qty != null && qty <= 0) j.error('$path.qty', 'must be more than 0, or null for all');
-            out.add(QuickAction(type: type, when: when, source: source, key: k, qty: qty, unit: unit));
+            out.add(
+              QuickAction(type: type, when: when, source: source, key: k, qty: qty, unit: unit, measure: measure),
+            );
           }
         case QuickActionType.count:
           final k = key();
-          final (qty, unit) = amount(k, required: true);
-          out.add(QuickAction(type: type, when: when, key: k, qty: qty, unit: unit));
+          final (qty, unit, measure) = amount(k, required: true);
+          out.add(QuickAction(type: type, when: when, key: k, qty: qty, unit: unit, measure: measure));
         case QuickActionType.priceCheck:
           // Null for an item the pantry doesn't have: the app says it has no prices for it.
           final k = j.str(a, 'key', path, nullable: true);

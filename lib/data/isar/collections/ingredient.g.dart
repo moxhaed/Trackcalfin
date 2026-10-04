@@ -104,23 +104,28 @@ const IngredientSchema = CollectionSchema(
 
       target: r'Nutrition',
     ),
-    r'qtyOnHand': PropertySchema(
+    r'pieceName': PropertySchema(
       id: 18,
+      name: r'pieceName',
+      type: IsarType.string,
+    ),
+    r'qtyOnHand': PropertySchema(
+      id: 19,
       name: r'qtyOnHand',
       type: IsarType.double,
     ),
     r'shelfLifeDays': PropertySchema(
-      id: 19,
+      id: 20,
       name: r'shelfLifeDays',
       type: IsarType.long,
     ),
     r'trackingMode': PropertySchema(
-      id: 20,
+      id: 21,
       name: r'trackingMode',
       type: IsarType.string,
     ),
     r'updatedAt': PropertySchema(
-      id: 21,
+      id: 22,
       name: r'updatedAt',
       type: IsarType.dateTime,
     ),
@@ -207,6 +212,12 @@ int _ingredientEstimateSize(
         allOffsets,
       );
   {
+    final value = object.pieceName;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
     final value = object.legacyTrackingMode;
     if (value != null) {
       bytesCount += 3 + value.length * 3;
@@ -244,10 +255,11 @@ void _ingredientSerialize(
     NutritionSchema.serialize,
     object.per100,
   );
-  writer.writeDouble(offsets[18], object.qtyOnHand);
-  writer.writeLong(offsets[19], object.shelfLifeDays);
-  writer.writeString(offsets[20], object.legacyTrackingMode);
-  writer.writeDateTime(offsets[21], object.updatedAt);
+  writer.writeString(offsets[18], object.pieceName);
+  writer.writeDouble(offsets[19], object.qtyOnHand);
+  writer.writeLong(offsets[20], object.shelfLifeDays);
+  writer.writeString(offsets[21], object.legacyTrackingMode);
+  writer.writeDateTime(offsets[22], object.updatedAt);
 }
 
 Ingredient _ingredientDeserialize(
@@ -290,10 +302,11 @@ Ingredient _ingredientDeserialize(
         allOffsets,
       ) ??
       Nutrition();
-  object.qtyOnHand = reader.readDouble(offsets[18]);
-  object.shelfLifeDays = reader.readLong(offsets[19]);
-  object.legacyTrackingMode = reader.readStringOrNull(offsets[20]);
-  object.updatedAt = reader.readDateTime(offsets[21]);
+  object.pieceName = reader.readStringOrNull(offsets[18]);
+  object.qtyOnHand = reader.readDouble(offsets[19]);
+  object.shelfLifeDays = reader.readLong(offsets[20]);
+  object.legacyTrackingMode = reader.readStringOrNull(offsets[21]);
+  object.updatedAt = reader.readDateTime(offsets[22]);
   return object;
 }
 
@@ -359,12 +372,14 @@ P _ingredientDeserializeProp<P>(
               Nutrition())
           as P;
     case 18:
-      return (reader.readDouble(offset)) as P;
-    case 19:
-      return (reader.readLong(offset)) as P;
-    case 20:
       return (reader.readStringOrNull(offset)) as P;
+    case 19:
+      return (reader.readDouble(offset)) as P;
+    case 20:
+      return (reader.readLong(offset)) as P;
     case 21:
+      return (reader.readStringOrNull(offset)) as P;
+    case 22:
       return (reader.readDateTime(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -2585,6 +2600,171 @@ extension IngredientQueryFilter
     });
   }
 
+  QueryBuilder<Ingredient, Ingredient, QAfterFilterCondition>
+  pieceNameIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'pieceName'),
+      );
+    });
+  }
+
+  QueryBuilder<Ingredient, Ingredient, QAfterFilterCondition>
+  pieceNameIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'pieceName'),
+      );
+    });
+  }
+
+  QueryBuilder<Ingredient, Ingredient, QAfterFilterCondition> pieceNameEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(
+          property: r'pieceName',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Ingredient, Ingredient, QAfterFilterCondition>
+  pieceNameGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'pieceName',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Ingredient, Ingredient, QAfterFilterCondition> pieceNameLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'pieceName',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Ingredient, Ingredient, QAfterFilterCondition> pieceNameBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'pieceName',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Ingredient, Ingredient, QAfterFilterCondition>
+  pieceNameStartsWith(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.startsWith(
+          property: r'pieceName',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Ingredient, Ingredient, QAfterFilterCondition> pieceNameEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.endsWith(
+          property: r'pieceName',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Ingredient, Ingredient, QAfterFilterCondition> pieceNameContains(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.contains(
+          property: r'pieceName',
+          value: value,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Ingredient, Ingredient, QAfterFilterCondition> pieceNameMatches(
+    String pattern, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.matches(
+          property: r'pieceName',
+          wildcard: pattern,
+          caseSensitive: caseSensitive,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Ingredient, Ingredient, QAfterFilterCondition>
+  pieceNameIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'pieceName', value: ''),
+      );
+    });
+  }
+
+  QueryBuilder<Ingredient, Ingredient, QAfterFilterCondition>
+  pieceNameIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(property: r'pieceName', value: ''),
+      );
+    });
+  }
+
   QueryBuilder<Ingredient, Ingredient, QAfterFilterCondition> qtyOnHandEqualTo(
     double value, {
     double epsilon = Query.epsilon,
@@ -3150,6 +3330,18 @@ extension IngredientQuerySortBy
     });
   }
 
+  QueryBuilder<Ingredient, Ingredient, QAfterSortBy> sortByPieceName() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'pieceName', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Ingredient, Ingredient, QAfterSortBy> sortByPieceNameDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'pieceName', Sort.desc);
+    });
+  }
+
   QueryBuilder<Ingredient, Ingredient, QAfterSortBy> sortByQtyOnHand() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'qtyOnHand', Sort.asc);
@@ -3417,6 +3609,18 @@ extension IngredientQuerySortThenBy
     });
   }
 
+  QueryBuilder<Ingredient, Ingredient, QAfterSortBy> thenByPieceName() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'pieceName', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Ingredient, Ingredient, QAfterSortBy> thenByPieceNameDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'pieceName', Sort.desc);
+    });
+  }
+
   QueryBuilder<Ingredient, Ingredient, QAfterSortBy> thenByQtyOnHand() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'qtyOnHand', Sort.asc);
@@ -3588,6 +3792,14 @@ extension IngredientQueryWhereDistinct
     });
   }
 
+  QueryBuilder<Ingredient, Ingredient, QDistinct> distinctByPieceName({
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'pieceName', caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<Ingredient, Ingredient, QDistinct> distinctByQtyOnHand() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'qtyOnHand');
@@ -3736,6 +3948,12 @@ extension IngredientQueryProperty
   QueryBuilder<Ingredient, Nutrition, QQueryOperations> per100Property() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'per100');
+    });
+  }
+
+  QueryBuilder<Ingredient, String?, QQueryOperations> pieceNameProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'pieceName');
     });
   }
 

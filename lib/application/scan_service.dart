@@ -18,6 +18,7 @@ import '../domain/fx.dart';
 import '../domain/ingredient_matcher.dart';
 import '../domain/receipt_math.dart';
 import '../domain/stock_index.dart';
+import '../domain/units.dart';
 import '../domain/used_up.dart';
 import '../domain/validation/receipt_validator.dart';
 import '../platform/image_store.dart';
@@ -542,7 +543,8 @@ class ScanService {
           if (l.ingredientKey == null || l.qty == null) continue;
           final effect = l.effectFor(job.kind);
           if (effect == StockEffect.none) continue;
-          final ing = await _resolveOrCreate(l, t);
+          final ing = _fit(await _resolveOrCreate(l, t), l);
+          if (l.qty == null) continue;
           final before = ing.qtyOnHand;
           // "Extra one" adds to what's there; so does a second line for the same item.
           final extra = effect == StockEffect.add || counted.contains(ing.key);
@@ -608,7 +610,12 @@ class ScanService {
             l.lineType == LineType.product &&
             l.ingredientKey != null &&
             (l.qty ?? 0) > 0) {
-          final ing = await _resolveOrCreate(l, t);
+          final ing = _fit(await _resolveOrCreate(l, t), l);
+          if (l.qty == null) {
+            // The item changed to a unit this line can't be converted into: the money is filed.
+            txLines.add(item);
+            continue;
+          }
           // "What's left?" on an old receipt: only what is left goes into the pantry.
           final left = l.effectFor(job.kind) == StockEffect.none ? 0.0 : (l.qtyLeft ?? l.qty!).clamp(0.0, l.qty!);
           final stocked = left > 0;
@@ -683,6 +690,31 @@ class ScanService {
     });
   }
 
+  /// Fits a line to its pantry item before the amount goes in (docs/07 §7.3). A line counted in
+  /// pieces switches an item kept in g or ml to pieces: the cola that came in as litres is
+  /// counted in cans from now on. A piece item without a name takes the line's ("can"). An item
+  /// whose unit changed since the scan was read gets the line converted ([DraftLine.qty] null
+  /// when it can't be).
+  static Ingredient _fit(Ingredient ing, DraftLine l) {
+    if (l.unit == BaseUnit.pc && ing.baseUnit != BaseUnit.pc && l.switchFrom != null) {
+      final gpp = l.pieceGrams(ing.densityGPerMl);
+      if (gpp != null) UnitConverter.switchToPieces(ing, gramsPerPiece: gpp, pieceName: l.pieceName);
+    }
+    if (ing.baseUnit != l.unit) {
+      ReceiptValidator.alignUnit(
+        l,
+        ing.baseUnit,
+        ing.gramsPerPiece,
+        density: ing.densityGPerMl,
+        lineGramsPerPiece: l.pieceGrams(ing.densityGPerMl),
+      );
+    }
+    if (ing.baseUnit == BaseUnit.pc && (ing.pieceName?.trim().isEmpty ?? true) && l.pieceName != null) {
+      ing.pieceName = l.pieceName;
+    }
+    return ing;
+  }
+
   Future<Ingredient> _resolveOrCreate(DraftLine l, DateTime t) async {
     if (l.matchedIngredientId != null) {
       final hit = await isar.ingredients.get(l.matchedIngredientId!);
@@ -700,10 +732,12 @@ class ScanService {
       ..name = p.name.isEmpty ? l.name : p.name
       ..category = p.category
       ..baseUnit = l.unit
-      ..gramsPerPiece = p.gramsPerPiece ?? (l.unit == BaseUnit.pc ? 50 : null)
+      ..gramsPerPiece = l.unit == BaseUnit.pc ? (p.gramsPerPiece ?? l.pieceGrams(p.densityGPerMl) ?? 50) : null
+      ..pieceName = l.unit == BaseUnit.pc ? (p.pieceName ?? l.pieceName) : null
       ..densityGPerMl = p.densityGPerMl
       ..per100 = p.per100
-      ..nutritionSource = l.profile == null ? DataSource.none : DataSource.aiEstimate
+      // No macros in the answer: NutritionService estimates them later, in a batch.
+      ..nutritionSource = l.profile == null || p.per100.isZero ? DataSource.none : DataSource.aiEstimate
       ..shelfLifeDays = p.shelfLifeDays
       ..lastVerifiedAt = t
       ..updatedAt = t;

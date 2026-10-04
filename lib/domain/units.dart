@@ -91,20 +91,65 @@ class UnitConverter {
     _ => null,
   };
 
-  /// 1500 g -> "1.5 kg", 250 g -> "250 g", 1.5 pc -> "1.5 pc".
-  static String format(double qty, BaseUnit unit) {
-    String num(double v) {
-      if (v == v.roundToDouble()) return v.toStringAsFixed(0);
-      final s = v.toStringAsFixed(v >= 10 ? 0 : 1);
-      return s.endsWith('.0') ? s.substring(0, s.length - 2) : s;
-    }
-
+  /// 1500 g -> "1.5 kg", 250 g -> "250 g", 1.5 pc -> "1.5 pc". With a [piece] name, pieces say
+  /// what they are: "1 can", "6 cans", "0.5 tortillas".
+  static String format(double qty, BaseUnit unit, {String? piece}) {
+    final num = formatNumber;
+    final name = piece?.trim();
     return switch (unit) {
       BaseUnit.g when qty >= 1000 => '${num(qty / 1000)} kg',
       BaseUnit.ml when qty >= 1000 => '${num(qty / 1000)} l',
       BaseUnit.g => '${num(qty)} g',
       BaseUnit.ml => '${num(qty)} ml',
+      BaseUnit.pc when name != null && name.isNotEmpty => '${num(qty)} ${qty == 1 ? name : plural(name)}',
       BaseUnit.pc => '${num(qty)} pc',
     };
+  }
+
+  /// 6 -> "6", 1.25 -> "1.3", 12.4 -> "12".
+  static String formatNumber(double v) {
+    if (v == v.roundToDouble()) return v.toStringAsFixed(0);
+    final s = v.toStringAsFixed(v >= 10 ? 0 : 1);
+    return s.endsWith('.0') ? s.substring(0, s.length - 2) : s;
+  }
+
+  static const _irregular = {'loaf': 'loaves', 'leaf': 'leaves', 'potato': 'potatoes', 'tomato': 'tomatoes'};
+
+  /// English plural of a piece name: can -> cans, box -> boxes, patty -> patties, loaf -> loaves.
+  static String plural(String noun) {
+    final n = noun.trim();
+    final lower = n.toLowerCase();
+    if (lower.isEmpty || lower.endsWith('s') && !lower.endsWith('ss')) return n;
+    final irregular = _irregular[lower];
+    if (irregular != null) return irregular;
+    if (RegExp(r'(ss|x|z|ch|sh)$').hasMatch(lower)) return '${n}es';
+    if (RegExp(r'[^aeiou]y$').hasMatch(lower)) return '${n.substring(0, n.length - 1)}ies';
+    return '${n}s';
+  }
+
+  /// A count of pieces from a conversion: 5.97 cans are 6, 4.55 stay 4.55. Within 3% of a
+  /// whole number is a whole number (the piece size and the density are rounded too).
+  static double snapPieces(double q) {
+    final r = q.roundToDouble();
+    return r > 0 && (q - r).abs() <= r * 0.03 ? r : q;
+  }
+
+  /// Counts [i] in pieces of [gramsPerPiece] from now on (a cola from ml to cans): what is on
+  /// hand, the cost per unit, the low-stock line and the last purchase move to pieces, and
+  /// per-100 ml macros become per 100 g. False (and [i] unchanged) when it can't switch.
+  static bool switchToPieces(Ingredient i, {required double gramsPerPiece, String? pieceName}) {
+    if (i.baseUnit == BaseUnit.pc || gramsPerPiece <= 0) return false;
+    final f = factor(i.baseUnit, BaseUnit.pc, toGramsPerPiece: gramsPerPiece, density: i.densityGPerMl);
+    if (f == null || f <= 0) return false;
+    if (i.baseUnit == BaseUnit.ml) i.per100 = i.per100.scale(1 / (i.densityGPerMl ?? 1.0));
+    i
+      ..qtyOnHand = snapPieces(i.qtyOnHand * f)
+      ..avgCostPerUnitMinor = i.avgCostPerUnitMinor / f
+      ..lowStockThreshold = snapPieces(i.lowStockThreshold * f)
+      ..lastPurchaseQty = snapPieces(i.lastPurchaseQty * f)
+      ..baseUnit = BaseUnit.pc
+      ..gramsPerPiece = gramsPerPiece
+      ..pieceName = (pieceName?.trim().isEmpty ?? true) ? i.pieceName : pieceName!.trim();
+    return true;
   }
 }

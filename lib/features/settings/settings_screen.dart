@@ -182,9 +182,10 @@ class SettingsScreen extends ConsumerWidget {
           const _Section('AI'),
           const _ApiKeyTile(),
           SwitchListTile(
-            title: const Text('Look up prices on Google'),
+            title: const Text('Look up prices after every pantry photo'),
             subtitle: const Text(
-              'Pantry photos: Gemini searches what each item costs in the shops. You confirm every price.',
+              'Gemini searches Google for what each item costs: one more request per photo. '
+              'Off, review has a button for it. You confirm every price.',
             ),
             value: p.lookUpPrices,
             onChanged: (v) => update((x) => x.lookUpPrices = v),

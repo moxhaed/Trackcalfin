@@ -112,7 +112,7 @@ class _QuickCheckScreenState extends ConsumerState<QuickCheckScreen> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'The app thinks ~${qty(ing.qtyOnHand, ing.baseUnit)}',
+                          'The app thinks ~${qtyOf(ing.qtyOnHand, ing)}',
                           style: context.text.titleMedium?.copyWith(color: context.scheme.onSurfaceVariant),
                         ),
                         if (ing.lastVerifiedAt == null) ...[

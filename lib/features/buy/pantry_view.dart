@@ -126,7 +126,7 @@ class _PantryViewState extends ConsumerState<PantryView> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(ing.name, style: context.text.labelLarge),
-                      Text('${qty(ing.qtyOnHand, ing.baseUnit)} · ${daysLeftLabel(d)}', style: context.text.labelSmall),
+                      Text('${qtyOf(ing.qtyOnHand, ing)} · ${daysLeftLabel(d)}', style: context.text.labelSmall),
                     ],
                   ),
                   onPressed: () => showIngredientSheet(context, ingredient: ing),
@@ -149,7 +149,7 @@ class _PantryViewState extends ConsumerState<PantryView> {
                     label: Text(
                       [
                         ing.name,
-                        qty(ing.qtyOnHand, ing.baseUnit),
+                        qtyOf(ing.qtyOnHand, ing),
                         // Where to buy it next: the store with the lowest last price.
                         if (prices.cheapest(ing.key) case final p?) 'cheapest at ${p.store}',
                       ].join(' · '),
@@ -237,7 +237,7 @@ class _IngredientTile extends ConsumerWidget {
             if (ing.needsNutrition) 'no macros',
           ].join(' · '),
         ),
-        trailing: Text(qty(ing.qtyOnHand, ing.baseUnit), style: context.text.titleSmall),
+        trailing: Text(qtyOf(ing.qtyOnHand, ing), style: context.text.titleSmall),
         onTap: () => showIngredientSheet(context, ingredient: ing),
       ),
     );

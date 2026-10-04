@@ -11,6 +11,9 @@ class AiSchemas {
   static Map<String, dynamic> _enum(List<String> values) => {'type': 'string', 'enum': values};
 
   static const _units = ['g', 'ml', 'pc'];
+
+  /// Kitchen measures Say it passes on as said (Measure in lib/domain/measures.dart).
+  static const _measures = ['tsp', 'tbsp', 'cup', 'glass', 'pinch', 'handful'];
   static const _spend = ['groceries', 'household', 'clothes', 'eating_out', 'entertainment', 'other'];
   static const _ingCats = [
     'produce',
@@ -56,6 +59,7 @@ class AiSchemas {
               'type': ['string', 'null'],
               'enum': [..._units, null],
             },
+            ..._piece,
             'qty_source': _enum(['printed', 'inferred', 'estimated', 'unknown']),
             'confidence': _enum(['high', 'medium', 'low']),
             'product': _nullable('string'),
@@ -67,29 +71,7 @@ class AiSchemas {
               },
               'required': ['package_qty', 'price_minor'],
             },
-            'new_ingredient': {
-              'type': ['object', 'null'],
-              'properties': {
-                'name': {'type': 'string'},
-                'ingredient_category': _enum(_ingCats),
-                'unit': _enum(_units),
-                'grams_per_piece': _nullable('number'),
-                'density_g_per_ml': _nullable('number'),
-                'per_100': {
-                  'type': 'object',
-                  'properties': {
-                    'kcal': {'type': 'number'},
-                    'protein_g': {'type': 'number'},
-                    'carbs_g': {'type': 'number'},
-                    'fat_g': {'type': 'number'},
-                    'fiber_g': {'type': 'number'},
-                  },
-                  'required': ['kcal', 'protein_g', 'carbs_g', 'fat_g', 'fiber_g'],
-                },
-                'shelf_life_days': {'type': 'integer'},
-              },
-              'required': ['name', 'ingredient_category', 'unit', 'per_100', 'shelf_life_days'],
-            },
+            'new_ingredient': _newIngredient,
           },
           'required': [
             'raw_text',
@@ -101,6 +83,9 @@ class AiSchemas {
             'is_new_ingredient',
             'qty',
             'unit',
+            'piece_name',
+            'piece_size',
+            'piece_unit',
             'qty_source',
             'confidence',
             'product',
@@ -128,13 +113,22 @@ class AiSchemas {
     ],
   };
 
+  /// A line counted in pieces: what one is called and holds (Prompts A v5 and G v3).
+  static Map<String, dynamic> get _piece => {
+    'piece_name': _nullable('string'),
+    'piece_size': _nullable('number'),
+    'piece_unit': {
+      'type': ['string', 'null'],
+      'enum': ['g', 'ml', null],
+    },
+  };
+
+  /// The unit and the piece come from the line (Prompts A v5 and G v3).
   static Map<String, dynamic> get _newIngredient => {
     'type': ['object', 'null'],
     'properties': {
       'name': {'type': 'string'},
       'ingredient_category': _enum(_ingCats),
-      'unit': _enum(_units),
-      'grams_per_piece': _nullable('number'),
       'density_g_per_ml': _nullable('number'),
       'per_100': {
         'type': 'object',
@@ -149,7 +143,7 @@ class AiSchemas {
       },
       'shelf_life_days': {'type': 'integer'},
     },
-    'required': ['name', 'ingredient_category', 'unit', 'per_100', 'shelf_life_days'],
+    'required': ['name', 'ingredient_category', 'per_100', 'shelf_life_days'],
   };
 
   /// Prompt G: what the user said they did, as actions.
@@ -173,8 +167,9 @@ class AiSchemas {
             'qty': _nullable('number'),
             'unit': {
               'type': ['string', 'null'],
-              'enum': [..._units, null],
+              'enum': [..._units, ..._measures, null],
             },
+            ..._piece,
             'batch_id': _nullable('integer'),
             'recipe_id': _nullable('integer'),
             'portions': _nullable('number'),
@@ -206,6 +201,9 @@ class AiSchemas {
             'name',
             'qty',
             'unit',
+            'piece_name',
+            'piece_size',
+            'piece_unit',
             'batch_id',
             'recipe_id',
             'portions',

@@ -11,6 +11,7 @@ import 'package:trackcalfin/application/recipe_service.dart';
 import 'package:trackcalfin/core/enums.dart';
 import 'package:trackcalfin/data/ai/prompt_repository.dart';
 import 'package:trackcalfin/data/isar/collections/schemas.dart';
+import 'package:trackcalfin/domain/units.dart';
 import 'package:trackcalfin/platform/notifications.dart';
 import 'package:trackcalfin/platform/secret_store.dart';
 
@@ -147,6 +148,26 @@ void main() {
     expect((await isar.transactions.get(txId))!.lines.single.qtyBase, 1000);
     await ledger.delete(txId);
     expect((await isar.ingredients.get(id))!.qtyOnHand, 0);
+  });
+
+  test('deleting a purchase filed in ml after the item switched to cans takes back cans', () async {
+    final pantry = PantryService(isar, now: now);
+    final id = await pantry.upsert(
+      Ingredient()
+        ..name = 'Cola'
+        ..key = 'cola'
+        ..baseUnit = BaseUnit.ml
+        ..qtyOnHand = 0,
+    );
+    final ledger = LedgerService(isar, now: now);
+    final txId = await ledger.applyManualPurchase(ingredientId: id, qty: 1980, totalMinor: 449);
+    final cola = (await isar.ingredients.get(id))!;
+    UnitConverter.switchToPieces(cola, gramsPerPiece: 330, pieceName: 'can');
+    cola.qtyOnHand += 6;
+    await isar.writeTxn(() => isar.ingredients.put(cola));
+    expect((await isar.ingredients.get(id))!.qtyOnHand, 12);
+    await ledger.delete(txId);
+    expect((await isar.ingredients.get(id))!.qtyOnHand, 6, reason: '1980 ml is 6 cans, not all 12');
   });
 
   test('a count that finds less records what went as eaten since the last count; it can be thrown away', () async {

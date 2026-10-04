@@ -54,7 +54,7 @@ Future<void> markOutWithUndo(
                   Text('${ing.name} marked as out'),
                   if (use != null)
                     Text(
-                      '${qty(use.qtyBase, ing.baseUnit)} counts as eaten, ${money.compact(use.costMinor)}',
+                      '${qtyOf(use.qtyBase, ing)} counts as eaten, ${money.compact(use.costMinor)}',
                       style: const TextStyle(fontSize: 12),
                     ),
                 ],
@@ -93,7 +93,7 @@ class LastCountLine extends ConsumerWidget {
     final money = ref.watch(moneyProvider);
     final u = last.use;
     final eaten = u.kind == UseKind.eaten;
-    final amount = qty(u.qtyBase, ingredient.baseUnit);
+    final amount = qtyOf(u.qtyBase, ingredient);
     final text = [
       '${last.markedOut ? 'Marked out' : 'Counted less'} on ${dateLabel(u.createdAt, DateTime.now())}',
       '$amount ${eaten ? 'counted as eaten' : 'thrown away'}, ${money.compact(u.costMinor)}',

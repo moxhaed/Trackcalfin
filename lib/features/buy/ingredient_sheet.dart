@@ -59,6 +59,7 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
   late final _fat = TextEditingController(text: _fmt(_ing.per100.fatG));
   late final _fiber = TextEditingController(text: _fmt(_ing.per100.fiberG));
   late final _gpp = TextEditingController(text: _ing.gramsPerPiece == null ? '' : _fmt(_ing.gramsPerPiece!));
+  late final _piece = TextEditingController(text: _ing.pieceName ?? '');
   late final _shelf = TextEditingController(text: '${_ing.shelfLifeDays}');
   late final _low = TextEditingController(text: _ing.lowStockThreshold > 0 ? _fmt(_ing.lowStockThreshold) : '');
   late BaseUnit _unit = _ing.baseUnit;
@@ -110,7 +111,7 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
 
   @override
   void dispose() {
-    for (final c in [_name, _qty, _price, _kcal, _protein, _carbs, _fat, _fiber, _gpp, _shelf, _low]) {
+    for (final c in [_name, _qty, _price, _kcal, _protein, _carbs, _fat, _fiber, _gpp, _piece, _shelf, _low]) {
       c.dispose();
     }
     super.dispose();
@@ -262,6 +263,7 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
       ..baseUnit = _unit
       ..category = _category
       ..gramsPerPiece = _unit == BaseUnit.pc ? (_num(_gpp) ?? 50) : null
+      ..pieceName = _unit == BaseUnit.pc && _piece.text.trim().isNotEmpty ? _piece.text.trim().toLowerCase() : null
       ..shelfLifeDays = int.tryParse(_shelf.text) ?? 7
       ..lowStockThreshold = _num(_low) ?? 0;
     final price = ref.read(moneyProvider).parse(_price.text);
@@ -344,7 +346,7 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
                     const SizedBox(width: 16),
                     Column(
                       children: [
-                        Text(qty(_ing.qtyOnHand, _ing.baseUnit), style: context.text.headlineSmall),
+                        Text(qtyOf(_ing.qtyOnHand, _ing), style: context.text.headlineSmall),
                         Text('on hand', style: context.text.labelSmall),
                       ],
                     ),
@@ -444,6 +446,16 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
                   ),
                 ],
                 if (_unit == BaseUnit.pc) ...[
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _piece,
+                    textCapitalization: TextCapitalization.none,
+                    decoration: const InputDecoration(
+                      labelText: 'One piece is a…',
+                      hintText: 'can, tortilla, cup',
+                      helperText: 'The pantry then says "6 cans" and Eat says "Eat 1 can"',
+                    ),
+                  ),
                   const SizedBox(height: 10),
                   TextField(
                     controller: _gpp,

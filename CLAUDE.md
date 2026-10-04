@@ -10,6 +10,7 @@ Flutter app (Android/iOS; Linux desktop for local UI checks) with a local Isar d
 - `flutter run -d linux --dart-define=DEMO=true` seeds demo data into an empty DB. Add `--dart-define=THEME=dark` for dark mode.
 - `--dart-define=GEMINI_BASE_URL=http://127.0.0.1:8765/v1beta` sends AI calls to a local stand-in instead of Google, to check AI screens on the desktop. The desktop build reads its key from `.gemini_key` in the app support directory when there is no keyring.
 - `GEMINI_API_KEY=... EVAL_BACKUP=backup.json flutter test tool/model_eval_test.dart` compares Gemini models on real data (Today's Pick and receipts) and writes `build/model_eval/*/report.md`. It spends real quota; options are in the file header.
+- `LLM_EVAL=dump|check flutter test tool/llm_eval/llm_eval_test.dart` checks prompt changes without a key: any model (Claude agents in practice) answers the dumped requests, and `check` files the answers through the real services and checks the pantry. See `tool/llm_eval/README.md`. Run it after changing Prompt A or G.
 
 ## Gotchas
 - `build_runner` is pinned to 2.15.1 because `isar_community_generator` 3.3.2 needs `analyzer < 11`. Don't bump it on its own.
@@ -26,3 +27,4 @@ Flutter app (Android/iOS; Linux desktop for local UI checks) with a local Isar d
 - Nothing is assumed to be in the kitchen: there are no staples. Every recipe ingredient is a pantry item (counted, deducted and costed, salt and oil included) or `missing`.
 - A receipt is filed on its printed date. Checks that need what the app knows (an old date, an item counted since, a duplicate receipt) are pure Dart in `ReceiptValidator`/`ScanService` and hold the scan for review (docs/03 §3.16).
 - Undo instead of confirm: hot paths commit on the last tap and show `showUndo`.
+- Count food the way it is used (`docs/07`): pieces with a name ("6 cans"), grams, or ml. The model reports units and piece sizes; Dart converts, switches items to pieces and turns kitchen measures (tbsp, glass) into the item's unit. One Gemini request per user action.

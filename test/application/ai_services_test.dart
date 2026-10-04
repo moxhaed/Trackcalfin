@@ -110,6 +110,51 @@ void main() {
       expect((tx.totalMinor, r.filedMinor), (722, 722), reason: '8.22 less the 1.00 coupon, once');
     });
 
+    test('cans on a receipt switch a soda kept in ml to cans; the model never sees the old unit', () async {
+      await addChicken();
+      // Bought before the receipt, not counted since: the receipt's cans go on top.
+      await isar.writeTxn(
+        () => isar.ingredients.put(
+          Ingredient()
+            ..name = 'Orange soda'
+            ..key = 'orange_soda'
+            ..category = IngredientCategory.beverages
+            ..baseUnit = BaseUnit.ml
+            ..qtyOnHand = 660
+            ..avgCostPerUnitMinor = 0.227
+            ..lowStockThreshold = 330
+            ..per100 = Nutrition(kcal: 42, carbsG: 10.5)
+            ..nutritionSource = DataSource.aiEstimate,
+        ),
+      );
+      fake.reply(promptExample('receipt_extraction.v5.md'));
+      final s = service();
+      final id = await s.enqueue([await photo()], hint: 'receipt');
+      final r = (await s.processQueue()).single;
+      if (!r.autoCommitted) await s.commit(id);
+      expect(fake.requests, hasLength(1));
+      final ctx = jsonDecode(fake.requests.single['contents'][0]['parts'][0]['text']);
+      expect(
+        [for (final k in ctx['known_ingredients'] as List) (k as Map).keys.toSet()],
+        everyElement({'key', 'name'}),
+        reason: 'given the unit, models copied it (docs/07 §7.1)',
+      );
+
+      final soda = (await isar.ingredients.getByKey('orange_soda'))!;
+      expect(
+        (soda.baseUnit, soda.qtyOnHand, soda.pieceName, soda.gramsPerPiece, soda.lowStockThreshold),
+        (BaseUnit.pc, 8.0, 'can', 330.0, 1.0),
+      );
+      expect(soda.avgCostPerUnitMinor, closeTo((2 * 0.227 * 330 + 449) / 8, 0.5), reason: 'about 75 cents a can');
+      expect(soda.per100.kcal, 42, reason: 'per 100 ml at 1 g per ml is per 100 g');
+      final pita = (await isar.ingredients.getByKey('pita_bread'))!;
+      expect((pita.baseUnit, pita.qtyOnHand, pita.pieceName, pita.gramsPerPiece), (BaseUnit.pc, 4.0, 'pita', 75.0));
+      final line = (await isar.transactions.where().findFirst())!.lines.firstWhere(
+        (l) => l.ingredientKey == 'orange_soda',
+      );
+      expect((line.qtyBought, line.unit), (6.0, BaseUnit.pc));
+    });
+
     test('clean receipt auto-commits: ledger, stock, WAC, new ingredient, aliases', () async {
       await addChicken();
       final list = ShoppingService(isar);
@@ -644,6 +689,13 @@ void main() {
   });
   group('Price lookup (Prompt F)', () {
     ScanService service() => ScanService(isar: isar, images: ImageStore('${tmp.path}/store'), ai: ai, now: () => now);
+    // Settings → Look up prices after every pantry photo. Off by default (docs/07 §7.5).
+    Future<void> lookUpAfterEveryPhoto(bool on) async {
+      final p = (await isar.userProfiles.get(1))!..lookUpPrices = on;
+      await isar.writeTxn(() => isar.userProfiles.put(p));
+    }
+
+    setUp(() => lookUpAfterEveryPhoto(true));
     Map<String, dynamic> prices(List<Map<String, dynamic>> items) => {'schema_version': 1, 'items': items};
     Map<String, dynamic> found(String id, int price, double size, String store, String site) => {
       'id': id,
@@ -723,6 +775,31 @@ void main() {
       final o = (await isar.ingredients.getByKey('olive_oil'))!;
       expect(o.avgCostPerUnitMinor, closeTo(899 / 750, 1e-9));
       expect(o.costIsEstimate, isTrue, reason: 'never confirmed, so still an estimate');
+    });
+
+    test('by default a pantry photo is one request; Look up on Google in review is the second', () async {
+      await lookUpAfterEveryPhoto(false);
+      fake
+        ..reply(promptExamples('receipt_extraction.v5.md')[1])
+        ..replyJson(
+          prices([
+            found('0', 179, 500, 'Lidl', 'lidl.de'),
+            found('1', 229, 4, 'Rewe', 'rewe.de'),
+            found('2', 899, 750, 'Edeka', 'edeka.de'),
+          ]),
+          grounding: groundingMetadata(),
+        );
+      final s = service();
+      final id = await s.enqueue([await photo()], hint: 'pantry');
+      final job = (await s.processQueue()).single.job;
+      expect(fake.requests, hasLength(1));
+      expect(job.lines.where((l) => l.priceSource == PriceSource.estimate), isNotEmpty);
+      await s.retryPrices(id);
+      expect(fake.requests, hasLength(2));
+      expect(fake.requests[1]['tools'], [
+        {'google_search': {}},
+      ]);
+      expect((await isar.scanJobs.get(id))!.lines.first.priceSource, PriceSource.web);
     });
 
     test('items with a price paid are skipped; a failed lookup keeps the estimates and can run again', () async {
