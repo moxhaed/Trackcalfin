@@ -59,9 +59,9 @@ wireframes assume 390 dp width with 16 margins, `│` marks a surface (card or g
  │ ▬▬|▬░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░         │
  │ Projected month: €254 (trailing week × 4.33) │  ← bodySmall secondary
  │ ────────────────────────────────────────── │    ← hairline, 12 above / 12 below
- │ €52            €3.97          €122         │    ← Metric, value nums.title (see note)
- │ eaten this     per home       saved vs     │
- │ week           meal           eating out   │
+ │ Eaten this week                       €52  │    ← key–value lines (review 03): label bodyMedium secondary,
+ │ Per home meal                       €3.97  │      value nums.body w600 right; min line 24, 4 apart
+ │ Saved vs eating out                  €122  │
   12
  │ Other spend                    This month  │    ← title + trailing meta (bodySmall secondary)
  │ ⌂ Household                     €1 / €40   │    ← icon 16 secondary, bodyLarge w500, nums.body
@@ -69,7 +69,7 @@ wireframes assume 390 dp width with 16 margins, `│` marks a surface (card or g
  │ 12                                         │
  │ ⚘ Clothes                       €0 / €50   │
  │ ▬…                                         │
- │ 🍴 Eating out          ⚠ €22 / €60         │    ← over-pace: warning_amber 16 serious + amount in warningInk
+ │ 🍴 Eating out          ⚠ €22 / €60         │    ← over-pace (> 1.15): warning_amber 16 in forPace(pace) + amount in inkForPace(pace) (review 03)
  │ ▬▬▬▬▬▬▬░░░…                                │
  │ ★ Entertainment                 €0 / €40   │
  │ ⋯ Other                              €0    │    ← no limit: no bar
@@ -83,8 +83,8 @@ wireframes assume 390 dp width with 16 margins, `│` marks a surface (card or g
  │ Dashed line: your daily target. Today is still in progress. │ ← bodySmall secondary
   24 + nav
 ```
-Metric values in the Food spend footer use `nums.title` (17/22 w600, one step below
-`nums.medium`, so the week/month values stay dominant). Captions are `bodySmall`.
+The Food spend footer is three key–value lines (review 03 replaced the 3-column strip, whose
+captions wrapped): label `bodyMedium` `textSecondary`, value `nums.body` w600 right-aligned.
 
 **Hierarchy**: (1) the date title and the Vibe score with its label, which say how I'm doing.
 (2) Today's two big numbers, kcal and protein. (3) The food-spend week value with its status.
