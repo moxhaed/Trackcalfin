@@ -51,9 +51,9 @@ void main() {
     });
 
     test('errors, unknown currencies and garbage give null', () async {
-      Future<FxQuote?> with_(http.Response r) =>
-          FxRateClient(MockClient((_) async => r))
-              .fetch('XYZ', 'EUR', DateTime(2026, 9, 1), now: DateTime(2026, 9, 29));
+      Future<FxQuote?> with_(http.Response r) => FxRateClient(
+        MockClient((_) async => r),
+      ).fetch('XYZ', 'EUR', DateTime(2026, 9, 1), now: DateTime(2026, 9, 29));
       expect(await with_(http.Response('not found', 404)), isNull);
       expect(await with_(http.Response('{"rates":{}}', 200)), isNull);
       expect(await with_(http.Response('<html>', 200)), isNull);
