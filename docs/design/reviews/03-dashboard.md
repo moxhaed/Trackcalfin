@@ -81,3 +81,25 @@ overall ≈ 8.7.
    carries this, so it's non-blocking.
 
 Re-shoot 01, 02 and 26 in light and dark after the MUST items. I'll re-check measurements only.
+
+## Re-check (round p3-fix)
+
+| Item | Result |
+|---|---|
+| MUST 1: one status hue per row | **PASS**. Eating out is all red (icon, `criticalInk` amount, bar) in light; all coral in dark |
+| MUST 2: footer as key–value lines | **PASS**. Three lines on a 28 dp pitch, values w600 right-aligned at 358, no wraps |
+| SHOULD 3: chart 45 / 100 / 25 | Done. The eye now lands on today's bar |
+| SHOULD 4–5: orphans | Done. The footnote fits one line and the sheet subtitle splits cleanly into two |
+| SHOULD 6 + Guardian items | Approved: the protein caption names the nutrient ("of 140 g protein · 34%", still one line, ending at x = 356), the column semantics, and the uncapped Vibe insight |
+
+**Scores (light / dark)**: hierarchy 9 / 9, typography 8.5 / 8.5, spacing 8.5 / 8.5, alignment
+9 / 9, color 8.5 / 8.5, contrast 8.5 / 8.5, consistency 8.5 / 8.5, density 8.5 / 8.5, usability
+9 / 9, polish 8.5 / 8.5. **Overall 8.7 / 8.7.** Vibe sheet 8.8.
+
+**Verdict: PASS.** Overall ≥ 8.5 and no critical category below 8. The Dashboard can be committed.
+
+Non-blocking, for Phase 9 (accessibility pass): the completed-day bars at 45% come out at
+1.9:1 (light) / 2.4:1 (dark) against the card. The values are also available through the
+selection label, per-column semantics and the average line, so this is acceptable. Raise
+completed days to **60%** (`#89A6E6` light 2.4:1, `#566C9B` dark 3.2:1) if the emphasis on the
+selected bar survives it, and verify in 02.
