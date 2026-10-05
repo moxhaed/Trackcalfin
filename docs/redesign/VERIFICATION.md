@@ -120,6 +120,7 @@ Director flagged one extra tap (Buy "Add" menu). The guard tests cover most of t
 | `test/widget/action_reachability_lists_test.dart` | Buy actions (direct or in an "Add" menu), search, item sheet actions, expense chips and toggle, Inbox, Ledger filters and sheet; Cook ask/mic, stepper, I cooked this, Eat 1, fridge menu, pull-to-refresh, rotation, editor; Swap with a key and **no AI calls on navigation**; Recipe detail favorite, menu, stepper, long-press |
 | `test/widget/ui_flows_buy_test.dart` | swipe-out + Undo, expense chip + Undo, typed expense + keyword learning, ledger swipe-delete + Undo and edit, review untick + commit (WAC) + discard, Quick check swipe/Gone, cold-open Quick check (skipped until fixed) |
 | `test/widget/ui_flows_cook_test.dart` | stepper → cooked amount + Undo, Eat 1 + Undo, fridge extend/toss, favorite + delete + Undo, detail stepper cook + long-press out, Cooked sheet, manual meal + Undo, Settings edits and clamps, onboarding end to end |
+| `test/widget/layout_clearance_test.dart` | at the end of every tab list (Dashboard, Pantry, Ledger, Cook, Settings) the last text sits above the floating nav; Recipe detail's last text sits above its bottom bar |
 | `test/widget/app_smoke_test.dart` | the original smoke flows (now matching labels in any case) |
 
 The harness (`test/support/app_harness.dart`) renders the same 390 × 844 phone, with insets and
