@@ -103,8 +103,8 @@ void main() {
     await app.pump(tester, initial: '/cook');
     final salmon = await recipe('Salmon traybake');
     expect(salmon.favorite, isFalse);
-    await scrollTo(tester, find.text('Salmon traybake'));
-    await tapAndSettle(tester, find.text('Salmon traybake'));
+    await scrollTo(tester, textExact('Salmon traybake'));
+    await tapAndSettle(tester, textExact('Salmon traybake'));
     expect(find.byType(RecipeDetailScreen), findsOneWidget);
 
     await tapAndSettle(tester, find.byTooltip('Favorite'));
@@ -126,8 +126,8 @@ void main() {
     await app.pump(tester, initial: '/cook');
     final r = await recipe('Lighter bacon carbonara');
     final pasta0 = (await ing('dry_pasta')).qtyOnHand;
-    await scrollTo(tester, find.text(r.title));
-    await tapAndSettle(tester, find.text(r.title));
+    await scrollTo(tester, textExact(r.title));
+    await tapAndSettle(tester, textExact(r.title));
     final detail = find.byType(RecipeDetailScreen);
 
     await tapAndSettle(tester, find.descendant(of: detail, matching: find.byTooltip('More portions')));
@@ -138,7 +138,7 @@ void main() {
     expect(s.recipeId, r.id);
     expect(s.portionsCooked, 3);
 
-    final row = find.descendant(of: detail, matching: find.text('Grana Padano'));
+    final row = find.descendant(of: detail, matching: textExact('Grana Padano'));
     await scrollTo(tester, row);
     await tester.longPress(row);
     await settle(tester, frames: 8);
@@ -156,7 +156,7 @@ void main() {
     final sheet = find.byType(CookedSheet);
     expect(find.descendant(of: sheet, matching: textCI('${p.defaultPortions}')), findsOneWidget);
     await tapAndSettle(tester, find.descendant(of: sheet, matching: find.byTooltip('More portions')));
-    await tapAndSettle(tester, find.descendant(of: sheet, matching: find.text(dal.title)), frames: 12);
+    await tapAndSettle(tester, find.descendant(of: sheet, matching: textExact(dal.title)), frames: 12);
 
     expect(find.byType(CookedSheet), findsNothing);
     final s = await newestSession();

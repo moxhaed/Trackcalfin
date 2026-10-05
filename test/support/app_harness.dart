@@ -168,15 +168,51 @@ Future<void> popTop(WidgetTester tester) async {
 // ---------------------------------------------------------------------------
 // Finders that survive a visual redesign.
 
-/// Text exactly equal to [text], ignoring case and surrounding whitespace.
-/// Use for labels whose casing the design may change ("TODAY" vs "Today").
-Finder textCI(String text) =>
-    find.textContaining(RegExp('^\\s*${RegExp.escape(text)}\\s*\$', caseSensitive: false), findRichText: true);
+/// Display copy as a test compares it: no-break spaces (U+00A0, U+202F), which the design
+/// uses to keep words together ("51 g", the last two words of a title), read as plain spaces.
+String plainSpaces(String s) => s.replaceAll(RegExp('[\u00a0\u202f]'), ' ');
 
-/// Text containing [pattern] (a string or RegExp), ignoring case for strings.
-Finder textHas(Pattern pattern) => find.textContaining(
-  pattern is String ? RegExp(RegExp.escape(pattern), caseSensitive: false) : pattern,
-  findRichText: true,
+/// Like `find.text`, but a no-break space in the widget matches a space in [text]. Same
+/// match set as `find.text` (Text widgets and editable text), so counts don't change.
+Finder textExact(String text) {
+  final want = plainSpaces(text);
+  return find.byWidgetPredicate((w) {
+    if (w is Text) return plainSpaces(w.data ?? w.textSpan?.toPlainText() ?? '') == want;
+    if (w is EditableText) return plainSpaces(w.controller.text) == want;
+    return false;
+  }, description: 'text "$text"');
+}
+
+/// Like `find.textContaining` (Text widgets and editable text), tolerant of no-break spaces.
+Finder textContains(String text) {
+  final want = plainSpaces(text);
+  return find.byWidgetPredicate((w) {
+    if (w is Text) return plainSpaces(w.data ?? w.textSpan?.toPlainText() ?? '').contains(want);
+    if (w is EditableText) return plainSpaces(w.controller.text).contains(want);
+    return false;
+  }, description: 'text containing "$text"');
+}
+
+/// Rendered text (RichText, so `Text.rich` and plain `Text` alike) or editable text whose
+/// plain-spaced content matches [pattern].
+Finder _richMatching(Pattern pattern, String description) => find.byWidgetPredicate((w) {
+  if (w is RichText) return plainSpaces(w.text.toPlainText()).contains(pattern);
+  if (w is EditableText) return plainSpaces(w.controller.text).contains(pattern);
+  return false;
+}, description: description);
+
+/// Text exactly equal to [text], ignoring case, surrounding whitespace and no-break spaces.
+/// Use for labels whose casing the design may change ("TODAY" vs "Today").
+Finder textCI(String text) => _richMatching(
+  RegExp('^\\s*${RegExp.escape(plainSpaces(text))}\\s*\$', caseSensitive: false),
+  'text "$text" (any case)',
+);
+
+/// Text containing [pattern] (a string or RegExp), ignoring case for strings; no-break
+/// spaces in the widget read as spaces.
+Finder textHas(Pattern pattern) => _richMatching(
+  pattern is String ? RegExp(RegExp.escape(plainSpaces(pattern)), caseSensitive: false) : pattern,
+  'text containing $pattern',
 );
 
 /// A displayed value such as "€12.50", "650 g" or "2,184": matched with spaces and case

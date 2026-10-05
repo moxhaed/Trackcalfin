@@ -45,14 +45,14 @@ void main() {
     expect(search, findsOneWidget);
     await tester.enterText(search, 'spin');
     await settle(tester, frames: 4);
-    expect(find.text('Spinach'), findsWidgets);
-    expect(find.text('Chicken breast'), findsNothing);
+    expect(textExact('Spinach'), findsWidgets);
+    expect(textExact('Chicken breast'), findsNothing);
     await tester.enterText(search, '');
     await settle(tester, frames: 4);
 
     // Item tap opens the item sheet with its quick actions.
-    await scrollTo(tester, find.text('Bacon'));
-    await tapAndSettle(tester, find.text('Bacon'));
+    await scrollTo(tester, textExact('Bacon'));
+    await tapAndSettle(tester, textExact('Bacon'));
     expect(find.byType(IngredientSheet), findsOneWidget);
     final sheet = find.byType(IngredientSheet);
     expectTappable(tester, find.descendant(of: sheet, matching: find.byTooltip('Edit details')));
@@ -91,7 +91,7 @@ void main() {
       await scrollTo(tester, textCI(c.label));
       expectTappable(tester, textCI(c.label), reason: 'ledger filter ${c.label}');
     }
-    await tapAndSettle(tester, find.text('Café'));
+    await tapAndSettle(tester, textExact('Café'));
     expect(find.byType(TransactionSheet), findsOneWidget);
     expectTappable(tester, find.descendant(of: find.byType(TransactionSheet), matching: textCI('Save')));
     await popTop(tester);
@@ -131,15 +131,15 @@ void main() {
     // Pull to refresh keeps the pick.
     await tester.fling(mainScrollable(tester), const Offset(0, 400), 1200);
     await settle(tester, frames: 10);
-    expect(find.text('Garlic chicken & spinach rice bowls'), findsOneWidget);
+    expect(textExact('Garlic chicken & spinach rice bowls'), findsOneWidget);
 
     // Pick card and rotation open the recipe; the pen opens the editor.
-    await tapAndSettle(tester, find.text('Garlic chicken & spinach rice bowls'));
+    await tapAndSettle(tester, textExact('Garlic chicken & spinach rice bowls'));
     expect(find.byType(RecipeDetailScreen), findsOneWidget);
     await back(tester);
-    await scrollTo(tester, find.text('Lighter bacon carbonara'));
-    expectTappable(tester, find.text('Lighter bacon carbonara'));
-    await tapAndSettle(tester, find.text('Lighter bacon carbonara'));
+    await scrollTo(tester, textExact('Lighter bacon carbonara'));
+    expectTappable(tester, textExact('Lighter bacon carbonara'));
+    await tapAndSettle(tester, textExact('Lighter bacon carbonara'));
     expect(find.byType(RecipeDetailScreen), findsOneWidget);
     await back(tester);
     await tapAndSettle(tester, find.byTooltip('Write a recipe'));
@@ -161,13 +161,13 @@ void main() {
 
   testWidgets('recipe detail: favorite, menu (edit/save/delete), stepper, cook, long-press a row', (tester) async {
     await app.pump(tester, initial: '/cook');
-    await tapAndSettle(tester, find.text('Garlic chicken & spinach rice bowls'));
+    await tapAndSettle(tester, textExact('Garlic chicken & spinach rice bowls'));
     final detail = find.byType(RecipeDetailScreen);
     expectTappable(tester, find.byTooltip('Favorite'));
     expectTappable(tester, find.descendant(of: detail, matching: find.byTooltip('Fewer portions')));
     expectTappable(tester, find.descendant(of: detail, matching: find.byTooltip('More portions')));
     expectTappable(tester, find.descendant(of: detail, matching: textCI('I cooked this')));
-    expectLongPressable(tester, find.descendant(of: detail, matching: find.text('Chicken breast')));
+    expectLongPressable(tester, find.descendant(of: detail, matching: textExact('Chicken breast')));
 
     final menu = find.descendant(of: detail, matching: find.byType(PopupMenuButton<String>));
     expectTappable(tester, menu);
@@ -181,7 +181,7 @@ void main() {
     await back(tester);
     expect(find.byType(RecipeDetailScreen), findsOneWidget);
 
-    await tester.longPress(find.descendant(of: detail, matching: find.text('Chicken breast')));
+    await tester.longPress(find.descendant(of: detail, matching: textExact('Chicken breast')));
     await settle(tester);
     expectTappable(tester, textHas('out of Chicken breast'));
     expectTappable(tester, textHas('Adjust'));

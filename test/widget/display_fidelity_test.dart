@@ -147,8 +147,8 @@ void main() {
   testWidgets('recipe detail: per-portion numbers, ingredient totals and stock follow the stepper', (tester) async {
     await app.pump(tester, initial: '/cook');
     final st0 = await stock();
-    await scrollTo(tester, find.text('Lighter bacon carbonara'));
-    await tapAndSettle(tester, find.text('Lighter bacon carbonara'));
+    await scrollTo(tester, textExact('Lighter bacon carbonara'));
+    await tapAndSettle(tester, textExact('Lighter bacon carbonara'));
     final m = await money();
     final r = await recipe('Lighter bacon carbonara');
 
@@ -227,7 +227,7 @@ void main() {
     expect(groceries, isNot(lidl.totalMinor));
     expect(value(m.format(groceries)), findsWidgets, reason: 'Lidl groceries-only amount');
     final cafe = txs.firstWhere((t) => t.merchant == 'Café');
-    expect(find.text('Café'), findsNothing, reason: 'eating-out transaction filtered out');
+    expect(textExact('Café'), findsNothing, reason: 'eating-out transaction filtered out');
     expect(value(m.format(cafe.totalMinor)), findsNothing);
   }, timeout: const Timeout(Duration(seconds: 60)));
 

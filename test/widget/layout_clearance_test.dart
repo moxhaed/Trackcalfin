@@ -62,7 +62,7 @@ void main() {
 
   testWidgets('recipe detail ends above its bottom bar', (tester) async {
     await app.pump(tester, initial: '/cook');
-    await tapAndSettle(tester, find.text('Garlic chicken & spinach rice bowls'));
+    await tapAndSettle(tester, textExact('Garlic chicken & spinach rice bowls'));
     final scaffold = find.descendant(of: find.byType(RecipeDetailScreen), matching: find.byType(Scaffold)).first;
     final bar = tester.widget<Scaffold>(scaffold).bottomNavigationBar;
     expect(bar, isNotNull, reason: 'the stepper and "I cooked this" live in a bottom bar');

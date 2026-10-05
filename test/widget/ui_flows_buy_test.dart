@@ -20,7 +20,7 @@ void main() {
   final app = TestApp()..register();
 
   Future<Ingredient> ing(String key) async => (await app.isar.ingredients.getByKey(key))!;
-  Finder dismissibleOf(String text) => find.ancestor(of: find.text(text), matching: find.byType(Dismissible));
+  Finder dismissibleOf(String text) => find.ancestor(of: textExact(text), matching: find.byType(Dismissible));
 
   testWidgets('pantry: swipe marks an item out, Undo restores the quantity', (tester) async {
     await app.pump(tester, initial: '/buy');
@@ -108,7 +108,7 @@ void main() {
     final restored = (await app.isar.transactions.get(cafe.id))!;
     expect(restored.totalMinor, cafe.totalMinor);
 
-    await tapAndSettle(tester, find.text('Café'));
+    await tapAndSettle(tester, textExact('Café'));
     final sheet = find.byType(TransactionSheet);
     expect(sheet, findsOneWidget);
     await tester.enterText(find.descendant(of: sheet, matching: fieldLabelled('amount')), '9.10');

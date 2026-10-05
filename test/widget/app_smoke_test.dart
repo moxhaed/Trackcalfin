@@ -14,7 +14,7 @@ import 'package:trackcalfin/data/isar/collections/schemas.dart';
 import 'package:trackcalfin/platform/image_store.dart';
 import 'package:trackcalfin/platform/secret_store.dart';
 
-import '../support/app_harness.dart' show textCI, textHas;
+import '../support/app_harness.dart' show textCI, textContains, textExact, textHas;
 import '../support/fake_gemini.dart';
 import '../support/test_db.dart';
 
@@ -58,7 +58,7 @@ void main() {
 
   testWidgets('dashboard renders every card from demo data', (tester) async {
     await pumpApp(tester);
-    expect(find.textContaining('Vibe ·'), findsOneWidget);
+    expect(textContains('Vibe ·'), findsOneWidget);
     expect(textCI('TODAY'), findsOneWidget);
     expect(textCI('FOOD SPEND'), findsOneWidget);
     await tester.drag(find.byType(ListView).first, const Offset(0, -900));
@@ -70,45 +70,45 @@ void main() {
   testWidgets('buy tab shows pantry and ledger', (tester) async {
     await pumpApp(tester, initial: '/buy');
     expect(textCI('USE SOON'), findsOneWidget);
-    expect(find.text('Spinach'), findsWidgets);
-    await tester.tap(find.text('Ledger'));
+    expect(textExact('Spinach'), findsWidgets);
+    await tester.tap(textExact('Ledger'));
     await settle(tester);
-    expect(find.text('Lidl'), findsWidgets);
+    expect(textExact('Lidl'), findsWidgets);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   testWidgets('cook tab shows the offline pick, fridge and rotation', (tester) async {
     await pumpApp(tester, initial: '/cook');
-    expect(find.text('Garlic chicken & spinach rice bowls'), findsOneWidget);
+    expect(textExact('Garlic chicken & spinach rice bowls'), findsOneWidget);
     expect(textCI('IN THE FRIDGE'), findsOneWidget);
     expect(textCI('COOK AGAIN'), findsOneWidget);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   testWidgets('cooking from the pick deducts stock and fills the fridge', (tester) async {
     await pumpApp(tester, initial: '/cook');
-    await tester.tap(find.text('I cooked this'));
+    await tester.tap(textExact('I cooked this'));
     await settle(tester);
-    expect(find.textContaining('in the fridge'), findsWidgets);
+    expect(textContains('in the fridge'), findsWidgets);
     final chicken = await isar.ingredients.getByKey('chicken_breast');
     expect(chicken!.qtyOnHand, 650 - 3 * 180);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   testWidgets('recipe detail and inbox review open', (tester) async {
     await pumpApp(tester, initial: '/inbox');
-    expect(find.textContaining('Aldi'), findsOneWidget);
-    await tester.tap(find.textContaining('Aldi'));
+    expect(textContains('Aldi'), findsOneWidget);
+    await tester.tap(textContains('Aldi'));
     await settle(tester);
-    expect(find.text('Looks good'), findsOneWidget);
-    expect(find.textContaining('receipt says'), findsOneWidget);
+    expect(textExact('Looks good'), findsOneWidget);
+    expect(textContains('receipt says'), findsOneWidget);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   testWidgets('a foreign receipt files in the home currency and keeps the original', (tester) async {
     await pumpApp(tester, initial: '/inbox');
-    expect(find.textContaining('(CHF 23.10)'), findsOneWidget);
-    await tester.tap(find.textContaining('Migros'));
+    expect(textContains('(CHF 23.10)'), findsOneWidget);
+    await tester.tap(textContains('Migros'));
     await settle(tester);
-    expect(find.text('Receipt in CHF'), findsOneWidget);
-    expect(find.textContaining('European Central Bank rate'), findsOneWidget);
-    await tester.tap(find.text('Looks good'));
+    expect(textExact('Receipt in CHF'), findsOneWidget);
+    expect(textContains('European Central Bank rate'), findsOneWidget);
+    await tester.tap(textExact('Looks good'));
     await settle(tester);
     final tx = await isar.transactions.filter().originalCurrencyEqualTo('CHF').findFirst();
     expect(tx, isNotNull);
@@ -119,12 +119,12 @@ void main() {
 
   testWidgets('floating nav switches tabs and opens capture', (tester) async {
     await pumpApp(tester);
-    await tester.tap(find.text('Cook'));
+    await tester.tap(textExact('Cook'));
     await settle(tester);
     expect(textCI('IN THE FRIDGE'), findsOneWidget);
     await tester.tap(find.byTooltip('Log something'));
     await settle(tester);
-    expect(find.text('I cooked'), findsOneWidget);
+    expect(textExact('I cooked'), findsOneWidget);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   testWidgets('pantry macros: unknown banner, confirm and edit a staple', (tester) async {
@@ -132,28 +132,28 @@ void main() {
     final salt = (await isar.ingredients.getByKey('salt'))!..nutritionSource = DataSource.none;
     await isar.writeTxn(() => isar.ingredients.put(salt));
     await settle(tester);
-    expect(find.text('1 item has no macros'), findsOneWidget);
-    await tester.tap(find.text('Fill with AI'));
+    expect(textExact('1 item has no macros'), findsOneWidget);
+    await tester.tap(textExact('Fill with AI'));
     await settle(tester);
-    expect(find.text('Add a Gemini API key in Settings first.'), findsOneWidget);
+    expect(textExact('Add a Gemini API key in Settings first.'), findsOneWidget);
 
-    await tester.dragUntilVisible(find.text('Cumin'), find.byType(ListView).first, const Offset(0, -300));
+    await tester.dragUntilVisible(textExact('Cumin'), find.byType(ListView).first, const Offset(0, -300));
     await settle(tester);
-    expect(find.textContaining('Review macros ·'), findsOneWidget);
-    await tester.tap(find.text('Cumin'));
+    expect(textContains('Review macros ·'), findsOneWidget);
+    await tester.tap(textExact('Cumin'));
     await settle(tester);
     expect(textCI('NUTRITION PER 100 G'), findsOneWidget);
-    expect(find.text('AI estimate'), findsOneWidget);
+    expect(textExact('AI estimate'), findsOneWidget);
 
-    await tester.tap(find.text('Confirm'));
+    await tester.tap(textExact('Confirm'));
     await settle(tester);
     expect((await isar.ingredients.getByKey('cumin'))!.nutritionConfirmedAt, isNotNull);
-    expect(find.text('Confirmed'), findsOneWidget);
+    expect(textExact('Confirmed'), findsOneWidget);
 
-    await tester.tap(find.text('Edit'));
+    await tester.tap(textExact('Edit'));
     await settle(tester);
     await tester.enterText(find.widgetWithText(TextField, 'kcal'), '380');
-    await tester.tap(find.text('Save macros'));
+    await tester.tap(textExact('Save macros'));
     await settle(tester);
     final cumin = (await isar.ingredients.getByKey('cumin'))!;
     expect(cumin.per100.kcal, 380);
@@ -163,15 +163,15 @@ void main() {
 
   testWidgets('settings and onboarding render', (tester) async {
     await pumpApp(tester, initial: '/settings');
-    expect(find.text('Monthly food budget'), findsOneWidget);
+    expect(textExact('Monthly food budget'), findsOneWidget);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   testWidgets('fresh install starts in onboarding', (tester) async {
     await pumpApp(tester, demo: false);
-    expect(find.text('Your kitchen, on autopilot'), findsOneWidget);
-    await tester.tap(find.text('Get started'));
+    expect(textExact('Your kitchen, on autopilot'), findsOneWidget);
+    await tester.tap(textExact('Get started'));
     await settle(tester);
-    expect(find.text('Your goals'), findsOneWidget);
+    expect(textExact('Your goals'), findsOneWidget);
   }, timeout: const Timeout(Duration(seconds: 60)));
 }
 
