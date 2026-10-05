@@ -157,6 +157,11 @@ in SCREENS.md. Money keeps `MoneyFormat` as it is.
   near full width at 16 margin on phones, which is fine).
 - Truncation: row titles get 2 lines and then an ellipsis. Subtitles get 2 lines. Values never
   truncate (their slot sizes to fit).
+- **No widows, no dangling separators** (reviews 03 and 04): a multi-line title never ends
+  with a single word. Use `NoWidowText`, which re-lays the text slightly narrower without adding
+  a line and keeps the string unchanged. Text made of " · "-joined parts uses `SeparatedText`:
+  one line with the separators, or one part per line without them. U+00A0 binding (`noOrphans`)
+  only applies to strings that no test reads verbatim.
 
 ---
 

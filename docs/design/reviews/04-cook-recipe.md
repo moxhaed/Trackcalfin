@@ -100,3 +100,28 @@ Notes:
 
 Re-shoot 07, 08, 09 and 27 in light and dark after MUST 1–2 (and SHOULD 3–4 if done). I'll
 re-check by measurement.
+
+## Re-check (round p4-fix)
+
+| Item | Result | Evidence |
+|---|---|---|
+| MUST 1: separators | **PASS** | 07: "Uses your spinach before it wilts" / "51 g protein", no dot. 09: one line with "·" kept |
+| MUST 2: title widows | **PASS** | Both screens: "Garlic chicken & spinach" / "rice bowls", no extra line, string unchanged |
+| SHOULD 3: one grid | **PASS** | Row 1 value x = 66 / 230 / 392 / 557 px, row 2 = 65 / 229 / 393 / 554 (±3 px side bearing) |
+| SHOULD 4: eyebrow → title | **PASS** | Eyebrow glyphs → title cap height went from 25.5 to 17.5 dp (8 between line boxes) |
+| Recipe bottom padding | Approved | The last content clears the cook bar |
+
+**Ruling on `NoWidowText` vs. U+00A0: `NoWidowText` is approved and preferred.** It gives the
+same visual result without changing the string, the finders or semantics. Conditions: it never
+adds a line, it re-measures with the current `TextScaler`, and it's used for every multi-line
+title (recipe titles everywhere, sheet titles, onboarding titles). Keep `noOrphans` (U+00A0)
+only for strings no test reads verbatim. `DESIGN_SYSTEM.md` §2.4 is updated.
+
+**Scores (light = dark)**
+- Cook: hierarchy 9, typography 8.5, spacing 9, alignment 9, color 9, contrast 9, consistency 9,
+  density 8.5, usability 9, polish 8.5. **Overall 8.9.**
+- Recipe: hierarchy 9, typography 8.5, spacing 8.5, alignment 9, color 9, contrast 9,
+  consistency 9, density 8.5, usability 9, polish 8.5. **Overall 8.8.**
+
+**Verdict: both PASS** (≥ 8.5, no critical category < 8). Phase 4 can be committed after the
+Guardian verifies.
