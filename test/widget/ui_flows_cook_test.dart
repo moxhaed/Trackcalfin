@@ -167,17 +167,26 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   testWidgets('dashboard: "+ Meal" logs a hand-entered meal; the Today card updates; Undo removes it', (tester) async {
+    // Each step waits for the state it needs (sheet, DB write, provider refresh, snackbar)
+    // instead of a fixed number of frames, so a busy machine can't make it flaky.
     await app.pump(tester);
     final log0 = (await today())!;
-    await tapAndSettle(tester, textCI('Meal'));
     final sheet = find.byType(AteSheet);
-    await tapAndSettle(tester, find.descendant(of: sheet, matching: textHas('something else')));
+    await waitFor(tester, textCI('Meal'));
+    await tapAndSettle(tester, textCI('Meal'));
+    final manual = find.descendant(of: sheet, matching: textHas('something else'));
+    await waitFor(tester, manual);
+    await tapAndSettle(tester, manual);
+    final kcal = find.descendant(of: sheet, matching: fieldLabelled('kcal'));
+    await waitFor(tester, kcal);
     await tester.enterText(find.descendant(of: sheet, matching: fieldLabelled('what')), 'Kebab');
-    await tester.enterText(find.descendant(of: sheet, matching: fieldLabelled('kcal')), '650');
+    await tester.enterText(kcal, '650');
     await tester.enterText(find.descendant(of: sheet, matching: fieldLabelled('protein')), '35');
     await tester.enterText(find.descendant(of: sheet, matching: fieldLabelled('cost')), '8.50');
-    await tapAndSettle(tester, find.descendant(of: sheet, matching: textHas('log meal')), frames: 12);
+    await tapAndSettle(tester, find.descendant(of: sheet, matching: textHas('log meal')));
 
+    await pumpUntil(tester, () async => ((await today())?.meals.length ?? 0) > log0.meals.length);
+    await waitFor(tester, sheet, gone: true);
     expect(find.byType(AteSheet), findsNothing);
     final log1 = (await today())!;
     final m = log1.meals.last;
@@ -187,9 +196,13 @@ void main() {
     expect(m.nutrition.kcal, 650);
     expect(m.nutrition.proteinG, 35);
     expect(m.costMinor, 850);
-    expect(value('${log1.totals.kcal.round()}'), findsWidgets, reason: 'Today card shows the new total');
+    final total = value('${log1.totals.kcal.round()}');
+    await waitFor(tester, total);
+    expect(total, findsWidgets, reason: 'Today card shows the new total');
 
+    await waitFor(tester, textCI('Undo'));
     await tapAndSettle(tester, textCI('Undo'));
+    await pumpUntil(tester, () async => (await today())!.meals.length == log0.meals.length);
     expect((await today())!.meals.length, log0.meals.length);
   }, timeout: const Timeout(Duration(seconds: 60)));
 

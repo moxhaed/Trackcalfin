@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -158,6 +159,26 @@ Future<void> settle(WidgetTester tester, {int frames = 12}) async {
     await tester.pump(const Duration(milliseconds: 100));
   }
 }
+
+/// Pumps in real time until [condition] holds or [timeout] passes, and returns whether it
+/// held. For waits that depend on Isar watchers and async providers, which are slower when
+/// the machine is busy: wait for the state, then assert it as usual.
+Future<bool> pumpUntil(
+  WidgetTester tester,
+  FutureOr<bool> Function() condition, {
+  Duration timeout = const Duration(seconds: 10),
+}) async {
+  final end = DateTime.now().add(timeout);
+  while (true) {
+    if (await condition()) return true;
+    if (DateTime.now().isAfter(end)) return false;
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+}
+
+/// Waits until [finder] finds something (or, with [gone], nothing).
+Future<void> waitFor(WidgetTester tester, Finder finder, {bool gone = false}) =>
+    pumpUntil(tester, () => finder.evaluate().isEmpty == gone);
 
 /// Pops the top route of the root navigator (closes a sheet or dialog).
 Future<void> popTop(WidgetTester tester) async {
