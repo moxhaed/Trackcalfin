@@ -18,17 +18,13 @@ Future<void> cookNow(BuildContext context, WidgetRef ref, Recipe recipe, int por
     unawaited(ref.read(metricsServiceProvider).record('cook', (timer ?? LogTimer()).elapsed));
     final protein = res.plan.perPortion.proteinG.round();
     final fridge = res.portionsInFridge;
-    final msg = res.autoLoggedEntryId != null
-        ? (fridge > 0 ? '1 logged, $fridge in the fridge · $protein g protein each' : 'Logged · $protein g protein')
-        : '$portions portions in the fridge · $protein g protein each';
-    messenger?.hideCurrentSnackBar();
-    messenger?.showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        duration: const Duration(seconds: 5),
-        action: SnackBarAction(label: 'Undo', onPressed: () => cook.undoCook(res.sessionId)),
-      ),
-    );
+    // What happened on the first line, the number on the second (§7.15).
+    final (msg, detail) = res.autoLoggedEntryId != null
+        ? (fridge > 0
+              ? ('1 logged, $fridge in the fridge', '$protein g protein each')
+              : ('Logged · $protein g protein', null))
+        : ('$portions portions in the fridge', '$protein g protein each');
+    if (messenger != null) showUndoOn(messenger, msg, detail: detail, onUndo: () => cook.undoCook(res.sessionId));
     if (res.plan.hasShortfall) {
       unawaited(
         Future<void>.delayed(const Duration(seconds: 5), () {

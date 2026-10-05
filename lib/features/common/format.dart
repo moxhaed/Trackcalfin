@@ -1,4 +1,5 @@
-import 'package:intl/intl.dart';
+import 'package:flutter/painting.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 
 import '../../core/enums.dart';
 import '../../domain/units.dart';
@@ -34,4 +35,40 @@ String minutesLabel(int m) {
   final h = m ~/ 60;
   final r = m % 60;
   return r == 0 ? '$h h' : '$h h $r';
+}
+
+/// Prose for display without dangling words: a number stays with its unit ("51 g") and the
+/// last two words stay together, so a line never ends with a lone word on the next one.
+/// Uses no-break spaces, so only apply it to text that tests or code don't match literally.
+String noOrphans(String s) {
+  var t = s.trim().replaceAllMapped(
+    RegExp(r'(\d) (g|kg|ml|l|pc|min|h|d|kcal|%)(?=$|[\s.,;:)])'),
+    (m) => '${m[1]}\u00A0${m[2]}',
+  );
+  final last = t.lastIndexOf(' ');
+  if (last > 0 && t.length - last <= 16) t = '${t.substring(0, last)}\u00A0${t.substring(last + 1)}';
+  return t;
+}
+
+/// A " · "-joined line (a recipe hook, a meta line) that never leaves a separator dangling:
+/// if it fits on one line at [maxWidth] it keeps its separators, otherwise each part goes on
+/// its own line without them (each part kept free of orphans).
+String separatedText(
+  String text,
+  TextStyle style,
+  double maxWidth, {
+  TextScaler textScaler = TextScaler.noScaling,
+  TextDirection textDirection = TextDirection.ltr,
+}) {
+  const sep = ' · ';
+  if (!text.contains(sep) || !maxWidth.isFinite) return text;
+  final painter = TextPainter(
+    text: TextSpan(text: text, style: style),
+    textDirection: textDirection,
+    textScaler: textScaler,
+    maxLines: 1,
+  )..layout();
+  final fits = painter.width <= maxWidth;
+  painter.dispose();
+  return fits ? text : text.split(sep).map(noOrphans).join('\n');
 }

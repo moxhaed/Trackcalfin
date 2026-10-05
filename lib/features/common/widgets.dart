@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../app/theme.dart';
+import 'format.dart';
 
 /// Page header of a tab root (Dashboard, Buy, Cook, Settings): a 30/36 large title at
 /// x = 16 on the canvas, 60 tall, actions on the right with the last one 8 from the edge
@@ -261,6 +262,8 @@ class AppRow extends StatelessWidget {
     super.key,
     required this.title,
     this.subtitle,
+    this.subtitleSpan,
+    this.titleTrailing,
     this.leading,
     this.trailing,
     this.value,
@@ -272,6 +275,15 @@ class AppRow extends StatelessWidget {
 
   final String title;
   final String? subtitle;
+
+  /// A subtitle with mixed styles (e.g. a status phrase in an ink color); wins over [subtitle].
+  final InlineSpan? subtitleSpan;
+
+  /// A small mark right after the title, such as the favorite star.
+  final Widget? titleTrailing;
+
+  /// A 24 icon (centered in a 24 slot, so 20 status icons keep the text on x = 52) or a
+  /// [GlyphCircle].
   final Widget? leading;
 
   /// A switch, a small tonal button or an icon button. Wins over [value] and [chevron].
@@ -291,6 +303,13 @@ class AppRow extends StatelessWidget {
     final secondary = context.scheme.onSurfaceVariant;
     final nums = context.nums;
     final control = trailing != null;
+    final hasSubtitle = subtitle != null || subtitleSpan != null;
+    final titleText = Text(
+      title,
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      style: context.text.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+    );
     final end =
         trailing ??
         (value == null && !chevron
@@ -299,9 +318,12 @@ class AppRow extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   if (value != null)
-                    Text(
-                      value!,
-                      style: valueMuted ? nums.body.copyWith(color: secondary, fontWeight: FontWeight.w400) : nums.body,
+                    Text.rich(
+                      valueSpan(
+                        context,
+                        value!,
+                        valueMuted ? nums.body.copyWith(color: secondary, fontWeight: FontWeight.w400) : nums.body,
+                      ),
                     ),
                   if (value != null && chevron) const SizedBox(width: AppSpace.x2),
                   if (chevron) Icon(Icons.chevron_right_rounded, size: 20, color: context.colors.textTertiary),
@@ -313,15 +335,21 @@ class AppRow extends StatelessWidget {
       child: ConstrainedBox(
         // A trailing control lays out at its 48 tap target, so the row pads it by 4 only: one
         // line is 56 and two lines are 64 (review 02), and the text column stays centered.
-        constraints: BoxConstraints(minHeight: subtitle == null ? (control ? 56 : 52) : 64),
+        constraints: BoxConstraints(minHeight: !hasSubtitle ? (control ? 56 : 52) : 64),
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: AppSpace.x4, vertical: control ? AppSpace.x1 : AppSpace.x3),
           child: Row(
             children: [
               if (leading != null) ...[
-                IconTheme.merge(
-                  data: IconThemeData(color: secondary, size: 24),
-                  child: leading!,
+                ConstrainedBox(
+                  constraints: const BoxConstraints(minWidth: 24),
+                  child: Center(
+                    widthFactor: 1,
+                    child: IconTheme.merge(
+                      data: IconThemeData(color: secondary, size: 24),
+                      child: leading!,
+                    ),
+                  ),
                 ),
                 const SizedBox(width: AppSpace.x3),
               ],
@@ -330,15 +358,24 @@ class AppRow extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: context.text.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
-                    ),
-                    if (subtitle != null) ...[
+                    if (titleTrailing == null)
+                      titleText
+                    else
+                      Row(
+                        children: [
+                          Flexible(child: titleText),
+                          const SizedBox(width: 6),
+                          titleTrailing!,
+                        ],
+                      ),
+                    if (hasSubtitle) ...[
                       const SizedBox(height: 2),
-                      Text(subtitle!, maxLines: 2, overflow: TextOverflow.ellipsis, style: context.text.bodySmall),
+                      Text.rich(
+                        subtitleSpan ?? TextSpan(text: subtitle),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.text.bodySmall,
+                      ),
                     ],
                   ],
                 ),
@@ -459,7 +496,7 @@ class AppNotice extends StatelessWidget {
   const AppNotice({
     super.key,
     this.kind = NoticeKind.info,
-    required this.message,
+    this.message,
     this.title,
     this.meta,
     this.icon,
@@ -469,7 +506,9 @@ class AppNotice extends StatelessWidget {
   });
 
   final NoticeKind kind;
-  final String message;
+
+  /// The body text; a notice can also be just a [title] and [meta].
+  final String? message;
   final String? title;
   final String? meta;
 
@@ -504,8 +543,11 @@ class AppNotice extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (title != null) ...[Text(title!, style: context.text.titleSmall), const SizedBox(height: 2)],
-        Text(message, style: context.text.bodyMedium),
+        if (title != null) ...[
+          Text(title!, style: context.text.titleSmall),
+          if (message != null) const SizedBox(height: 2),
+        ],
+        if (message != null) Text(message!, style: context.text.bodyMedium),
         if (meta != null) ...[const SizedBox(height: 2), Text(meta!, style: context.text.bodySmall)],
         if (actions.isNotEmpty)
           Transform.translate(
@@ -1375,6 +1417,87 @@ class StatusPill extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+/// A " · "-joined line (a recipe hook) that fits with its separators, or wraps one part per
+/// line without them, so no separator is left dangling at a line end.
+class SeparatedText extends StatelessWidget {
+  const SeparatedText(this.text, {super.key, this.style});
+  final String text;
+  final TextStyle? style;
+
+  @override
+  Widget build(BuildContext context) {
+    final resolved = DefaultTextStyle.of(context).style.merge(style);
+    return LayoutBuilder(
+      builder: (context, c) => Text(
+        separatedText(
+          text,
+          resolved,
+          c.maxWidth,
+          textScaler: MediaQuery.textScalerOf(context),
+          textDirection: Directionality.of(context),
+        ),
+        style: style,
+      ),
+    );
+  }
+}
+
+/// A wrapping title whose last line never holds a single word: when it would, the text is
+/// laid out a little narrower so the word before moves down with it ("Garlic chicken &
+/// spinach" / "rice bowls"). The string itself is unchanged, so finders and screen readers
+/// see the real title.
+class NoWidowText extends StatelessWidget {
+  const NoWidowText(this.text, {super.key, this.style});
+  final String text;
+  final TextStyle? style;
+
+  @override
+  Widget build(BuildContext context) {
+    // Align loosens a tight parent width (a ListView child), so the narrower box takes effect.
+    return LayoutBuilder(
+      builder: (context, c) => Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: SizedBox(
+          width: c.maxWidth.isFinite ? _width(context, c.maxWidth) : null,
+          child: Text(text, style: style),
+        ),
+      ),
+    );
+  }
+
+  /// The widest width up to [max] at which the last line has two words or more, without
+  /// adding a line; null when the text needs no help.
+  double? _width(BuildContext context, double max) {
+    if (text.trim().split(RegExp(r'\s+')).length < 3) return null;
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: DefaultTextStyle.of(context).style.merge(style)),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+    );
+    try {
+      bool widow(double w) {
+        painter.layout(maxWidth: w);
+        final lines = painter.computeLineMetrics();
+        if (lines.length < 2) return false;
+        final last = lines.last;
+        final start = painter.getPositionForOffset(Offset(0, last.baseline - last.ascent / 2)).offset;
+        return !text.substring(start).trim().contains(' ');
+      }
+
+      if (!widow(max)) return null;
+      final lines = painter.computeLineMetrics().length;
+      for (var w = max - 4; w > max * 0.5; w -= 4) {
+        painter.layout(maxWidth: w);
+        if (painter.computeLineMetrics().length > lines) return null;
+        if (!widow(w)) return w;
+      }
+      return null;
+    } finally {
+      painter.dispose();
+    }
   }
 }
 
