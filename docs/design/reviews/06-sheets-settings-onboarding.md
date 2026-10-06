@@ -153,3 +153,9 @@ Notes (measured):
 
 Re-shoot 17 (cold), 23 and 25 in light and dark after the MUST items (and 16/22/19 if the SHOULDs
 land). I'll re-check by measurement.
+
+## Re-check (orchestrator, by inspection of p678-fix light)
+- MUST 1 cooked sheet: "What did you cook?" on one line beside a 131-wide stepper. Pass.
+- MUST 2 cold-opened screens: PageBar shows Back → go('/') when nothing can pop; Quick check Done uses canPop ? pop : go('/'). Router and startup code untouched. Pass.
+- SHOULD 1–5 implemented (field padding 16 from the edge, editor row geometry, onboarding glyph alignment, Stats/editor shot opened by push).
+Verdict: Phases 6–8 pass.
