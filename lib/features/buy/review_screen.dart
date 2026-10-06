@@ -156,7 +156,24 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
   @override
   Widget build(BuildContext context) {
     final job = _job;
-    if (job == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (job == null) {
+      // The shape is known (a line, a notice, a group of cards): a skeleton under the real header.
+      return Scaffold(
+        appBar: const PageBar(),
+        body: AppSkeleton(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(AppSpace.screen, AppSpace.x2, AppSpace.screen, 0),
+            children: [
+              SkeletonLine(width: 120, style: context.text.bodyMedium),
+              const SizedBox(height: AppSpace.x3),
+              const SkeletonBlock(height: 72, radius: 20),
+              const SizedBox(height: AppSpace.x6),
+              const SkeletonBlock(height: 160, radius: 20),
+            ],
+          ),
+        ),
+      );
+    }
     final money = ref.watch(moneyProvider);
     final home = ref.watch(profileProvider).value?.currency ?? 'EUR';
     final pantry = job.kind == ScanKind.pantry;

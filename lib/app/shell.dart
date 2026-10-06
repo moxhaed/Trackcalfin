@@ -19,7 +19,9 @@ class AppShell extends ConsumerWidget {
     final inbox = ref.watch(inboxCountProvider);
     return Scaffold(
       extendBody: true,
-      body: shell,
+      // The tab pages scroll behind the bar; a short canvas fade under it keeps their content from
+      // looking sliced in the gap between the pill and the ⊕.
+      body: Stack(fit: StackFit.expand, children: [shell, const _NavFade()]),
       bottomNavigationBar: FloatingNav(
         index: shell.currentIndex,
         onSelect: (index) => shell.goBranch(index, initialLocation: index == shell.currentIndex),
@@ -57,6 +59,42 @@ class AppShell extends ConsumerWidget {
             'slider.horizontal.3',
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// A canvas-colored gradient over the bottom edge of the tab pages, behind the pill and ⊕: it
+/// starts 24 above the pill, is ~85% opaque at the pill's center and 95% at the screen edge.
+/// It ignores pointers, so the content underneath stays scrollable and tappable.
+class _NavFade extends StatelessWidget {
+  const _NavFade();
+
+  @override
+  Widget build(BuildContext context) {
+    // Inside an extended-body Scaffold the bottom padding is the bar's height plus its inset.
+    final bar = MediaQuery.paddingOf(context).bottom;
+    const lead = 24.0;
+    final canvas = Theme.of(context).scaffoldBackgroundColor;
+    final height = bar + lead;
+    // The pill is the top 60 of the bar, so its center is 30 below the gradient's 24 lead.
+    final pillCenter = ((lead + FloatingNav.height / 2) / height).clamp(0.0, 1.0);
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: 0,
+      height: height,
+      child: IgnorePointer(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [canvas.withValues(alpha: 0), canvas.withValues(alpha: 0.85), canvas.withValues(alpha: 0.95)],
+              stops: [0, pillCenter, 1],
+            ),
+          ),
+        ),
       ),
     );
   }

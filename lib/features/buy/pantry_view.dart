@@ -82,7 +82,7 @@ class _PantryViewState extends ConsumerState<PantryView> {
       child: child,
     );
     Widget strip(List<Widget> tiles) => SizedBox(
-      height: 72,
+      height: PantryTile.heightOf(context),
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: AppSpace.screen),
         scrollDirection: Axis.horizontal,

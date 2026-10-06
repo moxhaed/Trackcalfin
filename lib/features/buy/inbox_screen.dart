@@ -68,17 +68,19 @@ class _JobCard extends ConsumerWidget {
     final home = ref.watch(profileProvider).value?.currency ?? 'EUR';
     final foreign = ScanService.isForeign(job, home);
     final receiptTotal = job.lines.where((l) => l.include).fold(0, (a, l) => a + l.totalMinor);
+    // The amount sits in the trailing slot, like the Ledger: in the home currency over the
+    // receipt's own "(CHF 23.10)"; without a rate only the receipt's currency is known.
+    final original = foreign ? moneyFor(job.currency!).format(receiptTotal) : null;
     final amount = !foreign
         ? money.format(receiptTotal)
         : job.fxRate == null
-        ? moneyFor(job.currency!).format(receiptTotal)
-        : '${money.format(Currency.convert(receiptTotal, from: job.currency!, to: home, rate: job.fxRate!))} '
-              '(${moneyFor(job.currency!).format(receiptTotal)})';
+        ? original!
+        : money.format(Currency.convert(receiptTotal, from: job.currency!, to: home, rate: job.fxRate!));
+    final amountCaption = foreign && job.fxRate != null ? '($original)' : null;
     final title = switch (job.status) {
       ScanStatus.queued => pantry ? 'Pantry photo waiting' : 'Receipt waiting',
       ScanStatus.processing => 'Reading…',
-      ScanStatus.needsReview =>
-        pantry ? 'Pantry photo · ${job.lines.length} items' : '${job.merchant ?? 'Receipt'} · $amount',
+      ScanStatus.needsReview => pantry ? 'Pantry photo · ${job.lines.length} items' : job.merchant ?? 'Receipt',
       ScanStatus.failed => 'Could not read this scan',
       _ => 'Scan',
     };
@@ -89,7 +91,8 @@ class _JobCard extends ConsumerWidget {
       ScanStatus.needsReview => [
         if (attention > 0) '$attention to check',
         if (job.flags.contains('total_mismatch')) 'totals differ',
-        if (foreign) job.fxRate == null ? 'needs an exchange rate' : 'converted from ${job.currency}',
+        // With a rate, the "(CHF 23.10)" under the amount already says it was converted.
+        if (foreign && job.fxRate == null) 'needs an exchange rate',
         if (job.flags.contains('currency_uncertain')) 'check the currency',
         if (job.flags.contains('merge_proposed')) 'possible duplicates',
         if (attention == 0 &&
@@ -116,6 +119,8 @@ class _JobCard extends ConsumerWidget {
           },
           title: title,
           subtitle: '${dayLabel(job.capturedAt, DateTime.now())} ${timeOf(job.capturedAt)} · $subtitle',
+          value: job.status == ScanStatus.needsReview && !pantry ? amount : null,
+          valueCaption: job.status == ScanStatus.needsReview && !pantry ? amountCaption : null,
           chevron: job.status == ScanStatus.needsReview,
           onTap: job.status == ScanStatus.needsReview ? () => context.push('/inbox/${job.id}') : null,
         ),

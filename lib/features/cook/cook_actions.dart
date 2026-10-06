@@ -36,7 +36,7 @@ Future<void> cookNow(BuildContext context, WidgetRef ref, Recipe recipe, int por
     }
     unawaited(_afterCook(ref));
   } catch (e) {
-    messenger?.showSnackBar(SnackBar(content: Text('Could not log: $e')));
+    if (messenger != null) showInfoOn(messenger, 'Could not log: $e');
   }
 }
 

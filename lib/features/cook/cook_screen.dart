@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -136,7 +137,12 @@ class _TodayPickCardState extends ConsumerState<_TodayPickCard> {
 
   Widget _content(BuildContext context, PickOutcome out, bool hasKey) {
     final money = ref.watch(moneyProvider);
-    final r = out.recipe;
+    final planned = out.recipe;
+    // The pick's own snapshot goes stale (its lastCookedAt never changes), while the recipe and
+    // the stock are live: read the recipe by id so the card reflects a cook as it happens.
+    final r = planned == null
+        ? null
+        : (ref.watch(recipesProvider).value?.firstWhereOrNull((x) => x.id == planned.id) ?? planned);
     final secondary = context.scheme.onSurfaceVariant;
     if (r == null) {
       return _PickCard(
@@ -193,6 +199,34 @@ class _TodayPickCardState extends ConsumerState<_TodayPickCard> {
         r.lastCookedAt != null &&
         ref.read(dayClockProvider).dateKey(r.lastCookedAt!) == ref.read(dayClockProvider).dateKey(DateTime.now());
     final c = context.colors;
+    final large = MediaQuery.textScalerOf(context).scale(14) > 14 * 1.15;
+    final stepper = PortionStepper(
+      value: portions,
+      onChanged: (v) => setState(() => _portions = v),
+      // "Missing …" above already says it when nothing is cookable.
+      hint: f.maxPortionsNow > 0 && f.maxPortionsNow < 99 ? 'max ${f.maxPortionsNow}' : null,
+    );
+    final button = cookedToday
+        // Done for today: the commit steps back to a secondary button at the same 52 height. Keyed
+        // apart: a filled and a tonal button can't animate into each other in place.
+        ? FilledButton.tonalIcon(
+            key: const ValueKey('cooked-again'),
+            style: AppTheme.tonalButton(context).copyWith(
+              minimumSize: const WidgetStatePropertyAll(Size(64, 52)),
+              padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 16)),
+            ),
+            onPressed: () => cookNow(context, ref, r, portions, timer: _timer),
+            icon: const Icon(Icons.check_rounded),
+            // One line at any text size: the label scales down before it would wrap.
+            label: const FittedBox(fit: BoxFit.scaleDown, child: Text('Cooked · again?', maxLines: 1)),
+          )
+        : FilledButton.icon(
+            key: const ValueKey('cook'),
+            style: AppTheme.largeButton,
+            onPressed: () => cookNow(context, ref, r, portions, timer: _timer),
+            icon: const Icon(Icons.soup_kitchen_outlined),
+            label: const Text('I cooked this'),
+          );
     return _PickCard(
       onTap: () => context.push('/recipe/${r.id}'),
       action: out.fromAi && hasKey && !cookedToday
@@ -215,25 +249,12 @@ class _TodayPickCardState extends ConsumerState<_TodayPickCard> {
           SeparatedText(r.hook, style: context.text.bodyMedium?.copyWith(color: secondary)),
         ],
         const SizedBox(height: AppSpace.x4),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Metric(value: money.format(r.costPerPortionMinor), label: 'per portion'),
-            ),
-            Expanded(
-              child: Metric(value: '${r.perPortion.kcal.round()}', label: 'kcal', dotColor: c.kcal),
-            ),
-            Expanded(
-              child: Metric(value: '${r.perPortion.proteinG.round()} g', label: 'protein', dotColor: c.protein),
-            ),
-            Expanded(
-              child: r.totalMinutes > 0
-                  ? Metric(value: minutesLabel(r.totalMinutes), label: 'total')
-                  : const SizedBox.shrink(),
-            ),
-          ],
-        ),
+        _metrics(large, [
+          Metric(value: money.format(r.costPerPortionMinor), label: 'per portion'),
+          Metric(value: '${r.perPortion.kcal.round()}', label: 'kcal', dotColor: c.kcal),
+          Metric(value: '${r.perPortion.proteinG.round()} g', label: 'protein', dotColor: c.protein),
+          if (r.totalMinutes > 0) Metric(value: minutesLabel(r.totalMinutes), label: 'total'),
+        ]),
         if (!f.ready) ...[
           const SizedBox(height: AppSpace.x3),
           StatusPill(
@@ -246,24 +267,55 @@ class _TodayPickCardState extends ConsumerState<_TodayPickCard> {
           ),
         ],
         const SizedBox(height: AppSpace.x4),
-        Row(
-          children: [
-            PortionStepper(
-              value: portions,
-              onChanged: (v) => setState(() => _portions = v),
-              hint: f.maxPortionsNow < 99 ? 'max ${f.maxPortionsNow}' : null,
-            ),
-            const SizedBox(width: AppSpace.x3),
-            Expanded(
-              child: FilledButton.icon(
-                style: AppTheme.largeButton,
-                onPressed: () => cookNow(context, ref, r, portions, timer: _timer),
-                icon: Icon(cookedToday ? Icons.check_rounded : Icons.soup_kitchen_outlined),
-                label: Text(cookedToday ? 'Cooked · again?' : 'I cooked this'),
-              ),
-            ),
-          ],
-        ),
+        _actions(large, stepper, button),
+      ],
+    );
+  }
+
+  /// The four numbers in one row; above 1.15× text each would be too narrow, so they go two by two.
+  Widget _metrics(bool large, List<Widget> metrics) {
+    if (!large) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (var i = 0; i < 4; i++) Expanded(child: i < metrics.length ? metrics[i] : const SizedBox.shrink()),
+        ],
+      );
+    }
+    return Column(
+      children: [
+        for (var i = 0; i < metrics.length; i += 2) ...[
+          if (i > 0) const SizedBox(height: AppSpace.x3),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: metrics[i]),
+              Expanded(child: i + 1 < metrics.length ? metrics[i + 1] : const SizedBox.shrink()),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// The stepper beside the commit button; above 1.15× text the button no longer fits a label
+  /// in one piece beside it, so it goes full width under the stepper.
+  Widget _actions(bool large, Widget stepper, Widget button) {
+    if (!large) {
+      return Row(
+        children: [
+          stepper,
+          const SizedBox(width: AppSpace.x3),
+          Expanded(child: button),
+        ],
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Align(alignment: AlignmentDirectional.centerStart, child: stepper),
+        const SizedBox(height: AppSpace.x3),
+        button,
       ],
     );
   }

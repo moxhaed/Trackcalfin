@@ -6,6 +6,9 @@
 // SHOTS_DIR   Output folder (default build/screenshots/<theme>).
 // SHOTS_ONLY  Comma-separated shot names to render (default: all).
 //
+// Shots are DemoSeed data by default; `empty` seeds only an onboarded profile, and `textScale`
+// sets the system text scale for the shot.
+//
 // Each shot opens a fresh database seeded with DemoSeed, so shots are independent.
 // The phone is 390×844 dp with a notch and home-indicator inset, written at 2×.
 // Fonts come from the app's FontManifest plus Roboto and Material Icons from the
@@ -28,6 +31,7 @@ import 'package:trackcalfin/app/providers.dart';
 import 'package:trackcalfin/app/router.dart';
 import 'package:trackcalfin/app/theme.dart';
 import 'package:trackcalfin/application/demo_seed.dart';
+import 'package:trackcalfin/application/profile_service.dart';
 import 'package:trackcalfin/data/ai/prompt_repository.dart';
 import 'package:trackcalfin/features/common/widgets.dart';
 import 'package:trackcalfin/platform/image_store.dart';
@@ -42,10 +46,26 @@ const _dpr = 2.0;
 
 /// One screenshot: where to start, then optional steps (taps, scrolls) before capture.
 class Shot {
-  const Shot(this.name, this.route, {this.demo = true, this.steps, this.gallery});
+  const Shot(
+    this.name,
+    this.route, {
+    this.demo = true,
+    this.empty = false,
+    this.textScale = 1.0,
+    this.steps,
+    this.gallery,
+  });
   final String name;
   final String route;
+
+  /// Seeds DemoSeed data. Without it (and without [empty]) the app starts un-onboarded.
   final bool demo;
+
+  /// An onboarded profile and nothing else: the empty states of the tabs.
+  final bool empty;
+
+  /// The system text scale (1.3 for the large-text shots).
+  final double textScale;
   final Future<void> Function(WidgetTester tester, Isar isar)? steps;
 
   /// Renders this page of shared components on the app theme instead of a route.
@@ -160,6 +180,14 @@ final shots = <Shot>[
       await _tap(t, find.text('I cooked this'));
     },
   ),
+  // An onboarded profile and no data: the tabs' empty states.
+  const Shot('28-empty-dashboard', '/', demo: false, empty: true),
+  const Shot('29-empty-buy', '/buy', demo: false, empty: true),
+  const Shot('30-empty-cook', '/cook', demo: false, empty: true),
+  // System text at 1.3×.
+  const Shot('31-dashboard-1.3x', '/', textScale: 1.3),
+  const Shot('32-cook-1.3x', '/cook', textScale: 1.3),
+  const Shot('33-pantry-1.3x', '/buy', textScale: 1.3),
   // Shared components that no screen uses yet (DESIGN_SYSTEM §7), for review.
   Shot('90-components', '/', gallery: () => const _GalleryA()),
   Shot('91-components', '/', gallery: () => const _GalleryB()),
@@ -182,6 +210,7 @@ void main() {
       final shadows = debugDisableShadows;
       try {
         if (shot.demo) await DemoSeed.run(isar);
+        if (shot.empty) await ProfileService(isar).save(ProfileService.defaults()..onboardingDone = true);
         tester.view.physicalSize = _size * _dpr;
         tester.view.devicePixelRatio = _dpr;
         await tester.binding.setSurfaceSize(_size);
@@ -190,8 +219,9 @@ void main() {
         tester.platformDispatcher.platformBrightnessTestValue = _theme == 'dark'
             ? ui.Brightness.dark
             : ui.Brightness.light;
+        tester.platformDispatcher.textScaleFactorTestValue = shot.textScale;
         debugDisableShadows = false;
-        final router = buildRouter(onboarded: shot.demo, initialLocation: shot.route);
+        final router = buildRouter(onboarded: shot.demo || shot.empty, initialLocation: shot.route);
         await tester.pumpWidget(
           RepaintBoundary(
             key: boundary,
@@ -230,6 +260,7 @@ void main() {
         await tester.binding.setSurfaceSize(null);
         tester.view.reset();
         tester.platformDispatcher.clearPlatformBrightnessTestValue();
+        tester.platformDispatcher.clearTextScaleFactorTestValue();
         await closeTestDb(isar);
         await tmp.delete(recursive: true);
       }

@@ -153,14 +153,19 @@ class _ScrollEdgeState extends State<ScrollEdge> with _ScrolledUnder {
 /// accent icon and a 14/18 w600 label in ink (DESIGN_SYSTEM §7.5), e.g. "Quick check · 2".
 /// It ends flush with the cards (x = screen − 16): 8 of its own on top of the bar's 8.
 class HeaderButton extends StatelessWidget {
-  const HeaderButton({super.key, required this.icon, required this.label, required this.onPressed});
+  const HeaderButton({super.key, required this.icon, required this.label, required this.onPressed, this.shortLabel});
   final IconData icon;
   final String label;
   final VoidCallback onPressed;
 
+  /// Shown instead of [label] above 1.15× text, when the title needs the room ("2"). The
+  /// full label stays as the tooltip and the screen-reader name.
+  final String? shortLabel;
+
   @override
   Widget build(BuildContext context) {
     final scheme = context.scheme;
+    final compact = shortLabel != null && MediaQuery.textScalerOf(context).scale(14) > 14 * 1.15;
     final button = FilledButton.icon(
       onPressed: onPressed,
       style: FilledButton.styleFrom(
@@ -174,11 +179,11 @@ class HeaderButton extends StatelessWidget {
         tapTargetSize: MaterialTapTargetSize.padded,
       ),
       icon: Icon(icon),
-      label: Text(label),
+      label: Text(compact ? shortLabel! : label),
     );
     return Padding(
       padding: const EdgeInsets.only(right: AppSpace.x2),
-      child: button,
+      child: compact ? Tooltip(message: label, child: button) : button,
     );
   }
 }
@@ -308,6 +313,7 @@ class AppRow extends StatelessWidget {
     this.leading,
     this.trailing,
     this.value,
+    this.valueCaption,
     this.valueMuted = false,
     this.chevron = false,
     this.onTap,
@@ -336,6 +342,9 @@ class AppRow extends StatelessWidget {
 
   /// A trailing number in `nums.body`; settings values pass [valueMuted] (secondary, w400).
   final String? value;
+
+  /// A 13 secondary line under [value], right-aligned (the original-currency amount).
+  final String? valueCaption;
   final bool valueMuted;
 
   /// A trailing `chevron_right_rounded` for rows that navigate.
@@ -353,6 +362,15 @@ class AppRow extends StatelessWidget {
     final titleText = titleSeparator == null
         ? NoWidowText(title, maxLines: 2, style: titleStyle)
         : SeparatedText(title, style: titleStyle, separator: titleSeparator!);
+    final amount = value == null
+        ? null
+        : Text.rich(
+            valueSpan(
+              context,
+              value!,
+              valueMuted ? nums.body.copyWith(color: secondary, fontWeight: FontWeight.w400) : nums.body,
+            ),
+          );
     final end =
         trailing ??
         (value == null && !chevron
@@ -360,14 +378,17 @@ class AppRow extends StatelessWidget {
             : Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (value != null)
-                    Text.rich(
-                      valueSpan(
-                        context,
-                        value!,
-                        valueMuted ? nums.body.copyWith(color: secondary, fontWeight: FontWeight.w400) : nums.body,
-                      ),
-                    ),
+                  if (amount != null)
+                    valueCaption == null
+                        ? amount
+                        : Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              amount,
+                              Text(valueCaption!, style: context.text.bodySmall),
+                            ],
+                          ),
                   if (value != null && chevron) const SizedBox(width: AppSpace.x2),
                   if (chevron) Icon(Icons.chevron_right_rounded, size: 20, color: context.colors.textTertiary),
                 ],
@@ -471,7 +492,13 @@ class AppRow extends StatelessWidget {
         textDirection: dir,
         textScaler: scaler,
       )..layout();
-      endWidth += p.width + AppSpace.x3;
+      var w = p.width;
+      if (valueCaption != null) {
+        p.text = TextSpan(text: valueCaption, style: base.merge(context.text.bodySmall));
+        p.layout();
+        w = math.max(w, p.width);
+      }
+      endWidth += w + AppSpace.x3;
       p.dispose();
     }
     if (chevron) endWidth += 20 + (value != null ? AppSpace.x2 : 0) + (value == null ? AppSpace.x3 : 0);
@@ -1045,7 +1072,7 @@ class Tag extends StatelessWidget {
 // Tiles (§7.19)
 // ---------------------------------------------------------------------------
 
-/// A pantry item in the "Use soon" / "Running low" strip: white, radius 16, 72 tall, the
+/// A pantry item in the "Use soon" / "Running low" strip: white, radius 16, 72 tall (more at large text), the
 /// name over a meta line. The days note is amber, or red when [urgent].
 class PantryTile extends StatelessWidget {
   const PantryTile({
@@ -1071,6 +1098,14 @@ class PantryTile extends StatelessWidget {
   final bool runningLow;
   final VoidCallback? onTap;
 
+  /// 72, or taller when large text needs it: the name and meta lines (at the system text
+  /// scale) plus the tile's 12 + 12 padding and the 2 between them. Size the strip with it.
+  static double heightOf(BuildContext context) {
+    final scaler = MediaQuery.textScalerOf(context);
+    double line(TextStyle? s) => scaler.scale(s?.fontSize ?? 16) * (s?.height ?? 1.2);
+    return math.max(72, line(context.text.bodyLarge) + 2 + line(context.text.bodySmall) + 24);
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
@@ -1078,7 +1113,7 @@ class PantryTile extends StatelessWidget {
     return ConstrainedBox(
       constraints: const BoxConstraints(minWidth: 132, maxWidth: 180),
       child: SizedBox(
-        height: 72,
+        height: heightOf(context),
         child: Material(
           color: context.scheme.surfaceContainerLow,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.tile)),
@@ -1785,42 +1820,92 @@ class EmptyState extends StatelessWidget {
 
 /// A value over its caption (§7.12): the value in tabular `nums.medium` (or [style]) with its
 /// unit set smaller, 4 above a 13 secondary caption with an optional 8 color dot. The
-/// caption wraps when space is tight; keep a number and its unit together with a no-break
-/// space.
+/// caption wraps when space is tight (a " · " caption breaks at the separator, never inside
+/// a part); keep a number and its unit together with a no-break space. [fadeValue] crossfades
+/// the value when it changes (§9).
 class Metric extends StatelessWidget {
-  const Metric({super.key, required this.value, required this.label, this.dotColor, this.style});
+  const Metric({
+    super.key,
+    required this.value,
+    required this.label,
+    this.dotColor,
+    this.style,
+    this.fadeValue = false,
+  });
   final String value;
   final String label;
   final Color? dotColor;
   final TextStyle? style;
+  final bool fadeValue;
 
   @override
   Widget build(BuildContext context) {
+    final valueText = Text.rich(valueSpan(context, value, style ?? context.nums.medium));
+    Widget caption(String text) => Text.rich(
+      TextSpan(
+        children: [
+          if (dotColor != null)
+            WidgetSpan(
+              alignment: PlaceholderAlignment.middle,
+              child: Container(
+                width: 8,
+                height: 8,
+                margin: const EdgeInsets.only(right: 6),
+                decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+              ),
+            ),
+          TextSpan(text: text),
+        ],
+      ),
+      style: context.text.bodySmall,
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text.rich(valueSpan(context, value, style ?? context.nums.medium)),
+        fadeValue ? ValueFade(id: value, child: valueText) : valueText,
         const SizedBox(height: AppSpace.x1),
-        Text.rich(
-          TextSpan(
-            children: [
-              if (dotColor != null)
-                WidgetSpan(
-                  alignment: PlaceholderAlignment.middle,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    margin: const EdgeInsets.only(right: 6),
-                    decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
-                  ),
-                ),
-              TextSpan(text: label),
-            ],
+        if (!label.contains(' · '))
+          caption(label)
+        else
+          LayoutBuilder(
+            builder: (context, c) => caption(
+              separatedText(
+                label,
+                DefaultTextStyle.of(context).style.merge(context.text.bodySmall),
+                c.maxWidth - (dotColor == null ? 0 : 14),
+                textScaler: MediaQuery.textScalerOf(context),
+                textDirection: Directionality.of(context),
+              ),
+            ),
           ),
-          style: context.text.bodySmall,
-        ),
       ],
+    );
+  }
+}
+
+/// Crossfades its child when [id] changes: a value that changes in place fades over
+/// [AppMotion.short], without a slide or a count-up, and is instant under reduced motion (§9).
+/// The old and new values overlap while they fade, anchored at [alignment].
+class ValueFade extends StatelessWidget {
+  const ValueFade({
+    super.key,
+    required this.id,
+    required this.child,
+    this.alignment = AlignmentDirectional.centerStart,
+  });
+  final Object id;
+  final Widget child;
+  final AlignmentGeometry alignment;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: MediaQuery.disableAnimationsOf(context) ? Duration.zero : AppMotion.short,
+      switchInCurve: AppMotion.standard,
+      switchOutCurve: AppMotion.standard,
+      layoutBuilder: (current, previous) => Stack(alignment: alignment, children: [...previous, ?current]),
+      child: KeyedSubtree(key: ValueKey(id), child: child),
     );
   }
 }
@@ -1849,8 +1934,14 @@ void showUndoOn(ScaffoldMessengerState messenger, String message, {VoidCallback?
 
 void showInfo(BuildContext context, String message) {
   final messenger = ScaffoldMessenger.maybeOf(context);
-  messenger?.hideCurrentSnackBar();
-  messenger?.showSnackBar(
+  if (messenger == null) return;
+  showInfoOn(messenger, message);
+}
+
+/// [showInfo] for a messenger captured before an `await`, like [showUndoOn].
+void showInfoOn(ScaffoldMessengerState messenger, String message) {
+  messenger.hideCurrentSnackBar();
+  messenger.showSnackBar(
     SnackBar(
       content: _SnackContent(message: message),
       duration: const Duration(seconds: 3),

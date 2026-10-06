@@ -236,14 +236,18 @@ class _PillTab extends StatelessWidget {
               child: Icon(selected ? tab.activeIcon : tab.icon, color: color, size: 24),
             ),
             const SizedBox(height: 2),
-            Text(
-              tab.label,
-              maxLines: 1,
-              overflow: TextOverflow.fade,
-              softWrap: false,
-              style: context.text.labelSmall?.copyWith(
-                color: color,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+            // Like the system tab bar, the labels stop growing at 1.15× so "Dashboard" fits its slot.
+            MediaQuery.withClampedTextScaling(
+              maxScaleFactor: 1.15,
+              child: Text(
+                tab.label,
+                maxLines: 1,
+                overflow: TextOverflow.fade,
+                softWrap: false,
+                style: context.text.labelSmall?.copyWith(
+                  color: color,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                ),
               ),
             ),
           ],

@@ -33,6 +33,7 @@ class DashboardScreen extends ConsumerWidget {
             HeaderButton(
               icon: Icons.fact_check_outlined,
               label: 'Quick check · $checks',
+              shortLabel: '$checks',
               onPressed: () => context.push('/quick-check'),
             ),
         ],
@@ -121,9 +122,13 @@ class _VibeHero extends StatelessWidget {
                 semanticsLabel: score == null
                     ? 'Vibe not scored yet, ${vibe.label}'
                     : 'Vibe $score of 100, ${vibe.label}',
-                center: Text(
-                  score?.toString() ?? '–',
-                  style: context.nums.large.copyWith(fontSize: 24, height: 28 / 24, fontWeight: FontWeight.w700),
+                center: ValueFade(
+                  id: score ?? '–',
+                  alignment: Alignment.center,
+                  child: Text(
+                    score?.toString() ?? '–',
+                    style: context.nums.large.copyWith(fontSize: 24, height: 28 / 24, fontWeight: FontWeight.w700),
+                  ),
                 ),
               ),
               const SizedBox(width: AppSpace.x4),
@@ -133,13 +138,19 @@ class _VibeHero extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Expanded(child: Text('Vibe · ${vibe.label}', style: context.text.titleMedium)),
+                        Expanded(
+                          child: ValueFade(
+                            id: vibe.label,
+                            child: Text('Vibe · ${vibe.label}', style: context.text.titleMedium),
+                          ),
+                        ),
                         if (tappable) Icon(Icons.chevron_right_rounded, size: 20, color: c.textTertiary),
                       ],
                     ),
                     const SizedBox(height: AppSpace.tight),
-                    Text(
+                    NoWidowText(
                       vibe.insight,
+                      maxLines: 3,
                       style: context.text.bodyMedium?.copyWith(color: context.scheme.onSurfaceVariant),
                     ),
                   ],
@@ -157,7 +168,7 @@ class _VibeHero extends StatelessWidget {
 void _explainVibe(BuildContext context, VibeResult vibe) {
   const names = {
     'food': 'Food spend pace',
-    'nonfood': 'Other spend pace',
+    'nonfood': 'Other spend, all categories',
     'protein': 'Protein vs target',
     'kcal': 'Calories vs target',
     'logging': 'Days logged',
@@ -227,6 +238,7 @@ class _TodayCard extends StatelessWidget {
               label: 'of $of${noun == null ? '' : ' $noun'} · $pct%',
               dotColor: color,
               style: context.nums.large,
+              fadeValue: true,
             ),
             const SizedBox(height: AppSpace.x2),
             PaceBar(fraction: target <= 0 ? 0 : v / target, color: color),
@@ -284,17 +296,20 @@ class _FoodSpendCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text.rich(
-                  TextSpan(
-                    style: context.nums.medium,
-                    children: [
-                      TextSpan(text: money.compact(spent)),
-                      if (budget > 0)
-                        TextSpan(
-                          text: ' / ${money.compact(budget)}',
-                          style: context.text.bodyMedium?.copyWith(color: secondary),
-                        ),
-                    ],
+                child: ValueFade(
+                  id: '$spent/$budget',
+                  child: Text.rich(
+                    TextSpan(
+                      style: context.nums.medium,
+                      children: [
+                        TextSpan(text: money.compact(spent)),
+                        if (budget > 0)
+                          TextSpan(
+                            text: ' / ${money.compact(budget)}',
+                            style: context.text.bodyMedium?.copyWith(color: secondary),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               ),
