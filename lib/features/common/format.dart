@@ -50,25 +50,53 @@ String noOrphans(String s) {
   return t;
 }
 
-/// A " · "-joined line (a recipe hook, a meta line) that never leaves a separator dangling:
-/// if it fits on one line at [maxWidth] it keeps its separators, otherwise each part goes on
-/// its own line without them (each part kept free of orphans).
+/// A separator-joined line (a recipe hook, a meta line, a comma summary) packed greedily:
+/// as many parts per line as fit in [maxWidth], breaking only between parts and never inside
+/// one. With the default " · " the separator is dropped at a break, so no line starts or ends
+/// with "·"; with [keepSeparator] (", ") it stays at the line end ("Pasta, Gruyère," /
+/// "Chicken sandwich, Sunscreen"). A part wider than a line goes on its own line and wraps
+/// by itself (kept free of orphans for " · " lines). Text that fits on one line, or has no
+/// separator, comes back unchanged.
 String separatedText(
   String text,
   TextStyle style,
   double maxWidth, {
+  String separator = ' · ',
+  bool keepSeparator = false,
   TextScaler textScaler = TextScaler.noScaling,
   TextDirection textDirection = TextDirection.ltr,
 }) {
-  const sep = ' · ';
-  if (!text.contains(sep) || !maxWidth.isFinite) return text;
-  final painter = TextPainter(
-    text: TextSpan(text: text, style: style),
-    textDirection: textDirection,
-    textScaler: textScaler,
-    maxLines: 1,
-  )..layout();
-  final fits = painter.width <= maxWidth;
-  painter.dispose();
-  return fits ? text : text.split(sep).map(noOrphans).join('\n');
+  if (!text.contains(separator) || !maxWidth.isFinite) return text;
+  final painter = TextPainter(textDirection: textDirection, textScaler: textScaler, maxLines: 1);
+  try {
+    double width(String s) {
+      painter.text = TextSpan(text: s, style: style);
+      painter.layout();
+      return painter.width;
+    }
+
+    if (width(text) <= maxWidth) return text;
+    final trimmed = separator.trimRight();
+    final raw = text.split(separator);
+    final parts = [
+      for (var i = 0; i < raw.length; i++)
+        keepSeparator ? (i < raw.length - 1 ? '${raw[i]}$trimmed' : raw[i]) : noOrphans(raw[i]),
+    ];
+    final glue = keepSeparator ? ' ' : separator;
+    final lines = <String>[];
+    var line = '';
+    for (final part in parts) {
+      final next = line.isEmpty ? part : '$line$glue$part';
+      if (line.isNotEmpty && width(next) > maxWidth) {
+        lines.add(line);
+        line = part;
+      } else {
+        line = next;
+      }
+    }
+    if (line.isNotEmpty) lines.add(line);
+    return lines.join('\n');
+  } finally {
+    painter.dispose();
+  }
 }

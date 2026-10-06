@@ -32,78 +32,95 @@ class _BuyScreenState extends ConsumerState<BuyScreen> {
     return Scaffold(
       appBar: TabHeader(
         title: 'Buy',
+        hairline: false,
         actions: [
           IconButton(
             tooltip: 'Inbox',
             onPressed: () => context.push('/inbox'),
             icon: Badge(isLabelVisible: inbox > 0, label: Text('$inbox'), child: const Icon(Icons.inbox_outlined)),
           ),
+          // The four ways to add something (the old action row), one tap away in a menu.
+          PopupMenuButton<_Add>(
+            tooltip: 'Add',
+            icon: const Icon(Icons.add_rounded),
+            constraints: const BoxConstraints(minWidth: 200),
+            onSelected: (a) => switch (a) {
+              _Add.receipt => startScan(context, ref, hint: 'receipt'),
+              _Add.pantryPhoto => startScan(context, ref, hint: 'pantry'),
+              _Add.expense => showExpenseSheet(context),
+              _Add.item => showIngredientSheet(context),
+            },
+            itemBuilder: (context) => [
+              for (final a in _Add.values)
+                PopupMenuItem(
+                  value: a,
+                  child: Row(
+                    children: [
+                      Icon(a.icon, size: 20, color: context.scheme.onSurfaceVariant),
+                      const SizedBox(width: AppSpace.x3),
+                      Text(a.label),
+                    ],
+                  ),
+                ),
+            ],
+          ),
         ],
       ),
       body: Column(
         children: [
-          // The 44 buttons sit 2 inside their 48 tap targets: the visible row starts 8 below the header.
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, AppSpace.headerGap - 2, 16, 8),
-            child: Row(
+          // The pinned block: the Pantry/Ledger switch (and a scan in progress) with its 12 of
+          // padding. Pantry's content clips at its bottom edge, so the scrolled-under hairline
+          // is drawn there (Ledger draws it under its own pinned chip strip).
+          ScrollEdge(
+            enabled: _tab == 0,
+            child: Column(
               children: [
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: () => startScan(context, ref, hint: 'receipt'),
-                    icon: const Icon(Icons.receipt_long_outlined),
-                    label: const Text('Scan receipt'),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(AppSpace.screen, AppSpace.headerGap, AppSpace.screen, 0),
+                  child: AppSegmented<int>(
+                    segments: const {0: 'Pantry', 1: 'Ledger'},
+                    selected: _tab,
+                    onChanged: (v) => setState(() => _tab = v),
                   ),
                 ),
-                const SizedBox(width: 8),
-                IconButton.filledTonal(
-                  tooltip: 'Pantry photo',
-                  onPressed: () => startScan(context, ref, hint: 'pantry'),
-                  icon: const Icon(Icons.kitchen_outlined),
-                ),
-                const SizedBox(width: 4),
-                IconButton.filledTonal(
-                  tooltip: 'Log expense',
-                  onPressed: () => showExpenseSheet(context),
-                  icon: const Icon(Icons.payments_outlined),
-                ),
-                const SizedBox(width: 4),
-                IconButton.filledTonal(
-                  tooltip: 'Add pantry item',
-                  onPressed: () => showIngredientSheet(context),
-                  icon: const Icon(Icons.add),
-                ),
+                if (working > 0)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(AppSpace.screen, AppSpace.x1, AppSpace.x1, 0),
+                    child: Row(
+                      children: [
+                        const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                        const SizedBox(width: AppSpace.x2),
+                        Expanded(
+                          child: Text(
+                            working == 1 ? 'Reading 1 scan…' : 'Reading $working scans…',
+                            style: context.text.bodySmall,
+                          ),
+                        ),
+                        TextButton(onPressed: () => context.push('/inbox'), child: const Text('Inbox')),
+                      ],
+                    ),
+                  ),
+                // Pantry: 12 to the search field. Ledger: its 48 chip strip starts 6 below the
+                // switch, so the chips themselves (36 tall, centered) start 12 below, on the
+                // same line as the search field.
+                SizedBox(height: _tab == 0 ? AppSpace.x3 : 6),
               ],
             ),
           ),
-          if (working > 0)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: Row(
-                children: [
-                  const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      working == 1 ? 'Reading 1 scan…' : 'Reading $working scans…',
-                      style: context.text.bodySmall,
-                    ),
-                  ),
-                  TextButton(onPressed: () => context.push('/inbox'), child: const Text('Inbox')),
-                ],
-              ),
-            ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: AppSegmented<int>(
-              segments: const {0: 'Pantry', 1: 'Ledger'},
-              selected: _tab,
-              onChanged: (v) => setState(() => _tab = v),
-            ),
-          ),
-          const SizedBox(height: 8),
           Expanded(child: _tab == 0 ? const PantryView() : const LedgerView()),
         ],
       ),
     );
   }
+}
+
+enum _Add {
+  receipt('Scan receipt', Icons.receipt_long_outlined),
+  pantryPhoto('Pantry photo', Icons.kitchen_outlined),
+  expense('Log expense', Icons.payments_outlined),
+  item('Add pantry item', Icons.add_box_outlined);
+
+  const _Add(this.label, this.icon);
+  final String label;
+  final IconData icon;
 }

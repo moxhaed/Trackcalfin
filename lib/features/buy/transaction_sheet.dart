@@ -7,6 +7,7 @@ import '../../core/enums.dart';
 import '../../data/isar/collections/schemas.dart';
 import '../common/category_style.dart';
 import '../common/format.dart' show shortDate;
+import '../common/widgets.dart';
 import 'fx_widgets.dart';
 
 Future<void> showTransactionSheet(BuildContext context, Transaction tx) => showModalBottomSheet(
@@ -58,16 +59,17 @@ class _TransactionSheetState extends ConsumerState<TransactionSheet> {
   Widget build(BuildContext context) {
     final money = ref.watch(moneyProvider);
     final tx = widget.tx;
+    final secondary = context.scheme.onSurfaceVariant;
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          padding: const EdgeInsets.fromLTRB(AppSpace.sheet, 0, AppSpace.sheet, AppSpace.x6),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(_single ? 'Edit expense' : (tx.merchant ?? 'Receipt'), style: context.text.titleLarge),
-              const SizedBox(height: 12),
+              Text(_single ? 'Edit expense' : (tx.merchant ?? 'Receipt'), style: context.text.headlineSmall),
+              const SizedBox(height: AppSpace.x4),
               if (_single)
                 TextField(
                   controller: _amount,
@@ -75,40 +77,50 @@ class _TransactionSheetState extends ConsumerState<TransactionSheet> {
                   decoration: InputDecoration(labelText: 'Amount', prefixText: '${money.symbol} '),
                 )
               else
-                Text('Total ${money.format(tx.totalMinor)}', style: context.text.titleMedium),
-              if (tx.originalCurrency != null && tx.fxRate != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    'Paid ${moneyFor(tx.originalCurrency!).format(tx.originalTotalMinor ?? 0)} · '
-                    '1 ${tx.originalCurrency} = ${rateText(tx.fxRate!)} ${tx.currency}',
-                    style: context.text.bodySmall?.copyWith(color: context.scheme.onSurfaceVariant),
+                Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(
+                        text: 'Total ',
+                        style: context.text.bodyMedium?.copyWith(color: secondary),
+                      ),
+                      TextSpan(text: money.format(tx.totalMinor), style: context.nums.medium),
+                    ],
                   ),
                 ),
-              const SizedBox(height: 10),
+              if (tx.originalCurrency != null && tx.fxRate != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: AppSpace.tight),
+                  child: SeparatedText(
+                    'Paid ${moneyFor(tx.originalCurrency!).format(tx.originalTotalMinor ?? 0)} · '
+                    '1 ${tx.originalCurrency} = ${rateText(tx.fxRate!)} ${tx.currency}',
+                    style: context.text.bodySmall,
+                  ),
+                ),
+              const SizedBox(height: AppSpace.x3),
               TextField(
                 controller: _merchant,
                 decoration: const InputDecoration(labelText: 'Merchant or note'),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: AppSpace.x3),
               Wrap(
-                spacing: 6,
-                runSpacing: 6,
+                spacing: AppSpace.x2,
+                runSpacing: AppSpace.x2,
                 children: [
                   for (final c in SpendCategory.values)
-                    ChoiceChip(
-                      avatar: Icon(categoryIcon(c), size: 16),
-                      label: Text(c.label),
+                    AppChoiceChip(
+                      icon: categoryIcon(c),
+                      label: c.label,
                       selected: _category == c,
                       onSelected: (_) => setState(() => _category = c),
                     ),
                 ],
               ),
-              const SizedBox(height: 6),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.event_outlined),
-                title: Text(shortDate(_date)),
+              const SizedBox(height: AppSpace.x2),
+              AppRow(
+                leading: const Icon(Icons.event_outlined, size: 20),
+                title: shortDate(_date),
+                chevron: true,
                 onTap: () async {
                   final d = await showDatePicker(
                     context: context,
@@ -120,22 +132,17 @@ class _TransactionSheetState extends ConsumerState<TransactionSheet> {
                 },
               ),
               if (!_single) ...[
-                const Divider(),
+                const Divider(height: 0.5, thickness: 0.5),
                 for (final l in tx.lines)
-                  ListTile(
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    leading: Icon(categoryIcon(l.category), size: 18),
-                    title: Text(l.name),
-                    subtitle: l.rawText.isNotEmpty ? Text(l.rawText) : null,
-                    trailing: Text(money.format(l.totalMinor)),
+                  AppRow(
+                    leading: Icon(categoryIcon(l.category), size: 20),
+                    title: l.name,
+                    subtitle: l.rawText.isNotEmpty ? l.rawText : null,
+                    value: money.format(l.totalMinor),
                   ),
               ],
-              const SizedBox(height: 12),
-              Align(
-                alignment: Alignment.centerRight,
-                child: FilledButton(onPressed: _save, child: const Text('Save')),
-              ),
+              const SizedBox(height: AppSpace.x5),
+              FilledButton(style: AppTheme.largeButton, onPressed: _save, child: const Text('Save')),
             ],
           ),
         ),

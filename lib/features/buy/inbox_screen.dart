@@ -30,19 +30,26 @@ class InboxScreen extends ConsumerWidget {
               message: 'Scans that need a look land here. Clean receipts are filed automatically.',
             )
           : ListView(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.fromLTRB(
+                AppSpace.screen,
+                AppSpace.headerGap,
+                AppSpace.screen,
+                MediaQuery.paddingOf(context).bottom + AppSpace.x6,
+              ),
               children: [
-                if (!hasKey)
-                  Card(
-                    color: context.colors.fill,
-                    child: ListTile(
-                      leading: const Icon(Icons.key_outlined),
-                      title: const Text('Add a Gemini API key'),
-                      subtitle: const Text('Scans wait here until the AI can read them.'),
-                      onTap: () => context.go('/settings'),
-                    ),
+                if (!hasKey) ...[
+                  AppNotice(
+                    icon: Icons.key_outlined,
+                    title: 'Add a Gemini API key',
+                    message: 'Scans wait here until the AI can read them.',
+                    onTap: () => context.go('/settings'),
                   ),
-                for (final j in jobs) ...[_JobCard(job: j), const SizedBox(height: 10)],
+                  const SizedBox(height: AppSpace.x3),
+                ],
+                AppGroup(
+                  separatorIndent: AppGroup.indentIcon,
+                  children: [for (final j in jobs) _JobCard(job: j)],
+                ),
               ],
             ),
     );
@@ -93,52 +100,57 @@ class _JobCard extends ConsumerWidget {
       ScanStatus.failed => job.lastError ?? '',
       _ => '',
     };
-    return Card(
-      child: Column(
-        children: [
-          ListTile(
-            leading: switch (job.status) {
-              ScanStatus.processing => const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(strokeWidth: 2.5),
-              ),
-              ScanStatus.failed => Icon(Icons.error_outline, color: context.colors.critical),
-              ScanStatus.needsReview => Icon(Icons.rate_review_outlined, color: context.scheme.primary),
-              _ => const Icon(Icons.schedule),
-            },
-            title: Text(title),
-            subtitle: Text('${dayLabel(job.capturedAt, DateTime.now())} ${timeOf(job.capturedAt)} · $subtitle'),
-            onTap: job.status == ScanStatus.needsReview ? () => context.push('/inbox/${job.id}') : null,
-          ),
-          if (job.status == ScanStatus.failed || job.status == ScanStatus.queued)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(onPressed: () => scans.discard(job.id), child: const Text('Discard')),
-                  if (job.status == ScanStatus.failed)
-                    TextButton(
-                      onPressed: () {
-                        scans.discard(job.id);
-                        startScan(context, ref, hint: pantry ? 'pantry' : 'receipt');
-                      },
-                      child: const Text('Retake'),
-                    ),
-                  FilledButton.tonal(
-                    style: AppTheme.tonalButton(context, small: true),
-                    onPressed: () async {
-                      await scans.retry(job.id);
-                      await processScansInBackground(ref);
-                    },
-                    child: const Text('Try again'),
-                  ),
-                ],
-              ),
+    final c = context.colors;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AppRow(
+          leading: switch (job.status) {
+            ScanStatus.processing => const SizedBox.square(
+              dimension: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
             ),
-        ],
-      ),
+            ScanStatus.failed => Icon(Icons.error_outline_rounded, size: 20, color: c.critical),
+            ScanStatus.needsReview => Icon(Icons.rate_review_outlined, size: 20, color: context.scheme.primary),
+            _ => const Icon(Icons.schedule_rounded, size: 20),
+          },
+          title: title,
+          subtitle: '${dayLabel(job.capturedAt, DateTime.now())} ${timeOf(job.capturedAt)} · $subtitle',
+          chevron: job.status == ScanStatus.needsReview,
+          onTap: job.status == ScanStatus.needsReview ? () => context.push('/inbox/${job.id}') : null,
+        ),
+        if (job.status == ScanStatus.failed || job.status == ScanStatus.queued)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(AppSpace.x4, 0, AppSpace.x4, AppSpace.x3),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  style: TextButton.styleFrom(foregroundColor: c.criticalInk),
+                  onPressed: () => scans.discard(job.id),
+                  child: const Text('Discard'),
+                ),
+                if (job.status == ScanStatus.failed)
+                  TextButton(
+                    onPressed: () {
+                      scans.discard(job.id);
+                      startScan(context, ref, hint: pantry ? 'pantry' : 'receipt');
+                    },
+                    child: const Text('Retake'),
+                  ),
+                const SizedBox(width: AppSpace.x2),
+                FilledButton.tonal(
+                  style: AppTheme.tonalButton(context, small: true),
+                  onPressed: () async {
+                    await scans.retry(job.id);
+                    await processScansInBackground(ref);
+                  },
+                  child: const Text('Try again'),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }

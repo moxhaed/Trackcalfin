@@ -11,9 +11,13 @@ import 'format.dart';
 /// (DESIGN_SYSTEM §7.5). It stays put while the content scrolls beneath it, and shows a
 /// hairline at its bottom edge only while content is scrolled under it.
 class TabHeader extends StatefulWidget implements PreferredSizeWidget {
-  const TabHeader({super.key, required this.title, this.actions = const []});
+  const TabHeader({super.key, required this.title, this.actions = const [], this.hairline = true});
   final String title;
   final List<Widget> actions;
+
+  /// False when the page pins more under the title (Buy's Pantry/Ledger switch) and draws the
+  /// scrolled-under hairline itself with a [ScrollEdge] at the bottom of that block.
+  final bool hairline;
 
   static const height = 60.0;
 
@@ -32,7 +36,7 @@ class _TabHeaderState extends State<TabHeader> with _ScrolledUnder {
       toolbarHeight: TabHeader.height,
       titleSpacing: AppSpace.screen,
       titleTextStyle: context.text.headlineLarge,
-      shape: edge,
+      shape: widget.hairline ? edge : null,
       title: Semantics(header: true, child: Text(widget.title, maxLines: 1, overflow: TextOverflow.ellipsis)),
       actions: widget.actions,
     );
@@ -106,6 +110,38 @@ mixin _ScrolledUnder<T extends StatefulWidget> on State<T> {
       AxisDirection.left || AxisDirection.right => _under,
     };
     if (under != _under && mounted) setState(() => _under = under);
+  }
+}
+
+/// The bottom edge of a pinned block (a header plus the controls under it): a 0.5 hairline
+/// across the bottom, drawn only while the page's main scroller has content under it, so the
+/// line sits where the content is actually clipped. Set [enabled] false to hide it (another
+/// tab of the same page).
+class ScrollEdge extends StatefulWidget {
+  const ScrollEdge({super.key, required this.child, this.enabled = true});
+  final Widget child;
+  final bool enabled;
+
+  @override
+  State<ScrollEdge> createState() => _ScrollEdgeState();
+}
+
+class _ScrollEdgeState extends State<ScrollEdge> with _ScrolledUnder {
+  @override
+  void didUpdateWidget(ScrollEdge old) {
+    super.didUpdateWidget(old);
+    if (!widget.enabled) _under = false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        widget.child,
+        if (_under && widget.enabled)
+          Positioned(left: 0, right: 0, bottom: 0, height: 0.5, child: ColoredBox(color: context.colors.separator)),
+      ],
+    );
   }
 }
 
@@ -263,6 +299,7 @@ class AppRow extends StatelessWidget {
     required this.title,
     this.subtitle,
     this.subtitleSpan,
+    this.titleSeparator,
     this.titleTrailing,
     this.leading,
     this.trailing,
@@ -278,6 +315,10 @@ class AppRow extends StatelessWidget {
 
   /// A subtitle with mixed styles (e.g. a status phrase in an ink color); wins over [subtitle].
   final InlineSpan? subtitleSpan;
+
+  /// Set (e.g. ', ') when the title is a list of items: it then wraps between items, never
+  /// inside one, instead of the no-widow rule.
+  final String? titleSeparator;
 
   /// A small mark right after the title, such as the favorite star.
   final Widget? titleTrailing;
@@ -304,12 +345,10 @@ class AppRow extends StatelessWidget {
     final nums = context.nums;
     final control = trailing != null;
     final hasSubtitle = subtitle != null || subtitleSpan != null;
-    final titleText = Text(
-      title,
-      maxLines: 2,
-      overflow: TextOverflow.ellipsis,
-      style: context.text.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
-    );
+    final titleStyle = context.text.bodyLarge?.copyWith(fontWeight: FontWeight.w500);
+    final titleText = titleSeparator == null
+        ? NoWidowText(title, maxLines: 2, style: titleStyle)
+        : SeparatedText(title, style: titleStyle, separator: titleSeparator!);
     final end =
         trailing ??
         (value == null && !chevron
@@ -329,6 +368,42 @@ class AppRow extends StatelessWidget {
                   if (chevron) Icon(Icons.chevron_right_rounded, size: 20, color: context.colors.textTertiary),
                 ],
               ));
+    final leadingBox = leading == null
+        ? null
+        : ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 24),
+            child: Center(
+              widthFactor: 1,
+              child: IconTheme.merge(
+                data: IconThemeData(color: secondary, size: 24),
+                child: leading!,
+              ),
+            ),
+          );
+    final text = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (titleTrailing == null)
+          titleText
+        else
+          Row(
+            children: [
+              Flexible(child: titleText),
+              const SizedBox(width: 6),
+              titleTrailing!,
+            ],
+          ),
+        if (hasSubtitle) ...[
+          const SizedBox(height: 2),
+          // A " · " meta line packs as many parts per line as fit and breaks only at separators.
+          if (subtitleSpan == null)
+            SeparatedText(subtitle!, style: context.text.bodySmall)
+          else
+            Text.rich(subtitleSpan!, maxLines: 2, overflow: TextOverflow.ellipsis, style: context.text.bodySmall),
+        ],
+      ],
+    );
     return InkWell(
       onTap: onTap,
       onLongPress: onLongPress,
@@ -338,55 +413,80 @@ class AppRow extends StatelessWidget {
         constraints: BoxConstraints(minHeight: !hasSubtitle ? (control ? 56 : 52) : 64),
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: AppSpace.x4, vertical: control ? AppSpace.x1 : AppSpace.x3),
-          child: Row(
-            children: [
-              if (leading != null) ...[
-                ConstrainedBox(
-                  constraints: const BoxConstraints(minWidth: 24),
-                  child: Center(
-                    widthFactor: 1,
-                    child: IconTheme.merge(
-                      data: IconThemeData(color: secondary, size: 24),
-                      child: leading!,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: AppSpace.x3),
-              ],
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (titleTrailing == null)
-                      titleText
-                    else
-                      Row(
-                        children: [
-                          Flexible(child: titleText),
-                          const SizedBox(width: 6),
-                          titleTrailing!,
-                        ],
-                      ),
-                    if (hasSubtitle) ...[
-                      const SizedBox(height: 2),
-                      Text.rich(
-                        subtitleSpan ?? TextSpan(text: subtitle),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: context.text.bodySmall,
-                      ),
-                    ],
+          child: LayoutBuilder(
+            builder: (context, c) {
+              // A row that runs to more than 2 lines top-aligns its small leading icon to the
+              // first line (the AppNotice rule), instead of floating it in the middle.
+              final top = leadingBox != null && _runsLong(context, c.maxWidth);
+              final row = Row(
+                children: [
+                  if (leadingBox != null) ...[
+                    if (top) const SizedBox(width: 24) else leadingBox,
+                    const SizedBox(width: AppSpace.x3),
                   ],
-                ),
-              ),
-              if (end != null) ...[const SizedBox(width: AppSpace.x3), end],
-            ],
+                  Expanded(child: text),
+                  if (end != null) ...[const SizedBox(width: AppSpace.x3), end],
+                ],
+              );
+              if (!top) return row;
+              return Stack(
+                children: [
+                  row,
+                  Positioned(left: 0, top: 0, height: 24, child: leadingBox),
+                ],
+              );
+            },
           ),
         ),
       ),
     );
   }
+
+  /// Whether the title and subtitle take more than 2 lines at [inner] width (the row's width
+  /// inside its padding). Only plain rows with a small leading (no glyph circle, no control)
+  /// measure; a value or chevron at the end is accounted for.
+  bool _runsLong(BuildContext context, double inner) {
+    if (leading == null || leading is GlyphCircle || trailing != null || !inner.isFinite) return false;
+    if (!hasSubtitleText) return false;
+    final scaler = MediaQuery.textScalerOf(context);
+    final dir = Directionality.of(context);
+    final base = DefaultTextStyle.of(context).style;
+    final titleStyle = base.merge(context.text.bodyLarge?.copyWith(fontWeight: FontWeight.w500));
+    final subStyle = base.merge(context.text.bodySmall);
+    var endWidth = 0.0;
+    if (value != null) {
+      final p = TextPainter(
+        text: TextSpan(text: value, style: base.merge(context.nums.body)),
+        textDirection: dir,
+        textScaler: scaler,
+      )..layout();
+      endWidth += p.width + AppSpace.x3;
+      p.dispose();
+    }
+    if (chevron) endWidth += 20 + (value != null ? AppSpace.x2 : 0) + (value == null ? AppSpace.x3 : 0);
+    final width = inner - 24 - AppSpace.x3 - endWidth;
+    if (width <= 0) return false;
+    int lines(InlineSpan span, {int? maxLines}) {
+      final p = TextPainter(text: span, textDirection: dir, textScaler: scaler, maxLines: maxLines)
+        ..layout(maxWidth: width);
+      final n = p.computeLineMetrics().length;
+      p.dispose();
+      return n;
+    }
+
+    final titleLines = lines(TextSpan(text: title, style: titleStyle), maxLines: 2);
+    final sub = subtitleSpan != null
+        ? lines(TextSpan(children: [subtitleSpan!], style: subStyle), maxLines: 2)
+        : lines(
+            TextSpan(
+              text: separatedText(subtitle!, subStyle, width, textScaler: scaler, textDirection: dir),
+              style: subStyle,
+            ),
+          );
+    return titleLines + sub > 2;
+  }
+
+  bool get hasSubtitleText => subtitle != null || subtitleSpan != null;
 }
 
 /// A neutral circle behind an icon: 36 with a 20 icon in mixed-category rows, 56 with a 28
@@ -503,6 +603,7 @@ class AppNotice extends StatelessWidget {
     this.actions = const [],
     this.onTap,
     this.trailing,
+    this.body,
   });
 
   final NoticeKind kind;
@@ -523,6 +624,9 @@ class AppNotice extends StatelessWidget {
 
   /// A small control at the end of the first line (e.g. a spinner while busy).
   final Widget? trailing;
+
+  /// Custom content right under the title (e.g. a converted amount in a numeric style).
+  final Widget? body;
 
   @override
   Widget build(BuildContext context) {
@@ -545,10 +649,11 @@ class AppNotice extends StatelessWidget {
       children: [
         if (title != null) ...[
           Text(title!, style: context.text.titleSmall),
-          if (message != null) const SizedBox(height: 2),
+          if (message != null || this.body != null) const SizedBox(height: 2),
         ],
-        if (message != null) Text(message!, style: context.text.bodyMedium),
-        if (meta != null) ...[const SizedBox(height: 2), Text(meta!, style: context.text.bodySmall)],
+        ?this.body,
+        if (message != null) NoWidowText(message!, style: context.text.bodyMedium),
+        if (meta != null) ...[const SizedBox(height: 2), SeparatedText(meta!, style: context.text.bodySmall)],
         if (actions.isNotEmpty)
           Transform.translate(
             offset: const Offset(-12, 0),
@@ -794,6 +899,15 @@ class SkeletonLine extends StatelessWidget {
 // are the four variants screens should use.
 // ---------------------------------------------------------------------------
 
+/// A chip's [Material] is the canvas type, which paints the theme's canvas color under the
+/// chip's own fill. That turns the translucent `AppColors.fill` into an opaque blend of fill
+/// and canvas, wrong on a sheet or a card. A transparent canvas lets the fill composite over
+/// whatever the chip actually sits on.
+Widget _overSurface(BuildContext context, Widget chip) => Theme(
+  data: Theme.of(context).copyWith(canvasColor: Colors.transparent),
+  child: chip,
+);
+
 /// Single-select chip: accent fill and a w600 label when selected, no checkmark. An
 /// optional category icon turns from secondary to on-accent with the selection.
 class AppChoiceChip extends StatelessWidget {
@@ -806,13 +920,23 @@ class AppChoiceChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = context.scheme;
-    return ChoiceChip(
+    final chip = ChoiceChip(
       showCheckmark: false,
       avatar: icon == null ? null : Icon(icon, size: 16, color: selected ? s.onPrimary : s.onSurfaceVariant),
-      label: Text(label, style: TextStyle(fontWeight: selected ? FontWeight.w600 : FontWeight.w500)),
+      // At least 48 wide with its padding, so the chip fills its tap target and "All" starts on
+      // the margin instead of 2 inside it.
+      label: ConstrainedBox(
+        constraints: const BoxConstraints(minWidth: 20),
+        child: Center(
+          widthFactor: 1,
+          heightFactor: 1,
+          child: Text(label, style: TextStyle(fontWeight: selected ? FontWeight.w600 : FontWeight.w500)),
+        ),
+      ),
       selected: selected,
       onSelected: onSelected,
     );
+    return _overSurface(context, chip);
   }
 }
 
@@ -827,7 +951,7 @@ class AppToggleChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = context.scheme;
     final c = context.colors;
-    return FilterChip(
+    final chip = FilterChip(
       showCheckmark: true,
       checkmarkColor: s.onPrimaryContainer,
       color: WidgetStateProperty.resolveWith((st) {
@@ -840,6 +964,7 @@ class AppToggleChip extends StatelessWidget {
       selected: selected,
       onSelected: onSelected,
     );
+    return _overSurface(context, chip);
   }
 }
 
@@ -855,11 +980,12 @@ class AppActionChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ActionChip(
+    final chip = ActionChip(
       avatar: icon == null ? null : Icon(icon, size: 16, color: iconColor ?? context.scheme.primary),
       label: Text(label),
       onPressed: onPressed,
     );
+    return _overSurface(context, chip);
   }
 }
 
@@ -872,12 +998,13 @@ class AppInputChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InputChip(
+    final chip = InputChip(
       label: Text(label),
       onPressed: onPressed,
       onDeleted: onDeleted,
       deleteIcon: const Icon(Icons.close_rounded, size: 16),
     );
+    return _overSurface(context, chip);
   }
 }
 
@@ -945,7 +1072,7 @@ class PantryTile extends StatelessWidget {
           child: InkWell(
             onTap: onTap,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -1420,12 +1547,14 @@ class StatusPill extends StatelessWidget {
   }
 }
 
-/// A " · "-joined line (a recipe hook) that fits with its separators, or wraps one part per
-/// line without them, so no separator is left dangling at a line end.
+/// A " · "-joined line (a recipe hook, a meta line) packed greedily: as many parts per line
+/// as fit, breaking only at the separators (dropped at the break) and never inside a part.
+/// Pass `separator: ', '` for a comma summary, which keeps its comma at the line end.
 class SeparatedText extends StatelessWidget {
-  const SeparatedText(this.text, {super.key, this.style});
+  const SeparatedText(this.text, {super.key, this.style, this.separator = ' · '});
   final String text;
   final TextStyle? style;
+  final String separator;
 
   @override
   Widget build(BuildContext context) {
@@ -1436,6 +1565,8 @@ class SeparatedText extends StatelessWidget {
           text,
           resolved,
           c.maxWidth,
+          separator: separator,
+          keepSeparator: separator != ' · ',
           textScaler: MediaQuery.textScalerOf(context),
           textDirection: Directionality.of(context),
         ),
@@ -1450,9 +1581,10 @@ class SeparatedText extends StatelessWidget {
 /// spinach" / "rice bowls"). The string itself is unchanged, so finders and screen readers
 /// see the real title.
 class NoWidowText extends StatelessWidget {
-  const NoWidowText(this.text, {super.key, this.style});
+  const NoWidowText(this.text, {super.key, this.style, this.maxLines});
   final String text;
   final TextStyle? style;
+  final int? maxLines;
 
   @override
   Widget build(BuildContext context) {
@@ -1460,9 +1592,15 @@ class NoWidowText extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, c) => Align(
         alignment: AlignmentDirectional.centerStart,
+        widthFactor: 1,
         child: SizedBox(
           width: c.maxWidth.isFinite ? _width(context, c.maxWidth) : null,
-          child: Text(text, style: style),
+          child: Text(
+            text,
+            style: style,
+            maxLines: maxLines,
+            overflow: maxLines == null ? null : TextOverflow.ellipsis,
+          ),
         ),
       ),
     );
@@ -1546,7 +1684,7 @@ class PortionStepper extends StatelessWidget {
     }
 
     return Container(
-      height: 48,
+      constraints: const BoxConstraints(minHeight: 48),
       decoration: ShapeDecoration(color: context.colors.fill, shape: const StadiumBorder()),
       child: Row(
         mainAxisSize: MainAxisSize.min,

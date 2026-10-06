@@ -253,11 +253,17 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
     final money = ref.watch(moneyProvider);
     final existing = widget.ingredient != null;
     final review = widget.review;
+    // The big ± around the on-hand quantity: 44 neutral circles.
+    final round = IconButton.styleFrom(
+      backgroundColor: context.colors.fill,
+      foregroundColor: context.scheme.onSurface,
+      minimumSize: const Size(44, 44),
+    );
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          padding: const EdgeInsets.fromLTRB(AppSpace.sheet, 0, AppSpace.sheet, AppSpace.x6),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -267,12 +273,14 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(existing ? _ing.name : 'New pantry item', style: context.text.titleLarge),
-                        if (review != null)
+                        NoWidowText(existing ? _ing.name : 'New pantry item', style: context.text.headlineSmall),
+                        if (review != null) ...[
+                          const SizedBox(height: AppSpace.tight),
                           Text(
                             'Check macros · ${review.index} of ${review.total}',
-                            style: context.text.bodySmall?.copyWith(color: context.scheme.onSurfaceVariant),
+                            style: context.text.bodyMedium?.copyWith(color: context.scheme.onSurfaceVariant),
                           ),
+                        ],
                       ],
                     ),
                   ),
@@ -282,77 +290,87 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
                     IconButton(
                       tooltip: _editing ? 'Done editing' : 'Edit details',
                       onPressed: () => setState(() => _editing = !_editing),
-                      icon: Icon(_editing ? Icons.close : Icons.edit_outlined),
+                      icon: Icon(_editing ? Icons.close_rounded : Icons.edit_outlined),
                     ),
                 ],
               ),
               if (existing && !_ing.isStaple && review == null) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpace.x4),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     IconButton.filledTonal(
+                      style: round,
+                      tooltip: 'Less',
                       onPressed: _ing.qtyOnHand > 0 ? () => _adjust(-_step) : null,
-                      icon: const Icon(Icons.remove),
+                      icon: const Icon(Icons.remove_rounded, size: 20),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: AppSpace.x6),
                     Column(
                       children: [
-                        Text(qty(_ing.qtyOnHand, _ing.baseUnit), style: context.text.headlineSmall),
-                        Text('on hand', style: context.text.labelSmall),
+                        Text.rich(valueSpan(context, qty(_ing.qtyOnHand, _ing.baseUnit), context.nums.hero)),
+                        Text('on hand', style: context.text.bodySmall),
                       ],
                     ),
-                    const SizedBox(width: 16),
-                    IconButton.filledTonal(onPressed: () => _adjust(_step), icon: const Icon(Icons.add)),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  alignment: WrapAlignment.center,
-                  children: [
-                    ActionChip(
-                      avatar: const Icon(Icons.remove_shopping_cart_outlined, size: 18),
-                      label: const Text("I'm out"),
-                      onPressed: () async {
-                        await ref.read(pantryServiceProvider).markOut(_ing.id);
-                        if (context.mounted) Navigator.of(context).pop();
-                      },
-                    ),
-                    ActionChip(
-                      avatar: const Icon(Icons.verified_outlined, size: 18),
-                      label: const Text('Looks right'),
-                      onPressed: () async {
-                        await ref.read(pantryServiceProvider).verify(_ing.id);
-                        if (context.mounted) Navigator.of(context).pop();
-                      },
+                    const SizedBox(width: AppSpace.x6),
+                    IconButton.filledTonal(
+                      style: round,
+                      tooltip: 'More',
+                      onPressed: () => _adjust(_step),
+                      icon: const Icon(Icons.add_rounded, size: 20),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  [
-                    if (_ing.avgCostPerUnitMinor > 0)
+                const SizedBox(height: AppSpace.x3),
+                Center(
+                  child: Wrap(
+                    spacing: AppSpace.x2,
+                    alignment: WrapAlignment.center,
+                    children: [
+                      AppActionChip(
+                        icon: Icons.remove_shopping_cart_outlined,
+                        label: "I'm out",
+                        onPressed: () async {
+                          await ref.read(pantryServiceProvider).markOut(_ing.id);
+                          if (context.mounted) Navigator.of(context).pop();
+                        },
+                      ),
+                      AppActionChip(
+                        icon: Icons.verified_outlined,
+                        label: 'Looks right',
+                        onPressed: () async {
+                          await ref.read(pantryServiceProvider).verify(_ing.id);
+                          if (context.mounted) Navigator.of(context).pop();
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                if (_ing.avgCostPerUnitMinor > 0) ...[
+                  const SizedBox(height: AppSpace.x2),
+                  Center(
+                    child: Text(
                       'Avg cost ${money.format((_ing.avgCostPerUnitMinor * (_ing.baseUnit == BaseUnit.pc ? 1 : 1000)).round())}'
-                          ' per ${_ing.baseUnit == BaseUnit.pc ? 'piece' : (_ing.baseUnit == BaseUnit.g ? 'kg' : 'l')}',
-                  ].join('\n'),
-                  textAlign: TextAlign.center,
-                  style: context.text.bodySmall?.copyWith(color: context.scheme.onSurfaceVariant),
-                ),
+                      ' per ${_ing.baseUnit == BaseUnit.pc ? 'piece' : (_ing.baseUnit == BaseUnit.g ? 'kg' : 'l')}',
+                      textAlign: TextAlign.center,
+                      style: context.text.bodySmall,
+                    ),
+                  ),
+                ],
               ],
               if (existing) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpace.x4),
                 _nutritionCard(context, _liveIn(ref.watch(ingredientsProvider).value)),
               ],
               if (_editing) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpace.x4),
                 TextField(
                   controller: _name,
                   autofocus: !existing,
                   textCapitalization: TextCapitalization.sentences,
                   decoration: const InputDecoration(labelText: 'Name'),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: AppSpace.x3),
                 Row(
                   children: [
                     Expanded(
@@ -362,17 +380,17 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
                         decoration: InputDecoration(labelText: 'Quantity', suffixText: _unit.label),
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    SegmentedButton<BaseUnit>(
-                      segments: [for (final u in BaseUnit.values) ButtonSegment(value: u, label: Text(u.label))],
-                      selected: {_unit},
-                      showSelectedIcon: false,
-                      onSelectionChanged: (s) => setState(() => _unit = s.first),
+                    const SizedBox(width: AppSpace.x2),
+                    AppSegmented<BaseUnit>(
+                      expand: false,
+                      segments: {for (final u in BaseUnit.values) u: u.label},
+                      selected: _unit,
+                      onChanged: (u) => setState(() => _unit = u),
                     ),
                   ],
                 ),
                 if (!existing) ...[
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AppSpace.x3),
                   TextField(
                     controller: _price,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -384,14 +402,14 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
                   ),
                 ],
                 if (_unit == BaseUnit.pc) ...[
-                  const SizedBox(height: 10),
+                  const SizedBox(height: AppSpace.x3),
                   TextField(
                     controller: _gpp,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     decoration: const InputDecoration(labelText: 'Grams per piece', suffixText: 'g'),
                   ),
                 ],
-                const SizedBox(height: 10),
+                const SizedBox(height: AppSpace.x3),
                 DropdownButtonFormField<IngredientCategory>(
                   initialValue: _category,
                   decoration: const InputDecoration(labelText: 'Category'),
@@ -401,14 +419,15 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
                 if (!existing) ...[
                   const SizedBox(height: 12),
                   Text('Nutrition per 100 ${_unit == BaseUnit.ml ? 'ml' : 'g'}', style: context.text.titleSmall),
+                  const SizedBox(height: 2),
                   Text(
                     'Leave empty and the AI fills it in. You can scan the label later.',
-                    style: context.text.bodySmall?.copyWith(color: context.scheme.onSurfaceVariant),
+                    style: context.text.bodySmall,
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: AppSpace.x2),
                   _macroFields(),
                 ],
-                const SizedBox(height: 10),
+                const SizedBox(height: AppSpace.x3),
                 Row(
                   children: [
                     Expanded(
@@ -435,7 +454,7 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
                   value: _staple,
                   onChanged: (v) => setState(() => _staple = v),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpace.x3),
                 Row(
                   children: [
                     if (existing)
@@ -450,11 +469,19 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
                             showUndoOn(messenger, '${removed.name} deleted', onUndo: () => pantry.restore(removed));
                           }
                         },
-                        icon: const Icon(Icons.delete_outline),
+                        style: TextButton.styleFrom(
+                          foregroundColor: context.colors.criticalInk,
+                          iconColor: context.colors.criticalInk,
+                        ),
+                        icon: const Icon(Icons.delete_outline_rounded),
                         label: const Text('Delete'),
                       ),
                     const Spacer(),
-                    FilledButton(onPressed: _save, child: Text(existing ? 'Save' : 'Add to pantry')),
+                    FilledButton(
+                      style: AppTheme.largeButton,
+                      onPressed: _save,
+                      child: Text(existing ? 'Save' : 'Add to pantry'),
+                    ),
                   ],
                 ),
               ],
@@ -474,7 +501,7 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
         (_fat, 'Fat'),
         (_fiber, 'Fiber'),
       ].indexed) ...[
-        if (i > 0) const SizedBox(width: 6),
+        if (i > 0) const SizedBox(width: AppSpace.tight),
         Expanded(
           child: TextField(
             controller: c,
@@ -486,32 +513,49 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
     ],
   );
 
-  /// Macros with where they came from, and the three ways to confirm them.
+  /// Macros with where they came from, and the three ways to confirm them. A sheet is already a
+  /// surface, so this is an inset fill panel rather than a card (§2d).
   Widget _nutritionCard(BuildContext context, Ingredient cur) {
     final c = context.colors;
+    final secondary = context.scheme.onSurfaceVariant;
     final n = cur.per100;
     final confirmed = cur.nutritionConfirmedAt != null;
     final pill = cur.needsNutrition
-        ? StatusPill(label: 'Unknown', color: c.warning, icon: Icons.help_outline)
+        ? StatusPill(label: 'Unknown', color: c.warning, ink: c.warningInk, icon: Icons.help_outline_rounded)
         : confirmed
         ? StatusPill(
             label: cur.nutritionSource == DataSource.label ? 'From label' : 'Confirmed',
             color: c.good,
+            ink: c.goodInk,
             icon: Icons.verified_outlined,
           )
-        : StatusPill(label: 'AI estimate', color: c.kcal, icon: Icons.auto_awesome_outlined);
+        : StatusPill(label: 'AI estimate', color: secondary, ink: secondary, icon: Icons.auto_awesome_outlined);
     final flags = _label?.numbers?.flags ?? const <String>[];
-    final muted = context.text.bodySmall?.copyWith(color: context.scheme.onSurfaceVariant);
-    return SectionCard(
-      title: 'Nutrition per 100 ${cur.baseUnit == BaseUnit.ml ? 'ml' : 'g'}',
-      trailing: pill,
+    final muted = context.text.bodySmall;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpace.card),
+      decoration: BoxDecoration(color: c.fill, borderRadius: BorderRadius.circular(AppRadius.tile)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Nutrition per 100 ${cur.baseUnit == BaseUnit.ml ? 'ml' : 'g'}',
+                  style: context.text.titleMedium,
+                ),
+              ),
+              const SizedBox(width: AppSpace.x3),
+              pill,
+            ],
+          ),
+          const SizedBox(height: AppSpace.x3),
           if (_macroEditing) ...[
             if (_label != null)
               Padding(
-                padding: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.only(bottom: AppSpace.x2),
                 child: Text(
                   'Read from ${_label!.productName ?? 'the label'}. Check the numbers, then save.',
                   style: muted,
@@ -519,18 +563,24 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
               ),
             for (final f in flags)
               Padding(
-                padding: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.only(bottom: AppSpace.x2),
                 child: Text(switch (f) {
                   'energy_mismatch' => "The calories don't match the macros. Check the photo.",
                   'too_dense' => 'These numbers are higher than any food per gram. Check the photo.',
                   _ => f,
-                }, style: context.text.bodySmall?.copyWith(color: c.serious)),
+                }, style: context.text.bodySmall?.copyWith(color: c.criticalInk)),
               ),
             _macroFields(),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.x3),
             Row(
               children: [
-                TextButton(onPressed: () => setState(() => _macroEditing = false), child: const Text('Cancel')),
+                Transform.translate(
+                  offset: const Offset(-12, 0),
+                  child: TextButton(
+                    onPressed: () => setState(() => _macroEditing = false),
+                    child: const Text('Cancel'),
+                  ),
+                ),
                 const Spacer(),
                 FilledButton(onPressed: _saveMacros, child: const Text('Save macros')),
               ],
@@ -556,40 +606,35 @@ class _IngredientSheetState extends ConsumerState<IngredientSheet> {
                   ),
                 ],
               ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpace.block),
             Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              spacing: AppSpace.x2,
+              runSpacing: AppSpace.x2,
               children: [
                 if (!cur.needsNutrition && !confirmed)
-                  ActionChip(
-                    avatar: const Icon(Icons.check, size: 18),
-                    label: const Text('Confirm'),
-                    onPressed: _busy ? null : _confirmMacros,
-                  ),
+                  AppActionChip(icon: Icons.check_rounded, label: 'Confirm', onPressed: _busy ? null : _confirmMacros),
                 if (cur.needsNutrition)
-                  ActionChip(
-                    avatar: const Icon(Icons.auto_awesome_outlined, size: 18),
-                    label: const Text('Ask AI'),
-                    onPressed: _busy ? null : _askAi,
-                  ),
-                ActionChip(
-                  avatar: const Icon(Icons.document_scanner_outlined, size: 18),
-                  label: const Text('Scan label'),
+                  AppActionChip(icon: Icons.auto_awesome_outlined, label: 'Ask AI', onPressed: _busy ? null : _askAi),
+                AppActionChip(
+                  icon: Icons.document_scanner_outlined,
+                  label: 'Scan label',
                   onPressed: _busy ? null : _scanLabel,
                 ),
-                ActionChip(
-                  avatar: const Icon(Icons.edit_outlined, size: 18),
-                  label: Text(cur.needsNutrition ? 'Enter' : 'Edit'),
+                AppActionChip(
+                  icon: Icons.edit_outlined,
+                  label: cur.needsNutrition ? 'Enter' : 'Edit',
                   onPressed: _busy ? null : () => _editMacros(cur.per100),
                 ),
               ],
             ),
           ],
-          if (_busy) ...[const SizedBox(height: 12), const LinearProgressIndicator()],
+          if (_busy) ...[
+            const SizedBox(height: AppSpace.x3),
+            ClipRRect(borderRadius: BorderRadius.circular(2), child: const LinearProgressIndicator()),
+          ],
           if (_macroError != null) ...[
-            const SizedBox(height: 8),
-            Text(_macroError!, style: context.text.bodySmall?.copyWith(color: context.scheme.error)),
+            const SizedBox(height: AppSpace.x2),
+            Text(_macroError!, style: context.text.bodySmall?.copyWith(color: c.criticalInk)),
           ],
         ],
       ),

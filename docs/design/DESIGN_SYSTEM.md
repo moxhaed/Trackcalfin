@@ -741,8 +741,8 @@ centered on the screen.
   icon 26 in `primary`, 10, title `titleSmall` 15/20 w600 `onSurface` (1 line), 2, subtitle
   `labelMedium` w400 `textSecondary` (1 line). A grid of 3 columns, 10 gap.
 - **Pantry tile** (Use soon / Running low strip): surface bg (white), radius 16, min width 132,
-  max 180, height 72, padding 12/14. Name in `bodyLarge` w500 (1 line, ellipsis), 2, then the
-  meta in `bodySmall`: the qty in `textSecondary`, " · ", and the days in `warningInk`
+  max 180, height 72, padding 12/16 (so the text sits on x = 32, like the rows below). Name in
+  `bodyLarge` w500 (1 line, ellipsis), 2, then the meta in `bodySmall`: the qty in `textSecondary`, " · ", and the days in `warningInk`
   (`criticalInk` when ≤ 1 day / "use today"). Running-low meta is `trending_down_rounded` 14
   `warning` + qty. Horizontal `ListView`, 16 side padding, 8 gap.
 

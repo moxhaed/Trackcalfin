@@ -128,6 +128,31 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
     await _reload();
   }
 
+  /// The line cards of one group: 8 between them and nothing after the last, so the group
+  /// header below sets the rhythm.
+  List<Widget> _editors(
+    List<int> indices,
+    ScanJob job,
+    bool pantry,
+    Map<int, Ingredient> ingredients,
+    MoneyFormat receiptMoney,
+    int Function(int)? toHome,
+    MoneyFormat money,
+  ) => [
+    for (var n = 0; n < indices.length; n++) ...[
+      if (n > 0) const SizedBox(height: AppSpace.x2),
+      _LineEditor(
+        line: job.lines[indices[n]],
+        pantry: pantry,
+        ingredients: ingredients,
+        receiptMoney: receiptMoney,
+        toHome: toHome,
+        homeMoney: money,
+        onChanged: () => setState(() {}),
+      ),
+    ],
+  ];
+
   @override
   Widget build(BuildContext context) {
     final job = _job;
@@ -151,23 +176,25 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
     return Scaffold(
       appBar: PageBar(title: pantry ? 'Pantry photo' : (job.merchant ?? 'Receipt')),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
+        padding: const EdgeInsets.fromLTRB(AppSpace.screen, 0, AppSpace.screen, AppSpace.x6),
         children: [
           if (!pantry)
-            Text(
+            SeparatedText(
               '${job.purchasedAt != null ? shortDate(job.purchasedAt!) : ''} · ${job.lines.length} lines',
               style: context.text.bodyMedium?.copyWith(color: context.scheme.onSurfaceVariant),
             ),
-          const SizedBox(height: 8),
-          if (job.flags.contains('total_mismatch') && job.receiptTotalMinor != null)
-            _Banner(
+          const SizedBox(height: AppSpace.x3),
+          if (job.flags.contains('total_mismatch') && job.receiptTotalMinor != null) ...[
+            AppNotice(
+              kind: NoticeKind.warning,
               icon: Icons.calculate_outlined,
-              color: context.colors.serious,
-              text:
+              message:
                   'Items add up to ${receiptMoney.format(sum)} but the receipt says ${receiptMoney.format(job.receiptTotalMinor!)}. '
                   'Fix an amount below or file it as is.',
             ),
-          if (foreign)
+            const SizedBox(height: AppSpace.x3),
+          ],
+          if (foreign) ...[
             ConversionCard(
               from: job.currency!,
               to: home,
@@ -180,11 +207,13 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
               onRetry: _retryRate,
               onChangeCurrency: _changeCurrency,
             ),
-          if (job.flags.contains('currency_uncertain') && !pantry)
-            _Banner(
-              icon: Icons.help_outline,
-              color: context.colors.warning,
-              text: "Couldn't read the currency, so ${job.currency ?? home} was assumed.",
+            const SizedBox(height: AppSpace.x3),
+          ],
+          if (job.flags.contains('currency_uncertain') && !pantry) ...[
+            AppNotice(
+              kind: NoticeKind.warning,
+              icon: Icons.help_outline_rounded,
+              message: "Couldn't read the currency, so ${job.currency ?? home} was assumed.",
               actions: [
                 TextButton(onPressed: _changeCurrency, child: const Text('Change')),
                 TextButton(
@@ -194,117 +223,91 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
                 ),
               ],
             ),
-          if (job.flags.contains('date_adjusted'))
-            _Banner(
-              icon: Icons.event_busy_outlined,
-              color: context.colors.warning,
-              text: 'The printed date looked wrong, so the photo date is used.',
-            ),
-          if (attention.isNotEmpty) ...[
-            GroupHeader('Check ${attention.length}'),
-            for (final i in attention)
-              _LineEditor(
-                line: job.lines[i],
-                pantry: pantry,
-                ingredients: ingredients,
-                receiptMoney: receiptMoney,
-                toHome: toHome,
-                homeMoney: money,
-                onChanged: () => setState(() {}),
-              ),
+            const SizedBox(height: AppSpace.x3),
           ],
-          GroupHeader(pantry ? '${fine.length} items detected' : '${fine.length} look good'),
+          if (job.flags.contains('date_adjusted')) ...[
+            const AppNotice(
+              kind: NoticeKind.warning,
+              icon: Icons.event_busy_outlined,
+              message: 'The printed date looked wrong, so the photo date is used.',
+            ),
+            const SizedBox(height: AppSpace.x3),
+          ],
+          if (attention.isNotEmpty) ...[
+            GroupHeader('Check ${attention.length}', first: true),
+            ..._editors(attention, job, pantry, ingredients, receiptMoney, toHome, money),
+            // 12 here and the next header's 8 make 20 to its text, the same 24 as under a notice.
+            const SizedBox(height: AppSpace.x3),
+          ],
+          GroupHeader(pantry ? '${fine.length} items detected' : '${fine.length} look good', first: true),
           if (!_showAll && fine.isNotEmpty)
-            Card(
-              child: ListTile(
-                leading: Icon(Icons.check_circle, color: context.colors.good),
-                title: Text(fine.take(4).map((i) => job.lines[i].name).join(', ') + (fine.length > 4 ? '…' : '')),
-                trailing: const Text('Show'),
-                onTap: () => setState(() => _showAll = true),
-              ),
+            AppGroup(
+              children: [
+                AppRow(
+                  leading: Icon(Icons.check_circle_rounded, size: 20, color: context.colors.good),
+                  title: fine.take(4).map((i) => job.lines[i].name).join(', ') + (fine.length > 4 ? '…' : ''),
+                  titleSeparator: ', ',
+                  // The text button's label ends on the card's 16 padding, like the amounts above.
+                  // (laid out 12 narrower than the button, so the text beside it gets that room too)
+                  trailing: Align(
+                    alignment: Alignment.centerLeft,
+                    widthFactor: 0.8,
+                    child: TextButton(onPressed: () => setState(() => _showAll = true), child: const Text('Show')),
+                  ),
+                  onTap: () => setState(() => _showAll = true),
+                ),
+              ],
             )
           else
-            for (final i in fine)
-              _LineEditor(
-                line: job.lines[i],
-                pantry: pantry,
-                ingredients: ingredients,
-                receiptMoney: receiptMoney,
-                toHome: toHome,
-                homeMoney: money,
-                onChanged: () => setState(() {}),
-              ),
+            ..._editors(fine, job, pantry, ingredients, receiptMoney, toHome, money),
         ],
       ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-          child: Row(
-            children: [
-              TextButton(
-                onPressed: () async {
-                  final nav = Navigator.of(context);
-                  await ref.read(scanServiceProvider).discard(job.id);
-                  nav.pop();
-                },
-                child: const Text('Discard'),
-              ),
-              const Spacer(),
-              if (!pantry)
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      toHome != null ? money.format(toHome(sum)) : receiptMoney.format(sum),
-                      style: context.text.titleMedium,
-                    ),
-                    if (toHome != null) Text(receiptMoney.format(sum), style: context.text.labelSmall),
-                  ],
+      bottomNavigationBar: DecoratedBox(
+        decoration: BoxDecoration(
+          color: context.scheme.surface,
+          border: Border(top: BorderSide(color: context.colors.separator, width: 0.5)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(AppSpace.x1, AppSpace.x3, AppSpace.screen, AppSpace.x3),
+            child: Row(
+              children: [
+                TextButton(
+                  style: TextButton.styleFrom(foregroundColor: context.colors.criticalInk),
+                  onPressed: () async {
+                    final nav = Navigator.of(context);
+                    await ref.read(scanServiceProvider).discard(job.id);
+                    nav.pop();
+                  },
+                  child: const Text('Discard'),
                 ),
-              const SizedBox(width: 12),
-              FilledButton.icon(
-                onPressed: _saving ? null : _commit,
-                icon: Icon(foreign && job.fxRate == null ? Icons.currency_exchange : Icons.check),
-                label: Text(pantry ? 'Update pantry' : (foreign && job.fxRate == null ? 'Set rate' : 'Looks good')),
-              ),
-            ],
+                const Spacer(),
+                if (!pantry)
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        toHome != null ? money.format(toHome(sum)) : receiptMoney.format(sum),
+                        style: context.nums.medium,
+                      ),
+                      if (toHome != null) Text(receiptMoney.format(sum), style: context.text.bodySmall),
+                    ],
+                  ),
+                const SizedBox(width: AppSpace.x3),
+                FilledButton.icon(
+                  onPressed: _saving ? null : _commit,
+                  icon: Icon(foreign && job.fxRate == null ? Icons.currency_exchange_rounded : Icons.check_rounded),
+                  label: Text(pantry ? 'Update pantry' : (foreign && job.fxRate == null ? 'Set rate' : 'Looks good')),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
-}
-
-class _Banner extends StatelessWidget {
-  const _Banner({required this.icon, required this.color, required this.text, this.actions = const []});
-  final IconData icon;
-  final Color color;
-  final String text;
-  final List<Widget> actions;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    margin: const EdgeInsets.only(bottom: 8),
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(14)),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, color: color, size: 20),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(text, style: context.text.bodyMedium),
-              if (actions.isNotEmpty) Wrap(spacing: 4, children: actions),
-            ],
-          ),
-        ),
-      ],
-    ),
-  );
 }
 
 class _LineEditor extends ConsumerStatefulWidget {
@@ -354,189 +357,203 @@ class _LineEditorState extends ConsumerState<_LineEditor> {
     final merge = l.mergeCandidateId == null ? null : widget.ingredients[l.mergeCandidateId];
     final current = l.matchedIngredientId == null ? null : widget.ingredients[l.matchedIngredientId];
     final open = _open || l.needsAttention;
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(4, 4, 12, 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    final secondary = context.scheme.onSurfaceVariant;
+    final low = l.confidence == Confidence.low;
+    final showCategories = open && !widget.pantry;
+    return AppGroup(
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              children: [
-                Checkbox(
-                  value: l.include,
-                  onChanged: (v) {
-                    setState(() => l.include = v ?? true);
-                    widget.onChanged();
-                  },
-                ),
-                Icon(categoryIcon(l.category), size: 18, color: context.scheme.onSurfaceVariant),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: InkWell(
-                    onTap: () => setState(() => _open = !_open),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(l.name, style: context.text.titleSmall),
-                        Text(
-                          [
-                            if (l.qty != null) '${l.qtySource == QtySource.inferred ? '~' : ''}${qty(l.qty!, l.unit)}',
-                            if (l.isNewIngredient && l.ingredientKey != null) 'new item',
-                            if (l.ingredientKey == null && l.category != SpendCategory.groceries) l.category.label,
-                            if (l.confidence == Confidence.low) 'hard to read',
-                            if (widget.pantry && current != null) 'was ${qty(current.qtyOnHand, current.baseUnit)}',
-                          ].join(' · '),
-                          style: context.text.bodySmall,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                if (!widget.pantry)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpace.x1, AppSpace.x1, AppSpace.x4, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-                      Text(
-                        widget.toHome != null
-                            ? widget.homeMoney.format(widget.toHome!(l.totalMinor))
-                            : widget.receiptMoney.format(l.totalMinor),
-                        style: context.text.titleSmall,
+                      Checkbox(
+                        value: l.include,
+                        onChanged: (v) {
+                          setState(() => l.include = v ?? true);
+                          widget.onChanged();
+                        },
                       ),
-                      if (widget.toHome != null)
-                        Text(widget.receiptMoney.format(l.totalMinor), style: context.text.labelSmall),
-                    ],
-                  ),
-              ],
-            ),
-            if (merge != null)
-              Padding(
-                padding: const EdgeInsets.only(left: 12, top: 4),
-                child: Row(
-                  children: [
-                    Icon(Icons.merge_type, size: 18, color: c.warning),
-                    const SizedBox(width: 6),
-                    Expanded(child: Text('Same as "${merge.name}"?', style: context.text.bodyMedium)),
-                    TextButton(
-                      onPressed: () {
-                        setState(() {
-                          if (l.qty != null && l.unit != merge.baseUnit) {
-                            // Convert into the existing item's unit; unknown if impossible.
-                            final converted = UnitConverter.toBase(l.qty!, l.unit, merge);
-                            l.qty = converted;
-                            if (converted == null) l.qtySource = QtySource.unknown;
-                            _qty.text = converted == null ? '' : _fmt(converted);
-                          }
-                          l.matchedIngredientId = merge.id;
-                          l.ingredientKey = merge.key;
-                          l.isNewIngredient = false;
-                          l.mergeCandidateId = null;
-                          l.profile = null;
-                          l.unit = merge.baseUnit;
-                        });
-                        widget.onChanged();
-                      },
-                      child: const Text('Yes'),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        setState(() => l.mergeCandidateId = null);
-                        widget.onChanged();
-                      },
-                      child: const Text('No, new'),
-                    ),
-                  ],
-                ),
-              ),
-            if (open)
-              Padding(
-                padding: const EdgeInsets.only(left: 12, top: 8),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        if (!widget.pantry)
-                          Expanded(
-                            child: TextField(
-                              controller: _amount,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-                              decoration: InputDecoration(
-                                labelText: 'Amount',
-                                prefixText: '${widget.receiptMoney.symbol} ',
-                                isDense: true,
+                      Icon(categoryIcon(l.category), size: 16, color: secondary),
+                      const SizedBox(width: AppSpace.x2),
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => setState(() => _open = !_open),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(l.name, style: context.text.bodyLarge?.copyWith(fontWeight: FontWeight.w500)),
+                              SeparatedText(
+                                [
+                                  if (l.qty != null)
+                                    '${l.qtySource == QtySource.inferred ? '~' : ''}${qty(l.qty!, l.unit)}',
+                                  if (l.isNewIngredient && l.ingredientKey != null) 'new item',
+                                  if (l.ingredientKey == null && l.category != SpendCategory.groceries)
+                                    l.category.label,
+                                  if (l.confidence == Confidence.low) 'hard to read',
+                                  if (widget.pantry && current != null)
+                                    'was ${qty(current.qtyOnHand, current.baseUnit)}',
+                                ].join(' · '),
+                                style: context.text.bodySmall,
                               ),
-                              onChanged: (v) {
-                                l.totalMinor = widget.receiptMoney.parse(v) ?? l.totalMinor;
-                                if (v.trim().startsWith('-')) l.totalMinor = -l.totalMinor.abs();
-                                widget.onChanged();
-                              },
-                            ),
+                            ],
                           ),
-                        if (!widget.pantry) const SizedBox(width: 8),
-                        if (l.ingredientKey != null)
-                          Expanded(
-                            child: TextField(
-                              controller: _qty,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                              decoration: InputDecoration(
-                                labelText: 'Quantity',
-                                suffixText: l.unit.label,
-                                isDense: true,
-                              ),
-                              onChanged: (v) {
-                                final q = double.tryParse(v.replaceAll(',', '.'));
-                                l.qty = q;
-                                l.qtySource = q == null ? QtySource.unknown : QtySource.printed;
-                                if (l.confidence == Confidence.low && q != null) l.confidence = Confidence.medium;
-                                widget.onChanged();
-                              },
-                            ),
-                          ),
-                      ],
-                    ),
-                    if (!widget.pantry) ...[
-                      const SizedBox(height: 8),
-                      SizedBox(
-                        height: 36,
-                        child: ListView(
-                          scrollDirection: Axis.horizontal,
+                        ),
+                      ),
+                      if (!widget.pantry)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            for (final cat in SpendCategory.values)
-                              Padding(
-                                padding: const EdgeInsets.only(right: 6),
-                                child: ChoiceChip(
-                                  label: Text(cat.label),
-                                  selected: l.category == cat,
-                                  onSelected: (_) {
-                                    setState(() {
-                                      l.category = cat;
-                                      if (cat != SpendCategory.groceries) l.ingredientKey = null;
-                                    });
-                                    widget.onChanged();
-                                  },
-                                ),
-                              ),
+                            Text(
+                              widget.toHome != null
+                                  ? widget.homeMoney.format(widget.toHome!(l.totalMinor))
+                                  : widget.receiptMoney.format(l.totalMinor),
+                              style: context.nums.body,
+                            ),
+                            if (widget.toHome != null)
+                              Text(widget.receiptMoney.format(l.totalMinor), style: context.text.bodySmall),
                           ],
                         ),
-                      ),
                     ],
-                    if (l.confidence == Confidence.low)
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: () {
-                            setState(() => l.confidence = Confidence.medium);
-                            widget.onChanged();
-                          },
-                          child: const Text('Mark as correct'),
-                        ),
+                  ),
+                  if (merge != null)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 12, top: 4),
+                      child: Row(
+                        children: [
+                          Icon(Icons.merge_type, size: 18, color: c.warning),
+                          const SizedBox(width: AppSpace.x2),
+                          Expanded(child: Text('Same as "${merge.name}"?', style: context.text.bodyMedium)),
+                          TextButton(
+                            onPressed: () {
+                              setState(() {
+                                if (l.qty != null && l.unit != merge.baseUnit) {
+                                  // Convert into the existing item's unit; unknown if impossible.
+                                  final converted = UnitConverter.toBase(l.qty!, l.unit, merge);
+                                  l.qty = converted;
+                                  if (converted == null) l.qtySource = QtySource.unknown;
+                                  _qty.text = converted == null ? '' : _fmt(converted);
+                                }
+                                l.matchedIngredientId = merge.id;
+                                l.ingredientKey = merge.key;
+                                l.isNewIngredient = false;
+                                l.mergeCandidateId = null;
+                                l.profile = null;
+                                l.unit = merge.baseUnit;
+                              });
+                              widget.onChanged();
+                            },
+                            child: const Text('Yes'),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              setState(() => l.mergeCandidateId = null);
+                              widget.onChanged();
+                            },
+                            child: const Text('No, new'),
+                          ),
+                        ],
                       ),
-                  ],
+                    ),
+                  if (open)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 12, top: 8),
+                      child: Row(
+                        children: [
+                          if (!widget.pantry)
+                            Expanded(
+                              child: TextField(
+                                controller: _amount,
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                                decoration: InputDecoration(
+                                  labelText: 'Amount',
+                                  prefixText: '${widget.receiptMoney.symbol} ',
+                                ),
+                                onChanged: (v) {
+                                  l.totalMinor = widget.receiptMoney.parse(v) ?? l.totalMinor;
+                                  if (v.trim().startsWith('-')) l.totalMinor = -l.totalMinor.abs();
+                                  widget.onChanged();
+                                },
+                              ),
+                            ),
+                          if (!widget.pantry) const SizedBox(width: 8),
+                          if (l.ingredientKey != null)
+                            Expanded(
+                              child: TextField(
+                                controller: _qty,
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                decoration: InputDecoration(labelText: 'Quantity', suffixText: l.unit.label),
+                                onChanged: (v) {
+                                  final q = double.tryParse(v.replaceAll(',', '.'));
+                                  l.qty = q;
+                                  l.qtySource = q == null ? QtySource.unknown : QtySource.printed;
+                                  if (l.confidence == Confidence.low && q != null) l.confidence = Confidence.medium;
+                                  widget.onChanged();
+                                },
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            // Out of the padded block above: the chip strip spans the full card width with 16 inside,
+            // so the card's rounded edge clips it and the peek reads as scrollable.
+            if (showCategories)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: SizedBox(
+                  height: 48,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.x4),
+                    children: [
+                      for (final cat in SpendCategory.values)
+                        Padding(
+                          padding: const EdgeInsets.only(right: AppSpace.x2),
+                          child: AppChoiceChip(
+                            label: cat.label,
+                            selected: l.category == cat,
+                            onSelected: (_) {
+                              setState(() {
+                                l.category = cat;
+                                if (cat != SpendCategory.groceries) l.ingredientKey = null;
+                              });
+                              widget.onChanged();
+                            },
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
+            if (open && low)
+              Align(
+                alignment: Alignment.centerRight,
+                // The label ends on the card's 16 padding (the button's own 12 padding hangs 12
+                // beyond it), and the row sits 20 above the card edge.
+                child: Padding(
+                  padding: const EdgeInsets.only(right: AppSpace.x1),
+                  child: TextButton(
+                    onPressed: () {
+                      setState(() => l.confidence = Confidence.medium);
+                      widget.onChanged();
+                    },
+                    child: const Text('Mark as correct'),
+                  ),
+                ),
+              )
+            else
+              const SizedBox(height: AppSpace.x3),
           ],
         ),
-      ),
+      ],
     );
   }
 }

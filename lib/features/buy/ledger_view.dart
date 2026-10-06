@@ -31,38 +31,41 @@ class _LedgerViewState extends ConsumerState<LedgerView> {
   Widget build(BuildContext context) {
     final txs = ref.watch(transactionsProvider).value;
     final money = ref.watch(moneyProvider);
-    if (txs == null) return const Center(child: CircularProgressIndicator());
+    if (txs == null) return const SizedBox.shrink();
     final list = txs.where(_matches).toList();
     final byDay = groupBy(list, (Transaction t) => DateTime(t.occurredAt.year, t.occurredAt.month, t.occurredAt.day));
     final days = byDay.keys.toList()..sort((a, b) => b.compareTo(a));
     final now = DateTime.now();
     return Column(
       children: [
-        SizedBox(
-          height: 44,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(right: 6),
-                child: ChoiceChip(
-                  label: const Text('All'),
-                  selected: _filter == null,
-                  onSelected: (_) => setState(() => _filter = null),
-                ),
-              ),
-              for (final c in SpendCategory.values)
-                Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: ChoiceChip(
-                    avatar: Icon(categoryIcon(c), size: 16),
-                    label: Text(c.label),
-                    selected: _filter == c,
-                    onSelected: (_) => setState(() => _filter = _filter == c ? null : c),
-                  ),
-                ),
-            ],
+        // 48 tall so the chips keep their tap targets (the 36 chips sit 6 inside it); 16 padding
+        // inside, so the row scrolls to the edges. The list clips at its bottom, so the
+        // scrolled-under hairline sits there.
+        ScrollEdge(
+          child: SizedBox(
+            height: 48,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.screen),
+              itemCount: SpendCategory.values.length + 1,
+              separatorBuilder: (_, _) => const SizedBox(width: AppSpace.x2),
+              itemBuilder: (context, i) {
+                if (i == 0) {
+                  return AppChoiceChip(
+                    label: 'All',
+                    selected: _filter == null,
+                    onSelected: (_) => setState(() => _filter = null),
+                  );
+                }
+                final c = SpendCategory.values[i - 1];
+                return AppChoiceChip(
+                  label: c.label,
+                  icon: categoryIcon(c),
+                  selected: _filter == c,
+                  onSelected: (_) => setState(() => _filter = _filter == c ? null : c),
+                );
+              },
+            ),
           ),
         ),
         Expanded(
@@ -73,25 +76,26 @@ class _LedgerViewState extends ConsumerState<LedgerView> {
                   message: 'Scan a receipt or log an expense with the + button.',
                 )
               : ListView.builder(
-                  padding: EdgeInsets.only(bottom: MediaQuery.paddingOf(context).bottom + 24),
+                  // 10 + the first header's 8 = 18 below the strip box, so 24 below the chips themselves.
+                  padding: EdgeInsets.fromLTRB(
+                    AppSpace.screen,
+                    10,
+                    AppSpace.screen,
+                    MediaQuery.paddingOf(context).bottom + AppSpace.x6,
+                  ),
                   itemCount: days.length,
                   itemBuilder: (context, i) {
                     final day = days[i];
                     final items = byDay[day]!;
                     final total = items.fold(0, (a, t) => a + _amount(t));
                     return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
-                          child: Row(
-                            children: [
-                              Expanded(child: Text(dayLabel(day, now), style: context.text.titleSmall)),
-                              Text(money.format(total), style: context.text.labelLarge),
-                            ],
-                          ),
+                        GroupHeader(dayLabel(day, now), value: money.format(total), first: i == 0),
+                        AppGroup(
+                          separatorIndent: AppGroup.indentGlyph,
+                          children: [for (final t in items) _TxTile(tx: t, amount: _amount(t))],
                         ),
-                        for (final t in items) _TxTile(tx: t, amount: _amount(t)),
                       ],
                     );
                   },
@@ -117,9 +121,9 @@ class _TxTile extends ConsumerWidget {
       direction: DismissDirection.endToStart,
       background: Container(
         alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 24),
-        color: context.scheme.errorContainer,
-        child: Icon(Icons.delete_outline, color: context.scheme.onErrorContainer),
+        padding: const EdgeInsets.only(right: AppSpace.x6),
+        color: context.colors.critical,
+        child: const Icon(Icons.delete_outline_rounded, color: Colors.white),
       ),
       onDismissed: (_) async {
         final ledger = ref.read(ledgerServiceProvider);
@@ -134,22 +138,17 @@ class _TxTile extends ConsumerWidget {
           );
         }
       },
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: context.scheme.surfaceContainerHighest,
-          child: Icon(categoryIcon(tx.primaryCategory), size: 20),
-        ),
-        title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
-        subtitle: Text(
-          [
-            timeOf(tx.occurredAt),
-            if (tx.lines.length > 1) '${tx.lines.length} items',
-            if (stocked > 0) '$stocked stocked',
-            if (tx.originalCurrency != null) moneyFor(tx.originalCurrency!).format(tx.originalTotalMinor ?? 0),
-            if (tx.source == TxSource.receiptScan && tx.originalCurrency == null) 'scanned',
-          ].join(' · '),
-        ),
-        trailing: Text(money.format(amount), style: context.text.titleSmall),
+      child: AppRow(
+        leading: GlyphCircle(categoryIcon(tx.primaryCategory)),
+        title: title,
+        subtitle: [
+          timeOf(tx.occurredAt),
+          if (tx.lines.length > 1) '${tx.lines.length} items',
+          if (stocked > 0) '$stocked stocked',
+          if (tx.originalCurrency != null) moneyFor(tx.originalCurrency!).format(tx.originalTotalMinor ?? 0),
+          if (tx.source == TxSource.receiptScan && tx.originalCurrency == null) 'scanned',
+        ].join(' · '),
+        value: money.format(amount),
         onTap: () => showTransactionSheet(context, tx),
       ),
     );

@@ -95,6 +95,7 @@ final shots = <Shot>[
   const Shot('04-buy-pantry', '/buy'),
   Shot('05-buy-pantry-scrolled', '/buy', steps: (t, _) => _scroll(t, 700)),
   const Shot('06-buy-ledger', '/buy?tab=ledger'),
+  Shot('06b-buy-ledger-scrolled', '/buy?tab=ledger', steps: (t, _) => _scroll(t, 500)),
   const Shot('07-cook', '/cook'),
   Shot('08-cook-scrolled', '/cook', steps: (t, _) => _scroll(t, 500)),
   Shot(
@@ -112,7 +113,8 @@ final shots = <Shot>[
       await _scroll(t, 600);
     },
   ),
-  const Shot('11-inbox', '/inbox'),
+  // Opened from the Buy tab (a push), so the back arrow shows.
+  Shot('11-inbox', '/buy', steps: (t, _) => _tap(t, find.byTooltip('Inbox'))),
   Shot('12-review', '/inbox', steps: (t, _) => _tap(t, find.textContaining('Aldi'))),
   Shot('13-review-fx', '/inbox', steps: (t, _) => _tap(t, find.textContaining('Migros'))),
   const Shot('14-settings', '/settings'),

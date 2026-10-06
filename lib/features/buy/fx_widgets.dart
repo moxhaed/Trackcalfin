@@ -5,6 +5,7 @@ import '../../app/theme.dart';
 import '../../core/currency.dart';
 import '../../core/money.dart';
 import '../../domain/fx.dart';
+import '../common/widgets.dart';
 
 MoneyFormat moneyFor(String currency) => MoneyFormat(currency: currency, digits: Currency.digitsOf(currency));
 
@@ -50,58 +51,33 @@ class ConversionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final hasRate = rate != null;
-    final color = hasRate ? context.scheme.primary : c.warning;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.fromLTRB(14, 12, 8, 6),
-      decoration: BoxDecoration(
-        color: hasRate ? c.fill : c.warning.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.currency_exchange, color: color, size: 20),
-              const SizedBox(width: 10),
-              Expanded(child: Text('Receipt in $from', style: context.text.titleSmall)),
-              if (busy) const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-            ],
-          ),
-          const SizedBox(height: 6),
-          if (hasRate) ...[
-            Text(
-              '${moneyFor(from).format(foreignTotal)}  →  '
+    return AppNotice(
+      kind: hasRate ? NoticeKind.info : NoticeKind.warning,
+      icon: Icons.currency_exchange_rounded,
+      title: 'Receipt in $from',
+      trailing: busy ? const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2)) : null,
+      body: hasRate
+          ? Text(
+              '${moneyFor(from).format(foreignTotal)} → '
               '${moneyFor(to).format(Currency.convert(foreignTotal, from: from, to: to, rate: rate!))}',
-              style: context.text.titleMedium,
-            ),
-            Text(
-              '1 $from = ${rateText(rate!)} $to · ${fxSourceLabel(source, date)}',
-              style: context.text.bodySmall?.copyWith(color: context.scheme.onSurfaceVariant),
-            ),
-          ] else
-            Text(
-              'No exchange rate yet (you may be offline). Type what your card was charged, '
-              'or enter the rate, and every line is converted for you.',
-              style: context.text.bodyMedium,
-            ),
-          Wrap(
-            spacing: 4,
-            children: [
-              TextButton.icon(
-                onPressed: onSetRate,
-                icon: const Icon(Icons.edit_outlined, size: 18),
-                label: Text(hasRate ? 'Change rate' : 'Set rate'),
-              ),
-              TextButton(onPressed: onChangeCurrency, child: const Text('Wrong currency?')),
-              if (!hasRate) TextButton(onPressed: onRetry, child: const Text('Try again')),
-            ],
-          ),
-        ],
-      ),
+              style: context.nums.medium,
+            )
+          : null,
+      message: hasRate
+          ? null
+          : 'No exchange rate yet (you may be offline). Type what your card was charged, '
+                'or enter the rate, and every line is converted for you.',
+      meta: hasRate ? '1 $from = ${rateText(rate!)} $to · ${fxSourceLabel(source, date)}' : null,
+      actions: [
+        TextButton.icon(
+          onPressed: onSetRate,
+          icon: const Icon(Icons.edit_outlined, size: 18),
+          label: Text(hasRate ? 'Change rate' : 'Set rate'),
+        ),
+        TextButton(onPressed: onChangeCurrency, child: const Text('Wrong currency?')),
+        if (!hasRate) TextButton(onPressed: onRetry, child: const Text('Try again')),
+      ],
     );
   }
 }
@@ -175,27 +151,24 @@ class _RateSheetState extends State<_RateSheet> {
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          padding: const EdgeInsets.fromLTRB(AppSpace.sheet, 0, AppSpace.sheet, AppSpace.x6),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Convert ${widget.from} to ${widget.to}', style: context.text.titleLarge),
-              const SizedBox(height: 4),
-              Text('Receipt total: ${fromMoney.format(widget.foreignTotal)}', style: context.text.bodyMedium),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: SegmentedButton<bool>(
-                  segments: const [
-                    ButtonSegment(value: true, label: Text('Amount charged'), icon: Icon(Icons.credit_card)),
-                    ButtonSegment(value: false, label: Text('Exchange rate'), icon: Icon(Icons.percent)),
-                  ],
-                  selected: {_charged},
-                  onSelectionChanged: (s) => setState(() => _charged = s.first),
-                ),
+              Text('Convert ${widget.from} to ${widget.to}', style: context.text.headlineSmall),
+              const SizedBox(height: AppSpace.tight),
+              Text(
+                'Receipt total: ${fromMoney.format(widget.foreignTotal)}',
+                style: context.text.bodyMedium?.copyWith(color: context.scheme.onSurfaceVariant),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.x4),
+              AppSegmented<bool>(
+                segments: const {true: 'Amount charged', false: 'Exchange rate'},
+                selected: _charged,
+                onChanged: (v) => setState(() => _charged = v),
+              ),
+              const SizedBox(height: AppSpace.x3),
               if (_charged)
                 TextField(
                   controller: _charge,
@@ -217,7 +190,7 @@ class _RateSheetState extends State<_RateSheet> {
                   decoration: InputDecoration(labelText: '1 ${widget.from} =', suffixText: widget.to),
                   onChanged: (_) => setState(() {}),
                 ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpace.x2),
               if (v != null)
                 Text(
                   _charged
@@ -226,20 +199,20 @@ class _RateSheetState extends State<_RateSheet> {
                   style: context.text.bodyMedium?.copyWith(color: context.scheme.onSurfaceVariant),
                 ),
               if (widget.remembered != null) ...[
-                const SizedBox(height: 8),
-                ActionChip(
-                  avatar: const Icon(Icons.history, size: 18),
-                  label: Text(
-                    'Use last rate: ${rateText(widget.remembered!.rate)} '
-                    '(${DateFormat('d MMM').format(widget.remembered!.date)})',
-                  ),
+                const SizedBox(height: AppSpace.x2),
+                AppActionChip(
+                  icon: Icons.history_rounded,
+                  label:
+                      'Use last rate: ${rateText(widget.remembered!.rate)} '
+                      '(${DateFormat('d MMM').format(widget.remembered!.date)})',
                   onPressed: () => _done(widget.remembered!.rate, FxSource.remembered),
                 ),
               ],
-              const SizedBox(height: 14),
+              const SizedBox(height: AppSpace.x5),
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
+                  style: AppTheme.largeButton,
                   onPressed: v == null ? null : () => _done(v, _charged ? FxSource.charged : FxSource.manual),
                   child: const Text('Convert all lines'),
                 ),
@@ -282,22 +255,22 @@ Future<String?> showCurrencySheet(BuildContext context, {required String current
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          padding: const EdgeInsets.fromLTRB(AppSpace.sheet, 0, AppSpace.sheet, AppSpace.x6),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Which currency is the receipt in?', style: context.text.titleLarge),
-              const SizedBox(height: 12),
+              Text('Which currency is the receipt in?', style: context.text.headlineSmall),
+              const SizedBox(height: AppSpace.x4),
               Wrap(
-                spacing: 6,
-                runSpacing: 6,
+                spacing: AppSpace.x2,
+                runSpacing: AppSpace.x2,
                 children: [
                   for (final c in commonCurrencies)
-                    ChoiceChip(label: Text(c), selected: c == current, onSelected: (_) => Navigator.of(context).pop(c)),
+                    AppChoiceChip(label: c, selected: c == current, onSelected: (_) => Navigator.of(context).pop(c)),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.x4),
               TextField(
                 controller: ctrl,
                 textCapitalization: TextCapitalization.characters,
