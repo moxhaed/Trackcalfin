@@ -15,7 +15,7 @@ A personal **micro-procurement, pantry and meal-prep tracker** built with Flutte
   </tr>
 </table>
 
-*Screenshots are from the Linux desktop build with demo data (`--dart-define=DEMO=true`).*
+*Screenshots come from `tool/screenshots_test.dart`, which renders the real app on demo data at phone size (390 × 844).*
 
 ## What it does
 
@@ -32,7 +32,7 @@ Principles: every log takes ≤ 3 seconds, the LLM proposes and Dart does the ma
 
 **Built and verified in this repo**
 - All 33 sprints from the [sprint plan](docs/06-sprint-plan.md) are implemented.
-- 111 automated tests pass: domain math, use cases against a real Isar database, the full AI pipeline against a scripted fake Gemini endpoint (including repair retries and allergen rejection), and widget smoke tests that drive the whole app. `flutter analyze` is clean.
+- 168 automated tests pass: domain math, use cases against a real Isar database, the full AI pipeline against a scripted fake Gemini endpoint (including repair retries and allergen rejection), and widget smoke tests that drive the whole app. `flutter analyze` is clean.
 - The Linux desktop build runs. The screenshots above come from it.
 
 **Not verified here (needs your machine)**
@@ -57,7 +57,7 @@ On first launch, onboarding asks for your goals and staples, optionally takes 3 
 
 ```bash
 flutter analyze
-flutter test                      # 111 tests; Isar's native core is loaded from the Linux plugin in your pub cache
+flutter test                      # 168 tests; Isar's native core is loaded from the Linux plugin in your pub cache
 dart run build_runner build       # after changing anything in lib/data/isar/collections/
 flutter run -d linux --dart-define=DEMO=true   # quick UI iteration (needs libgtk-3-dev, libsecret-1-dev)
 ```
