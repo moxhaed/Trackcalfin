@@ -137,3 +137,12 @@ Notes (measured):
 
 Re-shoot 04, 05, 06, 11, 12, 13 and 24 in light and dark after MUST 1–4 (and the SHOULDs if
 done), plus a scrolled Ledger shot for MUST 1. I'll re-check by measurement.
+
+## Re-check (orchestrator, by inspection of p5-fix light/dark)
+- MUST 1 Buy scroll hairline at the clip edge: implemented (ScrollEdge at 167 dp on Pantry; on Ledger at the bottom of the pinned chip strip, where content actually clips). Accepted.
+- MUST 2 chip fill: chips now composite the translucent fill; visible on dark sheets and cards (24, 12). Pass.
+- MUST 3 greedy separator packing: 11 reads "Yesterday 19:33 · converted from CHF" / "ready to file". Pass.
+- MUST 4 FX meta: 13 reads "1 CHF = 1.0712 EUR" / "European Central Bank rate, 5 Oct". Pass.
+- SHOULD 1–8 implemented; 11 now opened from Buy (back arrow shown); 06b scrolled ledger added.
+- Carried to the final pass: raw chips in settings/expense/onboarding still on an opaque canvas (their batch converts them).
+Verdict: Phase 5 passes.
