@@ -109,3 +109,10 @@ right-aligned meta, one highlighted bar) and none of their color-blocked cards o
 
 **Sign-off**: after MUST 1–5, re-shoot 01, 26, 27 and the 28–31 extras in light and dark. I'll
 then add the "after" column to `AUDIT.md`.
+
+## Re-check (orchestrator, by inspection of final2 light/dark)
+- MUST 1 Today's pick after cooking (27): live recipe, tonal "Cooked · again?", no "max 0". Pass.
+- MUST 2–5: Vibe insight without a widow, review loading with PageBar + skeleton, tab labels clamped at 1.15×, vibe-sheet row renamed. Pass.
+- SHOULD 6–10 implemented (ValueFade on changing figures with reduced-motion support, Inbox amount trailing, nav fade, separator-aware metric captions, cook error via showInfoOn).
+- New proof shots: empty Dashboard/Buy/Cook (28–30) and 1.3× text (31–33) render without overflow; PantryTile, the Dashboard header button and the Cook pick card adapt above 1.15×.
+Verdict: final pass complete.
