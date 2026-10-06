@@ -613,7 +613,9 @@ class AppTheme {
         errorBorder: noBorder,
         focusedErrorBorder: noBorder,
         disabledBorder: noBorder,
-        contentPadding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        // Material 3 adds a 4 gap (`_kInputExtraPadding`) beside the text of a filled field, on top
+        // of this padding. 12 + 4 puts the text 16 from the field's edge (§7.7).
+        contentPadding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
         labelStyle: t.bodyLarge!.copyWith(color: secondary),
         floatingLabelStyle: WidgetStateTextStyle.resolveWith(
           (st) => floatingLabel.copyWith(
@@ -679,8 +681,9 @@ class AppTheme {
           return dark ? const Color(0xFF3A3C38) : const Color(0xFFD9D8D2);
         }),
         trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
+        // The thumb is white when on (§12): a dark thumb on the light dark-mode track read as a hole.
         thumbColor: WidgetStateProperty.resolveWith((st) {
-          if (st.contains(WidgetState.selected)) return s.onPrimary;
+          if (st.contains(WidgetState.selected)) return dark ? const Color(0xFFF1F1EE) : const Color(0xFFFFFFFF);
           return dark ? const Color(0xFFC9CBC5) : const Color(0xFFFFFFFF);
         }),
         thumbIcon: const WidgetStatePropertyAll(Icon(Icons.circle, color: Colors.transparent)),

@@ -82,7 +82,7 @@ Future<void> _tap(WidgetTester tester, Finder f) async {
 
 /// Taps the first match a user could actually tap, scrolling the page down until one shows.
 Future<void> _tapVisible(WidgetTester tester, Finder f) async {
-  for (var i = 0; i < 8 && f.hitTestable().evaluate().isEmpty; i++) {
+  for (var i = 0; i < 20 && f.hitTestable().evaluate().isEmpty; i++) {
     await _scroll(tester, 250);
   }
   await _tap(tester, f.hitTestable());
@@ -119,7 +119,8 @@ final shots = <Shot>[
   Shot('13-review-fx', '/inbox', steps: (t, _) => _tap(t, find.textContaining('Migros'))),
   const Shot('14-settings', '/settings'),
   Shot('15-settings-scrolled', '/settings', steps: (t, _) => _scroll(t, 900)),
-  const Shot('16-stats', '/stats'),
+  // Opened from Settings (a push), so the back arrow shows.
+  Shot('16-stats', '/settings', steps: (t, _) => _tapVisible(t, find.text('Stats'))),
   const Shot('17-quick-check', '/quick-check'),
   const Shot('18-onboarding', '/', demo: false),
   Shot('19-onboarding-goals', '/', demo: false, steps: (t, _) => _tap(t, find.text('Get started'))),
@@ -149,7 +150,8 @@ final shots = <Shot>[
     },
   ),
   Shot('24-ingredient-sheet', '/buy', steps: (t, _) => _tapVisible(t, find.text('Chicken breast'))),
-  const Shot('25-recipe-editor', '/recipe/new'),
+  // Opened from Cook (a push), so the back arrow shows.
+  Shot('25-recipe-editor', '/cook', steps: (t, _) => _tap(t, find.byTooltip('Write a recipe'))),
   Shot('26-vibe-sheet', '/', steps: (t, _) => _tap(t, find.textContaining('Vibe'))),
   Shot(
     '27-cooked-undo',

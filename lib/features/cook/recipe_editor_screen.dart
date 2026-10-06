@@ -129,37 +129,50 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
   @override
   Widget build(BuildContext context) {
     final pantry = ref.watch(ingredientsProvider).value ?? const <Ingredient>[];
+    final secondary = context.scheme.onSurfaceVariant;
     return Scaffold(
       appBar: PageBar(
         title: widget.id == null ? 'New recipe' : 'Edit recipe',
-        actions: [TextButton(onPressed: _save, child: const Text('Save'))],
+        actions: [
+          // The bar pads its end by 8 and the button its label by 12, which ends the label at
+          // x = 370. 4 more puts it on the 16 margin.
+          Transform.translate(
+            offset: const Offset(AppSpace.x1, 0),
+            child: TextButton(onPressed: _save, child: const Text('Save')),
+          ),
+        ],
       ),
       body: !_loaded
-          ? const Center(child: CircularProgressIndicator())
+          ? const _EditorSkeleton()
           : ListView(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 40),
+              padding: EdgeInsets.fromLTRB(
+                AppSpace.screen,
+                AppSpace.headerGap,
+                AppSpace.screen,
+                MediaQuery.paddingOf(context).bottom + AppSpace.x6,
+              ),
               children: [
                 TextField(
                   controller: _title,
                   textCapitalization: TextCapitalization.sentences,
                   decoration: const InputDecoration(labelText: 'Title'),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpace.x3),
                 Row(
                   children: [
-                    Text('Default portions', style: context.text.bodyLarge),
-                    const Spacer(),
-                    IconButton(
-                      onPressed: _portions > 1 ? () => setState(() => _portions--) : null,
-                      icon: const Icon(Icons.remove),
-                    ),
-                    Text('$_portions', style: context.text.titleMedium),
-                    IconButton(onPressed: () => setState(() => _portions++), icon: const Icon(Icons.add)),
+                    Expanded(child: Text('Default portions', style: context.text.bodyLarge)),
+                    PortionStepper(value: _portions, max: 99, onChanged: (v) => setState(() => _portions = v)),
                   ],
                 ),
+                const SizedBox(height: AppSpace.x3),
                 Row(
                   children: [
-                    for (final (c, l) in [(_prep, 'Prep min'), (_cook, 'Cook min'), (_fridge, 'Fridge days')]) ...[
+                    for (final (i, (c, l)) in [
+                      (_prep, 'Prep min'),
+                      (_cook, 'Cook min'),
+                      (_fridge, 'Fridge days'),
+                    ].indexed) ...[
+                      if (i > 0) const SizedBox(width: AppSpace.x2),
                       Expanded(
                         child: TextField(
                           controller: c,
@@ -167,20 +180,16 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
                           decoration: InputDecoration(labelText: l),
                         ),
                       ),
-                      const SizedBox(width: 8),
                     ],
                   ],
                 ),
-                const SizedBox(height: 16),
-                Text('Ingredients (per portion)', style: context.text.titleMedium),
-                const SizedBox(height: 8),
+                const SectionTitle('Ingredients (per portion)'),
                 for (final (i, row) in _rows.indexed)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.only(bottom: AppSpace.x2),
                     child: Row(
                       children: [
                         Expanded(
-                          flex: 5,
                           child: Autocomplete<Ingredient>(
                             initialValue: TextEditingValue(text: row.ingredient?.name ?? row.name),
                             displayStringForOption: (o) => o.name,
@@ -194,7 +203,7 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
                             fieldViewBuilder: (context, controller, focus, onSubmit) => TextField(
                               controller: controller,
                               focusNode: focus,
-                              decoration: const InputDecoration(hintText: 'Ingredient', isDense: true),
+                              decoration: const InputDecoration(hintText: 'Ingredient'),
                               onChanged: (v) {
                                 row.name = v;
                                 if (row.ingredient != null && row.ingredient!.name != v) row.ingredient = null;
@@ -202,44 +211,42 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          flex: 2,
+                        const SizedBox(width: AppSpace.x2),
+                        // 72 is the least that still shows the "Qty" hint beside the unit and the remove button.
+                        SizedBox(
+                          width: 72,
                           child: TextFormField(
                             initialValue: row.qty,
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            decoration: const InputDecoration(hintText: 'Qty', isDense: true),
+                            decoration: const InputDecoration(hintText: 'Qty'),
                             onChanged: (v) => row.qty = v,
                           ),
                         ),
-                        const SizedBox(width: 4),
-                        DropdownButton<BaseUnit>(
-                          value: row.unit,
-                          underline: const SizedBox(),
-                          items: [for (final u in BaseUnit.values) DropdownMenuItem(value: u, child: Text(u.label))],
-                          onChanged: (u) => setState(() => row.unit = u ?? row.unit),
-                        ),
+                        const SizedBox(width: AppSpace.x2),
+                        _UnitField(unit: row.unit, onChanged: (u) => setState(() => row.unit = u)),
                         IconButton(
-                          visualDensity: VisualDensity.compact,
+                          tooltip: 'Remove ingredient',
+                          style: IconButton.styleFrom(foregroundColor: secondary),
                           onPressed: () => setState(() => _rows.removeAt(i)),
-                          icon: const Icon(Icons.close, size: 18),
+                          icon: const Icon(Icons.close_rounded, size: 20),
                         ),
                       ],
                     ),
                   ),
+                // The button's own 12 padding is pulled back so its label sits on the margin.
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    onPressed: () => setState(() => _rows.add(_Row())),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add ingredient'),
+                  child: Transform.translate(
+                    offset: const Offset(-AppSpace.x3, 0),
+                    child: TextButton.icon(
+                      onPressed: () => setState(() => _rows.add(_Row())),
+                      icon: const Icon(Icons.add_rounded),
+                      label: const Text('Add ingredient'),
+                    ),
                   ),
                 ),
-                Text(
-                  'Ingredients not in your pantry are saved as "to buy".',
-                  style: context.text.labelSmall?.copyWith(color: context.scheme.onSurfaceVariant),
-                ),
-                const SizedBox(height: 16),
+                Text('Ingredients not in your pantry are saved as "to buy".', style: context.text.bodySmall),
+                const SizedBox(height: AppSpace.x4),
                 TextField(
                   controller: _steps,
                   minLines: 4,
@@ -252,6 +259,63 @@ class _RecipeEditorScreenState extends ConsumerState<RecipeEditorScreen> {
                 ),
               ],
             ),
+    );
+  }
+}
+
+/// The unit picker of an ingredient row: a compact 64-wide field on the same fill as the
+/// inputs beside it.
+class _UnitField extends StatelessWidget {
+  const _UnitField({required this.unit, required this.onChanged});
+  final BaseUnit unit;
+  final ValueChanged<BaseUnit> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 64,
+      height: 48,
+      padding: const EdgeInsets.only(left: AppSpace.x3, right: AppSpace.x1),
+      decoration: BoxDecoration(color: context.colors.fill, borderRadius: BorderRadius.circular(AppRadius.input)),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<BaseUnit>(
+          value: unit,
+          isExpanded: true,
+          isDense: true,
+          borderRadius: BorderRadius.circular(AppRadius.menu),
+          icon: Icon(Icons.expand_more_rounded, size: 18, color: context.scheme.onSurfaceVariant),
+          style: context.text.bodyLarge,
+          items: [for (final u in BaseUnit.values) DropdownMenuItem(value: u, child: Text(u.label))],
+          onChanged: (u) => onChanged(u ?? unit),
+        ),
+      ),
+    );
+  }
+}
+
+/// The editor while the recipe loads: the fields in their real places, pulsing.
+class _EditorSkeleton extends StatelessWidget {
+  const _EditorSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    Widget field({double? width}) => SkeletonBlock(width: width, height: 56, radius: AppRadius.input);
+    return AppSkeleton(
+      child: ListView(
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(AppSpace.screen, AppSpace.headerGap, AppSpace.screen, 0),
+        children: [
+          field(),
+          const SizedBox(height: AppSpace.x4),
+          Row(
+            children: [
+              for (var i = 0; i < 3; i++) ...[if (i > 0) const SizedBox(width: AppSpace.x2), Expanded(child: field())],
+            ],
+          ),
+          const SizedBox(height: AppSpace.x6),
+          for (var i = 0; i < 3; i++) ...[field(), const SizedBox(height: AppSpace.x2)],
+        ],
+      ),
     );
   }
 }

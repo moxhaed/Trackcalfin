@@ -8,6 +8,7 @@ import '../../app/providers.dart';
 import '../../app/theme.dart';
 import '../../platform/notifications.dart';
 import '../capture/scan_flow.dart';
+import '../common/widgets.dart';
 
 const defaultStaples = [
   'Salt',
@@ -101,26 +102,35 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final track = context.colors.track;
     return Scaffold(
       body: SafeArea(
         child: Column(
           children: [
+            // Six segments, 4 tall, 4 apart, on the 16 margins.
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: Row(
-                children: [
-                  for (var i = 0; i < _pages; i++)
-                    Expanded(
-                      child: Container(
-                        height: 4,
-                        margin: const EdgeInsets.symmetric(horizontal: 2),
-                        decoration: BoxDecoration(
-                          color: i <= _index ? context.scheme.primary : context.colors.track,
-                          borderRadius: BorderRadius.circular(4),
+              padding: const EdgeInsets.fromLTRB(AppSpace.screen, AppSpace.x3, AppSpace.screen, 0),
+              child: Semantics(
+                label: 'Step ${_index + 1} of $_pages',
+                excludeSemantics: true,
+                child: Row(
+                  children: [
+                    for (var i = 0; i < _pages; i++) ...[
+                      if (i > 0) const SizedBox(width: AppSpace.x1),
+                      Expanded(
+                        child: AnimatedContainer(
+                          duration: AppMotion.short,
+                          curve: AppMotion.standard,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: i <= _index ? context.scheme.primary : track,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
                         ),
                       ),
-                    ),
-                ],
+                    ],
+                  ],
+                ),
               ),
             ),
             Expanded(
@@ -138,30 +148,39 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 ],
               ),
             ),
+            // The commit is full width. Later pages add a Back text button on its left.
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+              padding: const EdgeInsets.fromLTRB(AppSpace.screen, AppSpace.x2, AppSpace.screen, AppSpace.x4),
               child: Row(
                 children: [
-                  if (_index > 0)
-                    TextButton(
-                      onPressed: () =>
-                          _page.previousPage(duration: const Duration(milliseconds: 250), curve: Curves.easeOut),
-                      child: const Text('Back'),
+                  if (_index > 0) ...[
+                    // Pulled back by the button's own 12 padding, so "Back" sits on the margin.
+                    Transform.translate(
+                      offset: const Offset(-AppSpace.x3, 0),
+                      child: TextButton(
+                        onPressed: () =>
+                            _page.previousPage(duration: const Duration(milliseconds: 250), curve: Curves.easeOut),
+                        child: const Text('Back'),
+                      ),
                     ),
-                  const Spacer(),
-                  FilledButton(
-                    onPressed: () async {
-                      if (_index == 1) await _saveGoals();
-                      if (_index == 2) await ref.read(pantryServiceProvider).ensureStaples(_staples.toList());
-                      if (_index == 3 && _key.text.trim().isNotEmpty) {
-                        await ref.read(secretStoreProvider).writeApiKey(_key.text.trim());
-                        ref.invalidate(hasApiKeyProvider);
-                        // Staples from the previous page get their macros while the user carries on.
-                        unawaited(ref.read(nutritionServiceProvider).fillMissing());
-                      }
-                      _next();
-                    },
-                    child: Text(_index == _pages - 1 ? 'Start' : (_index == 0 ? 'Get started' : 'Next')),
+                    const SizedBox(width: AppSpace.x3),
+                  ],
+                  Expanded(
+                    child: FilledButton(
+                      style: AppTheme.largeButton,
+                      onPressed: () async {
+                        if (_index == 1) await _saveGoals();
+                        if (_index == 2) await ref.read(pantryServiceProvider).ensureStaples(_staples.toList());
+                        if (_index == 3 && _key.text.trim().isNotEmpty) {
+                          await ref.read(secretStoreProvider).writeApiKey(_key.text.trim());
+                          ref.invalidate(hasApiKeyProvider);
+                          // Staples from the previous page get their macros while the user carries on.
+                          unawaited(ref.read(nutritionServiceProvider).fillMissing());
+                        }
+                        _next();
+                      },
+                      child: Text(_index == _pages - 1 ? 'Start' : (_index == 0 ? 'Get started' : 'Next')),
+                    ),
                   ),
                 ],
               ),
@@ -172,36 +191,49 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     );
   }
 
-  Widget _page0(
+  /// One page: the mark (welcome) or a 28 accent icon at the top left, a 30/36 title, a
+  /// secondary body, then the page's content. Everything sits on the 16 margin, left-aligned.
+  /// [iconInk] is where the glyph's ink starts on its 24 grid (the flag's pole is at 5), so the
+  /// icon shifts left by that much, scaled to 28, and its edge lands on the margin.
+  Widget _pageOf(
     BuildContext context, {
-    required IconData icon,
+    IconData? icon,
+    double iconInk = 0,
     required String title,
     required String body,
     Widget? child,
   }) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(24, 40, 24, 24),
+      padding: const EdgeInsets.fromLTRB(AppSpace.screen, AppSpace.x10, AppSpace.screen, AppSpace.x6),
       children: [
-        Icon(icon, size: 44, color: context.scheme.primary),
-        const SizedBox(height: 16),
-        Text(title, style: context.text.headlineSmall),
-        const SizedBox(height: 8),
-        Text(body, style: context.text.bodyLarge?.copyWith(color: context.scheme.onSurfaceVariant)),
-        if (child != null) ...[const SizedBox(height: 24), child],
+        // A bare icon in a ListView would stretch and center itself: pin it to the start.
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: icon == null
+              ? const _BrandMark()
+              : Transform.translate(
+                  offset: Offset(-iconInk * 28 / 24, 0),
+                  child: Icon(icon, size: 28, color: context.scheme.primary),
+                ),
+        ),
+        const SizedBox(height: AppSpace.x6),
+        Semantics(header: true, child: NoWidowText(title, style: context.text.headlineLarge)),
+        const SizedBox(height: AppSpace.x3),
+        NoWidowText(body, style: context.text.bodyLarge?.copyWith(color: context.scheme.onSurfaceVariant)),
+        if (child != null) ...[const SizedBox(height: AppSpace.x8), child],
       ],
     );
   }
 
-  Widget _welcome(BuildContext context) => _page0(
+  Widget _welcome(BuildContext context) => _pageOf(
     context,
-    icon: Icons.kitchen_outlined,
     title: 'Your kitchen, on autopilot',
     body:
         'Snap receipts, cook from what you have, and see where the money and protein go. '
         'Every log takes about 3 seconds; the AI does the typing.',
-    child: Column(
+    child: const Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: const [
+      children: [
         _Habit('After I put the groceries away, I snap the receipt.'),
         _Habit('After I close the fridge with my lunch box, I tap "Ate it".'),
         _Habit('While the coffee brews, I glance at today\'s pick.'),
@@ -209,9 +241,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     ),
   );
 
-  Widget _goals(BuildContext context) => _page0(
+  Widget _goals(BuildContext context) => _pageOf(
     context,
     icon: Icons.flag_outlined,
+    iconInk: 5,
     title: 'Your goals',
     body: 'These drive the Vibe Check. Change them any time in Settings.',
     child: Column(
@@ -224,13 +257,13 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             prefixText: '${ref.watch(moneyProvider).symbol} ',
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.x3),
         TextField(
           controller: _kcal,
           keyboardType: TextInputType.number,
           decoration: const InputDecoration(labelText: 'Daily calories', suffixText: 'kcal'),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.x3),
         TextField(
           controller: _protein,
           keyboardType: TextInputType.number,
@@ -240,18 +273,18 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     ),
   );
 
-  Widget _staplesPage(BuildContext context) => _page0(
+  Widget _staplesPage(BuildContext context) => _pageOf(
     context,
     icon: Icons.inventory_2_outlined,
+    iconInk: 2,
     title: 'Staples you always have',
     body: 'These are assumed available and never counted, so the app never nags you about salt.',
     child: Wrap(
-      spacing: 8,
-      runSpacing: 8,
+      spacing: AppSpace.x2,
       children: [
         for (final s in defaultStaples)
-          FilterChip(
-            label: Text(s),
+          AppToggleChip(
+            label: s,
             selected: _staples.contains(s),
             onSelected: (v) => setState(() => v ? _staples.add(s) : _staples.remove(s)),
           ),
@@ -259,9 +292,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     ),
   );
 
-  Widget _apiKey(BuildContext context) => _page0(
+  Widget _apiKey(BuildContext context) => _pageOf(
     context,
     icon: Icons.key_outlined,
+    iconInk: 1,
     title: 'Connect Gemini',
     body:
         'Receipt reading and recipes use your own Gemini API key (from Google AI Studio). '
@@ -273,50 +307,59 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     ),
   );
 
-  Widget _sweep(BuildContext context) => _page0(
+  Widget _sweep(BuildContext context) => _pageOf(
     context,
     icon: Icons.photo_camera_outlined,
+    iconInk: 2,
     title: 'Snap your kitchen',
     body:
         'Three photos (fridge, freezer, cupboard) fill your pantry in one go. '
         'You review them in the Inbox. Skip if you prefer to start with your next receipt.',
     child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final (label, icon) in [
-          ('Fridge', Icons.kitchen_outlined),
-          ('Freezer', Icons.ac_unit),
-          ('Cupboard', Icons.door_sliding_outlined),
-        ])
+        AppGroup(
+          separatorIndent: AppGroup.indentIcon,
+          children: [
+            for (final (label, icon) in [
+              ('Fridge', Icons.kitchen_outlined),
+              ('Freezer', Icons.ac_unit_rounded),
+              ('Cupboard', Icons.door_sliding_outlined),
+            ])
+              AppRow(
+                leading: Icon(icon, size: 20),
+                title: label,
+                chevron: true,
+                onTap: () async {
+                  await startScan(context, ref, hint: 'pantry');
+                  if (mounted) setState(() => _sweeps++);
+                },
+              ),
+          ],
+        ),
+        if (_sweeps > 0)
           Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
-              onPressed: () async {
-                await startScan(context, ref, hint: 'pantry');
-                setState(() => _sweeps++);
-              },
-              icon: Icon(icon),
-              label: Text(label),
-            ),
+            padding: const EdgeInsets.fromLTRB(AppSpace.x4, AppSpace.x2, AppSpace.x4, 0),
+            child: Text('$_sweeps photo${_sweeps == 1 ? '' : 's'} queued', style: context.text.bodySmall),
           ),
-        if (_sweeps > 0) Text('$_sweeps photo${_sweeps == 1 ? '' : 's'} queued', style: context.text.bodySmall),
       ],
     ),
   );
 
   Widget _rhythm(BuildContext context) {
     String hm(int m) => '${(m ~/ 60).toString().padLeft(2, '0')}:${(m % 60).toString().padLeft(2, '0')}';
-    return _page0(
+    return _pageOf(
       context,
-      icon: Icons.schedule,
+      icon: Icons.schedule_rounded,
+      iconInk: 2,
       title: 'Your rhythm',
       body: 'One recipe idea each morning, and a meal-time nudge only when prepped food is waiting.',
-      child: Column(
+      child: AppGroup(
         children: [
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Daily pick at'),
-            trailing: Text(hm(_pickMinute), style: context.text.titleMedium),
+          AppRow(
+            title: 'Daily pick at',
+            value: hm(_pickMinute),
+            chevron: true,
             onTap: () async {
               final t = await showTimePicker(
                 context: context,
@@ -325,21 +368,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               if (t != null) setState(() => _pickMinute = t.hour * 60 + t.minute);
             },
           ),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Portions I usually cook'),
-            subtitle: const Text('More than 1 means meal prep'),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  onPressed: _portions > 1 ? () => setState(() => _portions--) : null,
-                  icon: const Icon(Icons.remove),
-                ),
-                Text('$_portions', style: context.text.titleMedium),
-                IconButton(onPressed: () => setState(() => _portions++), icon: const Icon(Icons.add)),
-              ],
-            ),
+          AppRow(
+            title: 'Portions I usually cook',
+            subtitle: 'More than 1 means meal prep',
+            trailing: PortionStepper(value: _portions, onChanged: (v) => setState(() => _portions = v)),
           ),
         ],
       ),
@@ -347,19 +379,97 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 }
 
+/// A habit line: an accent check and a sentence, 12 apart.
 class _Habit extends StatelessWidget {
   const _Habit(this.text);
   final String text;
+
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 10),
+    padding: const EdgeInsets.only(bottom: AppSpace.x3),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(Icons.check_circle_outline, size: 20, color: context.scheme.primary),
-        const SizedBox(width: 10),
-        Expanded(child: Text(text, style: context.text.bodyMedium)),
+        // The 20 icon sits on the first 21-high text line.
+        Icon(Icons.check_circle_outline_rounded, size: 20, color: context.scheme.primary),
+        const SizedBox(width: AppSpace.x3),
+        Expanded(child: NoWidowText(text, style: context.text.bodyMedium)),
       ],
     ),
   );
+}
+
+/// The app mark at 72 × 72 (radius 18): a port of `assets/branding/app_icon.svg` (a 1024 box),
+/// the one brand moment of the app. It stays the same in dark mode, because it's the icon.
+class _BrandMark extends StatelessWidget {
+  const _BrandMark();
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    image: true,
+    label: 'Trackcalfin',
+    child: const SizedBox.square(dimension: 72, child: CustomPaint(painter: _BrandMarkPainter())),
+  );
+}
+
+class _BrandMarkPainter extends CustomPainter {
+  const _BrandMarkPainter();
+
+  // The icon's own palette (not UI chrome): field, halo, leaves, vein, bowl, rim.
+  static const _halo = Color(0xFF347F5E);
+  static const _leaf = Color(0xFFA8E6C1);
+  static const _leafSmall = Color(0xFF7FD3A4);
+  static const _bowl = Color(0xFFF6F3EA);
+  static const _rim = Color(0xFFE4DDCB);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    Paint fill(Color c) => Paint()..color = c;
+    Paint stroke(Color c, double w) => Paint()
+      ..color = c
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = w
+      ..strokeCap = StrokeCap.round;
+
+    canvas
+      ..clipRRect(RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(size.width / 4)))
+      ..scale(size.width / 1024, size.height / 1024)
+      // The field and its soft halo.
+      ..drawRect(const Rect.fromLTWH(0, 0, 1024, 1024), fill(AppTheme.seed))
+      ..drawCircle(const Offset(512, 512), 400, fill(_halo.withValues(alpha: 0.55)));
+
+    // The big leaf with its vein, then the small leaf.
+    final leaf = Path()
+      ..moveTo(512, 486)
+      ..cubicTo(402, 430, 386, 300, 470, 196)
+      ..cubicTo(590, 262, 614, 392, 512, 486)
+      ..close();
+    final vein = Path()
+      ..moveTo(512, 486)
+      ..cubicTo(500, 400, 488, 320, 470, 240);
+    final small = Path()
+      ..moveTo(560, 470)
+      ..cubicTo(610, 420, 690, 410, 760, 440)
+      ..cubicTo(720, 510, 640, 530, 560, 470)
+      ..close();
+    canvas
+      ..drawPath(leaf, fill(_leaf))
+      ..drawPath(vein, stroke(AppTheme.seed, 16))
+      ..drawPath(small, fill(_leafSmall));
+
+    // The bowl, its foot and the line across it.
+    final bowl = Path()
+      ..moveTo(212, 520)
+      ..lineTo(812, 520)
+      ..cubicTo(812, 690, 678, 818, 512, 818)
+      ..cubicTo(346, 818, 212, 690, 212, 520)
+      ..close();
+    canvas
+      ..drawPath(bowl, fill(_bowl))
+      ..drawRRect(RRect.fromLTRBR(402, 826, 622, 866, const Radius.circular(20)), fill(_bowl))
+      ..drawLine(const Offset(300, 560), const Offset(724, 560), stroke(_rim, 18));
+  }
+
+  @override
+  bool shouldRepaint(_BrandMarkPainter oldDelegate) => false;
 }

@@ -65,90 +65,118 @@ class _AteSheetState extends ConsumerState<AteSheet> {
   @override
   Widget build(BuildContext context) {
     final fridge = ref.watch(fridgeProvider).value ?? const [];
+    final secondary = context.scheme.onSurfaceVariant;
+    // The sheet pads 4 and the fridge rows add their own 16, so their text sits on the title's
+    // x = 20. Everything else adds 16 itself.
+    Widget inset(Widget child) => Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.x4),
+      child: child,
+    );
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(AppSpace.x1, 0, AppSpace.x1, AppSpace.x6),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('What did you eat?', style: context.text.titleLarge),
-              const SizedBox(height: 8),
+              inset(Semantics(header: true, child: Text('What did you eat?', style: context.text.headlineSmall))),
+              const SizedBox(height: AppSpace.x4),
               if (!_manual) ...[
                 if (fridge.isEmpty)
+                  inset(
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpace.x4),
+                      child: Text(
+                        'Nothing prepped in the fridge.',
+                        style: context.text.bodyMedium?.copyWith(color: secondary),
+                      ),
+                    ),
+                  )
+                else
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Text('Nothing prepped in the fridge.', style: context.text.bodyMedium),
+                    padding: const EdgeInsets.only(bottom: AppSpace.x4),
+                    child: Column(
+                      children: [
+                        for (final (i, s) in fridge.indexed) ...[
+                          if (i > 0)
+                            const Divider(height: 0.5, thickness: 0.5, indent: AppSpace.x4, endIndent: AppSpace.x4),
+                          AppRow(
+                            title: s.recipeTitle,
+                            subtitle:
+                                '${s.portionsRemaining} left · ${s.perPortion.kcal.round()} kcal · '
+                                '${s.perPortion.proteinG.round()} g protein',
+                            trailing: FilledButton.tonal(
+                              style: AppTheme.tonalButton(context, small: true),
+                              onPressed: () async {
+                                final nav = Navigator.of(context);
+                                final outer = nav.context;
+                                nav.pop();
+                                await eatFromFridge(outer, ref, s);
+                              },
+                              child: const Text('Eat 1'),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
-                for (final s in fridge)
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.kitchen_outlined),
-                    title: Text(s.recipeTitle),
-                    subtitle: Text(
-                      '${s.portionsRemaining} left · ${s.perPortion.kcal.round()} kcal · '
-                      '${s.perPortion.proteinG.round()} g protein',
-                    ),
-                    trailing: FilledButton.tonal(
-                      style: AppTheme.tonalButton(context, small: true),
-                      onPressed: () async {
-                        final nav = Navigator.of(context);
-                        final outer = nav.context;
-                        nav.pop();
-                        await eatFromFridge(outer, ref, s);
-                      },
-                      child: const Text('Eat 1'),
-                    ),
+                inset(
+                  FilledButton.tonalIcon(
+                    style: AppTheme.tonalButton(context),
+                    onPressed: () => setState(() => _manual = true),
+                    icon: const Icon(Icons.edit_note_rounded),
+                    label: const Text('Something else'),
                   ),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: () => setState(() => _manual = true),
-                  icon: const Icon(Icons.edit_note),
-                  label: const Text('Something else'),
                 ),
-              ] else ...[
-                TextField(
-                  controller: _title,
-                  autofocus: true,
-                  textCapitalization: TextCapitalization.sentences,
-                  decoration: const InputDecoration(labelText: 'What was it?', hintText: 'Kebab, protein bar…'),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _kcal,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: const InputDecoration(labelText: 'kcal'),
+              ] else
+                inset(
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      TextField(
+                        controller: _title,
+                        autofocus: true,
+                        textCapitalization: TextCapitalization.sentences,
+                        decoration: const InputDecoration(labelText: 'What was it?', hintText: 'Kebab, protein bar…'),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: TextField(
-                        controller: _protein,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: const InputDecoration(labelText: 'Protein g'),
+                      const SizedBox(height: AppSpace.x3),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _kcal,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              decoration: const InputDecoration(labelText: 'kcal'),
+                            ),
+                          ),
+                          const SizedBox(width: AppSpace.x2),
+                          Expanded(
+                            child: TextField(
+                              controller: _protein,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              decoration: const InputDecoration(labelText: 'Protein g'),
+                            ),
+                          ),
+                          const SizedBox(width: AppSpace.x2),
+                          Expanded(
+                            child: TextField(
+                              controller: _cost,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              decoration: InputDecoration(
+                                labelText: 'Cost',
+                                prefixText: ref.watch(moneyProvider).symbol,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: TextField(
-                        controller: _cost,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: InputDecoration(labelText: 'Cost', prefixText: ref.watch(moneyProvider).symbol),
-                      ),
-                    ),
-                  ],
+                      const SizedBox(height: AppSpace.x4),
+                      FilledButton(style: AppTheme.largeButton, onPressed: _logManual, child: const Text('Log meal')),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 14),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(onPressed: _logManual, child: const Text('Log meal')),
-                ),
-              ],
             ],
           ),
         ),

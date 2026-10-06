@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
 import 'format.dart';
@@ -45,8 +46,9 @@ class _TabHeaderState extends State<TabHeader> with _ScrolledUnder {
 
 /// Compact bar of a pushed screen (inbox, review, recipe, editor, stats, quick check): 52
 /// tall, the platform back button (tooltip "Back") and a 17/22 w600 title right beside it
-/// (DESIGN_SYSTEM §7.5). Opened without a page below (a cold deep link) there's no back
-/// button, and the title keeps the 16 page margin instead. Same scrolled-under hairline.
+/// (DESIGN_SYSTEM §7.5). Opened without a page below (a cold launch from a notification) it
+/// still shows the back button, which then goes to the Dashboard (`/`), so there's always a
+/// way out. Same scrolled-under hairline.
 class PageBar extends StatefulWidget implements PreferredSizeWidget {
   const PageBar({super.key, this.title, this.actions = const []});
   final String? title;
@@ -69,7 +71,9 @@ class _PageBarState extends State<PageBar> with _ScrolledUnder {
     final title = widget.title;
     return AppBar(
       toolbarHeight: PageBar.height,
-      titleSpacing: back ? 0 : AppSpace.screen,
+      // Nothing to pop to (opened cold): the same back button, but it goes home.
+      leading: back ? null : BackButton(onPressed: () => context.go('/')),
+      titleSpacing: 0,
       shape: edge,
       title: title == null ? null : Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
       actions: widget.actions,
@@ -396,9 +400,12 @@ class AppRow extends StatelessWidget {
           ),
         if (hasSubtitle) ...[
           const SizedBox(height: 2),
-          // A " · " meta line packs as many parts per line as fit and breaks only at separators.
+          // A " · " meta line packs as many parts per line as fit and breaks only at separators;
+          // any other subtitle wraps without leaving a single word on its last line.
           if (subtitleSpan == null)
-            SeparatedText(subtitle!, style: context.text.bodySmall)
+            subtitle!.contains(' · ')
+                ? SeparatedText(subtitle!, style: context.text.bodySmall)
+                : NoWidowText(subtitle!, style: context.text.bodySmall)
           else
             Text.rich(subtitleSpan!, maxLines: 2, overflow: TextOverflow.ellipsis, style: context.text.bodySmall),
         ],
@@ -424,7 +431,11 @@ class AppRow extends StatelessWidget {
                     if (top) const SizedBox(width: 24) else leadingBox,
                     const SizedBox(width: AppSpace.x3),
                   ],
-                  Expanded(child: text),
+                  // Beside a 48 control the row pads 4, so the text adds 7 of its own: a two-line row
+                  // is still 64, and a row that runs longer keeps its air.
+                  Expanded(
+                    child: control ? Padding(padding: const EdgeInsets.symmetric(vertical: 7), child: text) : text,
+                  ),
                   if (end != null) ...[const SizedBox(width: AppSpace.x3), end],
                 ],
               );
@@ -492,10 +503,13 @@ class AppRow extends StatelessWidget {
 /// A neutral circle behind an icon: 36 with a 20 icon in mixed-category rows, 56 with a 28
 /// icon in empty states (§7.3, §7.18).
 class GlyphCircle extends StatelessWidget {
-  const GlyphCircle(this.icon, {super.key, this.size = 36, this.color});
+  const GlyphCircle(this.icon, {super.key, this.size = 36, this.color, this.iconSize});
   final IconData icon;
   final double size;
   final Color? color;
+
+  /// Defaults to 20 (28 from a 56 circle); the quick-check card pairs a 64 circle with 32.
+  final double? iconSize;
 
   @override
   Widget build(BuildContext context) {
@@ -504,7 +518,7 @@ class GlyphCircle extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(color: context.colors.fill, shape: BoxShape.circle),
       alignment: Alignment.center,
-      child: Icon(icon, size: size >= 56 ? 28 : 20, color: color ?? context.scheme.onSurfaceVariant),
+      child: Icon(icon, size: iconSize ?? (size >= 56 ? 28 : 20), color: color ?? context.scheme.onSurfaceVariant),
     );
   }
 }
@@ -1118,8 +1132,8 @@ class PantryTile extends StatelessWidget {
   }
 }
 
-/// A capture option in the ⊕ sheet: fill, radius 16, 104 tall, accent icon over a title and
-/// a one-line hint.
+/// A capture option in the ⊕ sheet: fill, radius 16, 104 tall (taller when a row of tiles
+/// stretches it, e.g. at large text sizes), accent icon over a title and a one-line hint.
 class CaptureTile extends StatelessWidget {
   const CaptureTile({super.key, required this.icon, required this.title, required this.subtitle, required this.onTap});
   final IconData icon;
@@ -1129,8 +1143,8 @@ class CaptureTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 104,
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 104),
       child: Material(
         color: context.colors.fill,
         borderRadius: BorderRadius.circular(AppRadius.tile),
@@ -1581,10 +1595,14 @@ class SeparatedText extends StatelessWidget {
 /// spinach" / "rice bowls"). The string itself is unchanged, so finders and screen readers
 /// see the real title.
 class NoWidowText extends StatelessWidget {
-  const NoWidowText(this.text, {super.key, this.style, this.maxLines});
+  const NoWidowText(this.text, {super.key, this.style, this.maxLines, this.textAlign});
   final String text;
   final TextStyle? style;
   final int? maxLines;
+
+  /// Lines align inside the (possibly narrowed) box; wrap the widget in a `Center` to center
+  /// the box itself.
+  final TextAlign? textAlign;
 
   @override
   Widget build(BuildContext context) {
@@ -1598,6 +1616,7 @@ class NoWidowText extends StatelessWidget {
           child: Text(
             text,
             style: style,
+            textAlign: textAlign,
             maxLines: maxLines,
             overflow: maxLines == null ? null : TextOverflow.ellipsis,
           ),
@@ -1658,8 +1677,9 @@ InlineSpan valueSpan(BuildContext context, String value, TextStyle style) {
   );
 }
 
-/// − n + stepper: a 48 capsule on the neutral fill with two 44 buttons and the value
-/// (17 w600, tabular) over an optional hint ("max 3", "portions").
+/// − n + stepper: a 48 capsule on the neutral fill with two 44 × 48 buttons and a centre
+/// column as wide as the value (17 w600, tabular) or its optional hint ("max 3", "portions")
+/// needs, at least 40.
 class PortionStepper extends StatelessWidget {
   const PortionStepper({
     super.key,
@@ -1677,7 +1697,13 @@ class PortionStepper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = IconButton.styleFrom(minimumSize: const Size(44, 44), iconSize: 20);
+    // 44 wide, as tall as the capsule. Shrink-wrapped so the theme's padded tap target (48)
+    // doesn't widen the stepper: the centre column hugs the value or hint (at least 40).
+    final style = IconButton.styleFrom(
+      minimumSize: const Size(44, 48),
+      iconSize: 20,
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    );
     void change(int v) {
       tick();
       onChanged(v);

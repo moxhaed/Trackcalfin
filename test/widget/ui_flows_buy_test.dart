@@ -214,4 +214,4 @@ void main() {
 }
 
 /// Set to true when the cold-open Quick check bug is fixed (see the test above).
-const quickCheckColdOpenFixed = false;
+const quickCheckColdOpenFixed = true;

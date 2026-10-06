@@ -17,7 +17,7 @@ Future<void> showExpenseSheet(BuildContext context) => showModalBottomSheet(
   builder: (_) => const ExpenseSheet(),
 );
 
-/// Amount, then tap a category chip: the chip IS the save (rule R2).
+/// Amount, then tap a category button: the button IS the save (rule R2).
 class ExpenseSheet extends ConsumerStatefulWidget {
   const ExpenseSheet({super.key});
 
@@ -104,30 +104,38 @@ class _ExpenseSheetState extends ConsumerState<ExpenseSheet> {
     final money = ref.watch(moneyProvider);
     final parsed = _parsed;
     final cats = _orderedCategories();
+    final secondary = context.scheme.onSurfaceVariant;
+    // The amount is the hero: 44 tabular digits in number mode. Typing "12.50 lunch" is a
+    // sentence, so text mode drops to 28.
+    final amountStyle = _textMode ? context.nums.large : context.nums.hero;
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(AppSpace.sheet, 0, AppSpace.sheet, AppSpace.x6),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('Log an expense', style: context.text.titleLarge),
-              const SizedBox(height: 12),
+              Semantics(header: true, child: Text('Log an expense', style: context.text.headlineSmall)),
+              const SizedBox(height: AppSpace.x4),
               TextField(
                 controller: _amount,
                 autofocus: true,
                 keyboardType: _textMode ? TextInputType.text : const TextInputType.numberWithOptions(decimal: true),
                 textInputAction: TextInputAction.done,
-                style: context.text.headlineMedium,
+                style: amountStyle,
                 decoration: InputDecoration(
                   prefixText: '${money.symbol} ',
+                  prefixStyle: amountStyle.copyWith(color: secondary, fontWeight: FontWeight.w500),
                   hintText: _textMode ? '12.50 lunch' : '0.00',
+                  hintStyle: amountStyle.copyWith(color: context.colors.textTertiary),
                   errorText: _error,
+                  // 12 + the 4 a filled field adds puts the "€" 16 in, on the same line as the icons below.
+                  contentPadding: const EdgeInsets.fromLTRB(AppSpace.x3, AppSpace.x2, AppSpace.x2, AppSpace.x2),
                   suffixIcon: IconButton(
                     tooltip: _textMode ? 'Numbers only' : 'Type "12.50 lunch"',
-                    icon: Icon(_textMode ? Icons.dialpad : Icons.keyboard),
+                    icon: Icon(_textMode ? Icons.dialpad_rounded : Icons.keyboard_outlined),
                     onPressed: () => setState(() => _textMode = !_textMode),
                   ),
                 ),
@@ -136,42 +144,109 @@ class _ExpenseSheetState extends ConsumerState<ExpenseSheet> {
               ),
               if (parsed != null && parsed.category != null)
                 Padding(
-                  padding: const EdgeInsets.only(top: 6),
+                  padding: const EdgeInsets.only(top: AppSpace.x2),
                   child: Text(
                     '${money.format(parsed.amountMinor)} · ${parsed.category!.label}. Press enter to save.',
                     style: context.text.bodySmall,
                   ),
                 ),
-              const SizedBox(height: 14),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final c in cats)
-                    ActionChip(
-                      avatar: Icon(categoryIcon(c), size: 18),
-                      label: Text(c.label),
-                      backgroundColor: parsed?.category == c ? context.scheme.primaryContainer : null,
-                      onPressed: () => _commit(c),
+              const SizedBox(height: AppSpace.x4),
+              // Two columns of category buttons; a tap is the save.
+              for (var i = 0; i < cats.length; i += 2) ...[
+                if (i > 0) const SizedBox(height: AppSpace.x2),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _CategoryButton(
+                        category: cats[i],
+                        parsed: parsed?.category == cats[i],
+                        onTap: () => _commit(cats[i]),
+                      ),
                     ),
-                ],
-              ),
-              const SizedBox(height: 6),
+                    const SizedBox(width: AppSpace.x2),
+                    Expanded(
+                      child: i + 1 < cats.length
+                          ? _CategoryButton(
+                              category: cats[i + 1],
+                              parsed: parsed?.category == cats[i + 1],
+                              onTap: () => _commit(cats[i + 1]),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: AppSpace.x2),
               if (!_showNote)
-                TextButton.icon(
-                  onPressed: () => setState(() => _showNote = true),
-                  icon: const Icon(Icons.notes, size: 18),
-                  label: const Text('Add a note'),
+                // The button's own 12 padding is pulled back so its icon sits on the margin.
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Transform.translate(
+                    offset: const Offset(-AppSpace.x3, 0),
+                    child: TextButton.icon(
+                      onPressed: () => setState(() => _showNote = true),
+                      icon: const Icon(Icons.notes_rounded),
+                      label: const Text('Add a note'),
+                    ),
+                  ),
                 )
               else
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: TextField(
-                    controller: _note,
-                    decoration: const InputDecoration(hintText: 'Note or merchant'),
-                  ),
+                TextField(
+                  controller: _note,
+                  decoration: const InputDecoration(hintText: 'Note or merchant'),
                 ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A category as a 52-tall button on the neutral fill; the one the typed text parsed to is
+/// accent-tinted and carries a check (so it isn't marked by color alone). Tapping it saves.
+class _CategoryButton extends StatelessWidget {
+  const _CategoryButton({required this.category, required this.parsed, required this.onTap});
+  final SpendCategory category;
+  final bool parsed;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.scheme;
+    final ink = parsed ? s.onPrimaryContainer : s.onSurface;
+    return SizedBox(
+      height: 52,
+      child: Material(
+        color: parsed ? s.primaryContainer : context.colors.fill,
+        borderRadius: BorderRadius.circular(AppRadius.input),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.x4, vertical: AppSpace.x2),
+            child: Row(
+              children: [
+                Icon(categoryIcon(category), size: 20, color: parsed ? s.onPrimaryContainer : s.onSurfaceVariant),
+                const SizedBox(width: AppSpace.x2),
+                // One line that shrinks a little at large text sizes rather than breaking a word.
+                Expanded(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      category.label,
+                      maxLines: 1,
+                      style: context.text.bodyLarge?.copyWith(
+                        color: ink,
+                        fontWeight: parsed ? FontWeight.w600 : FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+                if (parsed) ...[const SizedBox(width: AppSpace.x1), Icon(Icons.check_rounded, size: 18, color: ink)],
+              ],
+            ),
           ),
         ),
       ),

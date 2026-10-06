@@ -45,17 +45,25 @@ class _CookedSheetState extends ConsumerState<CookedSheet> {
             if (b.id == pick?.id) return 1;
             return (b.lastCookedAt ?? b.createdAt).compareTo(a.lastCookedAt ?? a.createdAt);
           });
+    final secondary = context.scheme.onSurfaceVariant;
     return DraggableScrollableSheet(
       expand: false,
       initialChildSize: 0.6,
       maxChildSize: 0.92,
       builder: (context, controller) => Column(
         children: [
+          // The stepper sits on the title's center line.
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 16, 8),
+            padding: const EdgeInsets.fromLTRB(AppSpace.sheet, 0, AppSpace.sheet, AppSpace.x3),
             child: Row(
               children: [
-                Expanded(child: Text('What did you cook?', style: context.text.titleLarge)),
+                Expanded(
+                  child: Semantics(
+                    header: true,
+                    child: NoWidowText('What did you cook?', style: context.text.headlineSmall),
+                  ),
+                ),
+                const SizedBox(width: AppSpace.inline),
                 PortionStepper(value: portions, onChanged: (v) => setState(() => _portions = v), hint: 'portions'),
               ],
             ),
@@ -67,23 +75,45 @@ class _CookedSheetState extends ConsumerState<CookedSheet> {
                     title: 'No recipes yet',
                     message: "Today's pick and recipes you save or cook show up here.",
                   )
-                : ListView.builder(
+                : ListView.separated(
                     controller: controller,
+                    // The sheet pads 20; a row pads 16, so 4 more puts the text under the title.
+                    padding: EdgeInsets.fromLTRB(
+                      AppSpace.x1,
+                      0,
+                      AppSpace.x1,
+                      MediaQuery.paddingOf(context).bottom + AppSpace.x6,
+                    ),
                     itemCount: list.length,
+                    separatorBuilder: (_, _) =>
+                        const Divider(height: 0.5, thickness: 0.5, indent: AppGroup.indentIcon, endIndent: AppSpace.x4),
                     itemBuilder: (context, i) {
                       final r = list[i];
                       final f = FeasibilityChecker.check(r.ingredients, portions, stock);
-                      return ListTile(
-                        leading: Icon(r.id == pick?.id ? Icons.wb_sunny_outlined : Icons.restaurant_menu),
-                        title: Text(r.title),
-                        subtitle: Text(
-                          r.id == pick?.id
-                              ? "Today's pick"
-                              : (r.lastPortionsCooked > 0 ? 'Last time: ${r.lastPortionsCooked} portions' : 'Saved'),
+                      final isPick = r.id == pick?.id;
+                      return AppRow(
+                        leading: Icon(
+                          isPick ? Icons.wb_sunny_outlined : Icons.restaurant_menu_outlined,
+                          size: 20,
+                          color: isPick ? context.scheme.primary : secondary,
                         ),
+                        title: r.title,
+                        subtitle: isPick
+                            ? "Today's pick"
+                            : (r.lastPortionsCooked > 0 ? 'Last time: ${r.lastPortionsCooked} portions' : 'Saved'),
                         trailing: f.ready
-                            ? Icon(Icons.check_circle, color: context.colors.good, semanticLabel: 'In stock')
-                            : Icon(Icons.info_outline, color: context.colors.warning, semanticLabel: 'Stock short'),
+                            ? Icon(
+                                Icons.check_circle_rounded,
+                                size: 20,
+                                color: context.colors.good,
+                                semanticLabel: 'In stock',
+                              )
+                            : Icon(
+                                Icons.info_outline_rounded,
+                                size: 20,
+                                color: context.colors.warning,
+                                semanticLabel: 'Stock short',
+                              ),
                         onTap: () async {
                           final nav = Navigator.of(context);
                           final outer = nav.context;
